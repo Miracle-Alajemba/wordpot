@@ -9,6 +9,7 @@ based on performance.
 - MiniPay-friendly mobile UI
 - Practice mode
 - Public quick match rooms
+- Wallet-based player identity
 - 60-second rounds
 - Duplicate-word blocking
 - Real-time scoring

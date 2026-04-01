@@ -5,6 +5,7 @@
 - Entry fee: `0.1 cUSD`
 - Round time: `60 seconds`
 - Players per room: `2-5`
+- Identity: wallet address
 - Minimum word length: `3`
 - Duplicate words are blocked across all players
 - A player cannot reuse their own word

@@ -7,6 +7,8 @@ import {
 } from "./game.js";
 
 const ROUND_SECONDS = 60;
+const API_BASE_URL =
+  import.meta.env.VITE_API_BASE_URL || "http://localhost:4000/api";
 
 const GAME_RULES = [
   "Words must be at least 3 letters long",
@@ -36,7 +38,18 @@ function MetricCard({ label, value, hint }) {
   );
 }
 
-function HomeScreen({ onStartPractice }) {
+function shortenWalletAddress(value) {
+  if (!value) return "--";
+  return `${value.slice(0, 6)}...${value.slice(-4)}`;
+}
+
+function HomeScreen({
+  onStartPractice,
+  onQuickMatch,
+  walletAddress,
+  onWalletChange,
+  walletHint,
+}) {
   return (
     <main className="page-shell">
       <section className="hero">
@@ -46,16 +59,33 @@ function HomeScreen({ onStartPractice }) {
           <p className="lede">
             A fast multiplayer word challenge where players build words from a
             shared prompt, race the clock, and earn a share of the pot based on
-            how well they perform.
+            how well they perform. Multiplayer rooms use wallet identity so
+            payouts can go straight back to players.
           </p>
 
           <div className="hero-actions">
             <button type="button" onClick={onStartPractice}>
               Start Practice
             </button>
-            <button type="button" className="button-secondary" disabled>
-              Quick Match Soon
+            <button type="button" className="button-secondary" onClick={onQuickMatch}>
+              Quick Match
             </button>
+          </div>
+
+          <div className="name-panel">
+            <label htmlFor="walletAddress">Wallet address</label>
+            <input
+              id="walletAddress"
+              type="text"
+              value={walletAddress}
+              onChange={(event) => onWalletChange(event.target.value)}
+              placeholder="0x..."
+              autoComplete="off"
+            />
+            <p className="field-hint">
+              {walletHint ||
+                "For now, paste a wallet address. MiniPay wallet connect comes next."}
+            </p>
           </div>
 
           <div className="feature-strip">
@@ -114,6 +144,239 @@ function HomeScreen({ onStartPractice }) {
             the reward pool.
           </p>
         </article>
+      </section>
+    </main>
+  );
+}
+
+function LobbyScreen({
+  room,
+  playerId,
+  statusMessage,
+  error,
+  onRefresh,
+  onStart,
+  onBack,
+}) {
+  const isHost = room?.hostPlayerId === playerId;
+  const canStart =
+    room?.status === "waiting" && room?.players?.length >= 2 && isHost;
+
+  return (
+    <main className="page-shell">
+      <section className="play-shell">
+        <div className="play-header">
+          <button type="button" className="ghost-button" onClick={onBack}>
+            Back
+          </button>
+          <p className="eyebrow">Quick Match Lobby</p>
+        </div>
+
+        <div className="play-hero">
+          <div>
+            <p className="play-label">Room code</p>
+            <h1>{room?.id || "LOADING"}</h1>
+            <p className="lede">
+              Bring in players, wait for the lobby to fill, then start the round.
+            </p>
+            <div className="feature-strip">
+              <div className="feature-pill">Entry: {room?.entryFee || "0.1 cUSD"}</div>
+              <div className="feature-pill">{room?.rewardPool || "--"} reward pool</div>
+              <div className="feature-pill">{room?.status || "waiting"} status</div>
+            </div>
+          </div>
+
+          <div className="score-row">
+            <ScoreBadge label="Players" value={room?.players?.length || 0} />
+            <ScoreBadge label="Min" value={room?.minPlayers || 2} />
+            <ScoreBadge label="Max" value={room?.maxPlayers || 5} />
+          </div>
+        </div>
+
+        {statusMessage ? (
+          <div className="notice-strip notice-strip--success">{statusMessage}</div>
+        ) : null}
+        {error ? <div className="notice-strip notice-strip--error">{error}</div> : null}
+
+        <section className="practice-grid">
+          <article className="panel">
+            <h3>Players In Room</h3>
+            <div className="player-list">
+              {(room?.players || []).map((player) => (
+                <div key={player.id} className="player-row">
+                  <div>
+                    <strong>{shortenWalletAddress(player.walletAddress)}</strong>
+                    <p>{player.isHost ? "Host wallet" : "Player wallet"}</p>
+                  </div>
+                  {player.id === playerId ? <span className="self-pill">You</span> : null}
+                </div>
+              ))}
+            </div>
+          </article>
+
+          <article className="panel">
+            <h3>Lobby Actions</h3>
+            <div className="lobby-actions">
+              <button type="button" onClick={onRefresh}>
+                Refresh Lobby
+              </button>
+              <button
+                type="button"
+                className="button-secondary"
+                onClick={onStart}
+                disabled={!canStart}
+              >
+                {isHost ? "Start Match" : "Waiting for host"}
+              </button>
+            </div>
+            <div className="rules-card">
+              <h4>How this works</h4>
+              <ul>
+                <li>Quick Match finds the next open public room.</li>
+                <li>The host starts once at least 2 players are ready.</li>
+                <li>Live shared gameplay is the next build step after this lobby flow.</li>
+              </ul>
+            </div>
+          </article>
+        </section>
+      </section>
+    </main>
+  );
+}
+
+function MatchRoomScreen({
+  room,
+  playerId,
+  roomMessage,
+  roomError,
+  onRefresh,
+  onSubmitWord,
+  onBackHome,
+}) {
+  const [wordInput, setWordInput] = useState("");
+  const isFinished = room?.status === "finished";
+  const myScore =
+    room?.scoreboard?.find((entry) => entry.playerId === playerId)?.score || 0;
+  const timeLeft = useMemo(() => {
+    if (!room?.endsAt) return 0;
+    return Math.max(0, Math.ceil((new Date(room.endsAt).getTime() - Date.now()) / 1000));
+  }, [room]);
+
+  function handleSubmit(event) {
+    event.preventDefault();
+    if (!wordInput.trim()) return;
+    onSubmitWord(wordInput);
+    setWordInput("");
+  }
+
+  return (
+    <main className="page-shell">
+      <section className="play-shell">
+        <div className="play-header">
+          <button type="button" className="ghost-button" onClick={onBackHome}>
+            Back
+          </button>
+          <p className="eyebrow">Live Room</p>
+        </div>
+
+        <div className="play-hero">
+          <div>
+            <p className="play-label">Source word</p>
+            <h1>{room?.sourceWord || "READY"}</h1>
+            <p className="lede">
+              Shared room feed is live now. Every claimed word shows up here for all players.
+            </p>
+            <div className="letter-rack letter-rack--play">
+              {(room?.sourceWord || "").split("").map((letter, index) => (
+                <span key={`${letter}-${index}`} className="letter-tile letter-tile--play">
+                  {letter}
+                </span>
+              ))}
+            </div>
+          </div>
+
+          <div className="score-row">
+            <ScoreBadge label="Time left" value={`${timeLeft}s`} />
+            <ScoreBadge label="Your score" value={myScore} />
+            <ScoreBadge label="Players" value={room?.players?.length || 0} />
+          </div>
+        </div>
+
+        {roomMessage ? (
+          <div className="notice-strip notice-strip--success">{roomMessage}</div>
+        ) : null}
+        {roomError ? <div className="notice-strip notice-strip--error">{roomError}</div> : null}
+
+        {!isFinished ? (
+          <form className="submit-panel" onSubmit={handleSubmit}>
+            <input
+              type="text"
+              value={wordInput}
+              onChange={(event) => setWordInput(event.target.value)}
+              placeholder="Type a word to claim it"
+              autoComplete="off"
+              spellCheck="false"
+            />
+            <button type="submit">Claim Word</button>
+          </form>
+        ) : null}
+
+        <div className="hero-actions">
+          <button type="button" className="button-secondary" onClick={onRefresh}>
+            Refresh Room
+          </button>
+        </div>
+
+        <section className="practice-grid">
+          <article className="panel">
+            <h3>Room Feed</h3>
+            <div className="player-list">
+              {(room?.feed || []).length ? (
+                room.feed.map((entry, index) => (
+                  <div key={`${entry.word}-${index}`} className="player-row">
+                    <div>
+                      <strong>{entry.word}</strong>
+                      <p>{shortenWalletAddress(entry.walletAddress)}</p>
+                    </div>
+                    <span className="self-pill">+{entry.score}</span>
+                  </div>
+                ))
+              ) : (
+                <div className="empty-card">
+                  No shared words yet. Once anyone claims one, it will appear here for everyone.
+                </div>
+              )}
+            </div>
+          </article>
+
+          <article className="panel">
+            <h3>Scoreboard</h3>
+            <div className="player-list">
+              {(room?.scoreboard || []).map((entry) => (
+                <div key={entry.playerId} className="player-row">
+                  <div>
+                    <strong>{shortenWalletAddress(entry.walletAddress)}</strong>
+                    <p>{entry.wordsFound} words claimed</p>
+                  </div>
+                  <span className="self-pill">{entry.score} pts</span>
+                </div>
+              ))}
+            </div>
+
+            {isFinished ? (
+              <div className="rules-card">
+                <h4>Projected payouts</h4>
+                <ul>
+                  {(room?.payouts || []).map((entry) => (
+                    <li key={entry.walletAddress}>
+                      {shortenWalletAddress(entry.walletAddress)} - {entry.amount} cUSD
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
+          </article>
+        </section>
       </section>
     </main>
   );
@@ -396,10 +659,182 @@ function PracticeScreen({ onExit }) {
 
 export default function App() {
   const [screen, setScreen] = useState("home");
+  const [walletAddress, setWalletAddress] = useState("");
+  const [room, setRoom] = useState(null);
+  const [playerId, setPlayerId] = useState("");
+  const [roomError, setRoomError] = useState("");
+  const [roomMessage, setRoomMessage] = useState("");
+
+  const walletHint = useMemo(() => {
+    if (!walletAddress.trim()) return "";
+    const valid = /^0x[a-fA-F0-9]{40}$/.test(walletAddress.trim());
+    return valid
+      ? `Room identity will show as ${shortenWalletAddress(walletAddress.trim())}`
+      : "Enter a valid 42-character EVM wallet address.";
+  }, [walletAddress]);
+
+  async function handleQuickMatch() {
+    setRoomError("");
+    setRoomMessage("");
+
+    if (!/^0x[a-fA-F0-9]{40}$/.test(walletAddress.trim())) {
+      setRoomError("Enter a valid wallet address before joining quick match.");
+      return;
+    }
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/rooms/quick-match`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ walletAddress: walletAddress.trim() }),
+      });
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Unable to join a quick match.");
+      }
+
+      setRoom(data.room);
+      setPlayerId(data.playerId);
+      setRoomMessage("You joined a public room. Invite more players or refresh the lobby.");
+      setScreen("lobby");
+    } catch (error) {
+      setRoomError(error.message || "Unable to join quick match.");
+    }
+  }
+
+  async function refreshRoom() {
+    if (!room?.id) return;
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/rooms/${room.id}`);
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Unable to refresh this room.");
+      }
+
+      setRoom(data.room);
+      if (data.room.status === "active") {
+        setScreen("match-room");
+      }
+      setRoomMessage(data.room.status === "active" ? "Room updated." : "Lobby updated.");
+      setRoomError("");
+    } catch (error) {
+      setRoomError(error.message || "Unable to refresh room.");
+    }
+  }
+
+  async function startRoom() {
+    if (!room?.id || !playerId) return;
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/rooms/${room.id}/start`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ playerId }),
+      });
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Unable to start this room.");
+      }
+
+      setRoom(data.room);
+      setRoomMessage("");
+      setRoomError("");
+      setScreen("match-room");
+    } catch (error) {
+      setRoomError(error.message || "Unable to start room.");
+    }
+  }
+
+  async function submitRoomWord(word) {
+    if (!room?.id || !playerId) return;
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/rooms/${room.id}/submit`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ playerId, word }),
+      });
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Unable to submit word.");
+      }
+
+      setRoom(data.room);
+      setRoomMessage(`Locked in ${data.submission.word} for +${data.submission.score} points.`);
+      setRoomError("");
+    } catch (error) {
+      setRoomError(error.message || "Unable to submit word.");
+    }
+  }
+
+  function backHome() {
+    setScreen("home");
+    setRoomMessage("");
+    setRoomError("");
+  }
+
+  useEffect(() => {
+    if (screen !== "lobby" && screen !== "match-room") {
+      return undefined;
+    }
+
+    const interval = window.setInterval(() => {
+      refreshRoom();
+    }, 2000);
+
+    return () => window.clearInterval(interval);
+  }, [screen, room?.id]);
 
   if (screen === "practice") {
     return <PracticeScreen onExit={() => setScreen("home")} />;
   }
 
-  return <HomeScreen onStartPractice={() => setScreen("practice")} />;
+  if (screen === "lobby") {
+    return (
+      <LobbyScreen
+        room={room}
+        playerId={playerId}
+        statusMessage={roomMessage}
+        error={roomError}
+        onRefresh={refreshRoom}
+        onStart={startRoom}
+        onBack={backHome}
+      />
+    );
+  }
+
+  if (screen === "match-room") {
+    return (
+      <MatchRoomScreen
+        room={room}
+        playerId={playerId}
+        roomMessage={roomMessage}
+        roomError={roomError}
+        onRefresh={refreshRoom}
+        onSubmitWord={submitRoomWord}
+        onBackHome={backHome}
+      />
+    );
+  }
+
+  return (
+    <HomeScreen
+      onStartPractice={() => setScreen("practice")}
+      onQuickMatch={handleQuickMatch}
+      walletAddress={walletAddress}
+      onWalletChange={setWalletAddress}
+      walletHint={walletHint}
+    />
+  );
 }
