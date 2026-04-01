@@ -19,9 +19,15 @@
 
 ## Reward Split
 
-- 90% to winner(s)
 - 10% to treasury
-- ties split the winner portion equally
+- 90% shared proportionally by score
+
+### Formula
+
+`player payout = (player score / total room score) × reward pool`
+
+If total room score is `0`, the round can refund players or roll to the next pot
+depending on the final product decision. For MVP, refund is the safer rule.
 
 ## MVP Modes
 

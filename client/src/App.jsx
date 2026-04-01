@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
-  canBuildFromSource,
+  evaluatePracticeSubmission,
   getWordScore,
   normalizeWord,
   pickPracticeRound,
@@ -13,6 +13,7 @@ const GAME_RULES = [
   "Use each letter only as many times as it appears",
   "Every claimed word scores only once",
   "Longer words earn bigger points",
+  "90% of the pot is shared by score",
   "Practice mode is free while we build multiplayer",
 ];
 
@@ -21,6 +22,16 @@ function ScoreBadge({ label, value }) {
     <div className="score-badge">
       <span>{label}</span>
       <strong>{value}</strong>
+    </div>
+  );
+}
+
+function MetricCard({ label, value, hint }) {
+  return (
+    <div className="metric-card">
+      <span>{label}</span>
+      <strong>{value}</strong>
+      {hint ? <p>{hint}</p> : null}
     </div>
   );
 }
@@ -34,7 +45,8 @@ function HomeScreen({ onStartPractice }) {
           <h1>WordPot</h1>
           <p className="lede">
             A fast multiplayer word challenge where players build words from a
-            shared prompt, race the clock, and compete for the pot.
+            shared prompt, race the clock, and earn a share of the pot based on
+            how well they perform.
           </p>
 
           <div className="hero-actions">
@@ -45,16 +57,29 @@ function HomeScreen({ onStartPractice }) {
               Quick Match Soon
             </button>
           </div>
+
+          <div className="feature-strip">
+            <div className="feature-pill">60 second rounds</div>
+            <div className="feature-pill">0.1 cUSD stake</div>
+            <div className="feature-pill">90% split by score</div>
+          </div>
         </div>
 
         <div className="hero-card">
           <p className="hero-card__label">Sample round</p>
           <h2>BLOCKCHAIN</h2>
+          <div className="letter-rack">
+            {"BLOCKCHAIN".split("").map((letter, index) => (
+              <span key={`${letter}-${index}`} className="letter-tile">
+                {letter}
+              </span>
+            ))}
+          </div>
           <div className="hero-card__grid">
             <span>Timer: 60s</span>
             <span>Stake: 0.1 cUSD</span>
             <span>Players: 2-5</span>
-            <span>Payout: 90%</span>
+            <span>Pool: 90% shared by score</span>
           </div>
         </div>
       </section>
@@ -67,7 +92,7 @@ function HomeScreen({ onStartPractice }) {
             <li>Get a shared source word</li>
             <li>Submit valid words before time ends</li>
             <li>Score points from word length</li>
-            <li>Winner gets the pot</li>
+            <li>Reward pool is shared by score</li>
           </ol>
         </article>
 
@@ -81,10 +106,12 @@ function HomeScreen({ onStartPractice }) {
         </article>
 
         <article className="panel panel-wide">
-          <h3>Build Order</h3>
+          <h3>Prize Logic</h3>
           <p>
-            Practice mode comes first. Once the word validation and scoring feel
-            right, we’ll layer in live rooms, staking, and automatic payouts.
+            Every room starts with a small cUSD stake from each player. WordPot
+            keeps a 10% treasury fee, and the remaining 90% is shared using a
+            simple formula: your score divided by total room score, multiplied by
+            the reward pool.
           </p>
         </article>
       </section>
@@ -135,8 +162,11 @@ function PracticeScreen({ onExit }) {
   const [input, setInput] = useState("");
   const [score, setScore] = useState(0);
   const [feedback, setFeedback] = useState("Build as many valid words as you can.");
+  const [feedbackTone, setFeedbackTone] = useState("neutral");
   const [claimedWords, setClaimedWords] = useState([]);
   const [isFinished, setIsFinished] = useState(false);
+  const [bestWord, setBestWord] = useState("");
+  const [streak, setStreak] = useState(0);
   const inputRef = useRef(null);
 
   useEffect(() => {
@@ -167,6 +197,16 @@ function PracticeScreen({ onExit }) {
     () => new Set(claimedWords.map((entry) => entry.word)),
     [claimedWords],
   );
+  const progress = ((ROUND_SECONDS - timeLeft) / ROUND_SECONDS) * 100;
+  const dictionaryProgress = Math.round(
+    (claimedWords.length / roundSeed.validWords.length) * 100,
+  );
+  const longestWord = useMemo(() => {
+    return claimedWords.reduce((current, entry) => {
+      if (!current) return entry.word;
+      return entry.word.length > current.length ? entry.word : current;
+    }, "");
+  }, [claimedWords]);
 
   function resetRound() {
     setRoundSeed(pickPracticeRound());
@@ -174,8 +214,11 @@ function PracticeScreen({ onExit }) {
     setInput("");
     setScore(0);
     setFeedback("New round. Go fast and go clean.");
+    setFeedbackTone("neutral");
     setClaimedWords([]);
     setIsFinished(false);
+    setBestWord("");
+    setStreak(0);
   }
 
   function handleSubmit(event) {
@@ -187,32 +230,34 @@ function PracticeScreen({ onExit }) {
 
     const normalized = normalizeWord(input);
     setInput("");
+    const evaluation = evaluatePracticeSubmission({
+      input: normalized,
+      sourceWord: roundSeed.sourceWord,
+      validWords: roundSeed.validWords,
+      claimedWords: claimedSet,
+    });
 
-    if (normalized.length < 3) {
-      setFeedback("Too short. Words must be at least 3 letters.");
+    if (!evaluation.ok) {
+      setFeedback(evaluation.message);
+      setFeedbackTone("error");
+      setStreak(0);
       return;
     }
 
-    if (claimedSet.has(normalized)) {
-      setFeedback("Already claimed in this round.");
-      return;
-    }
+    const points = evaluation.score ?? getWordScore(evaluation.word);
 
-    if (!canBuildFromSource(normalized, roundSeed.sourceWord)) {
-      setFeedback("That word uses letters outside the source word.");
-      return;
-    }
-
-    if (!roundSeed.validWords.includes(normalized)) {
-      setFeedback("Not in the practice dictionary for this round.");
-      return;
-    }
-
-    const points = getWordScore(normalized);
-
-    setClaimedWords((current) => [...current, { word: normalized, score: points }]);
+    setClaimedWords((current) => [
+      ...current,
+      { word: evaluation.word, score: points },
+    ]);
     setScore((current) => current + points);
-    setFeedback(`Locked in ${normalized} for +${points} points.`);
+    setFeedback(evaluation.message);
+    setFeedbackTone("success");
+    setStreak((current) => current + 1);
+
+    if (!bestWord || evaluation.word.length > bestWord.length) {
+      setBestWord(evaluation.word);
+    }
   }
 
   return (
@@ -232,12 +277,29 @@ function PracticeScreen({ onExit }) {
             <p className="lede">
               Make real words from these letters before the timer runs out.
             </p>
+            <div className="letter-rack letter-rack--play">
+              {roundSeed.sourceWord.split("").map((letter, index) => (
+                <span key={`${letter}-${index}`} className="letter-tile letter-tile--play">
+                  {letter}
+                </span>
+              ))}
+            </div>
           </div>
 
           <div className="score-row">
             <ScoreBadge label="Time left" value={`${timeLeft}s`} />
             <ScoreBadge label="Score" value={score} />
             <ScoreBadge label="Claimed" value={claimedWords.length} />
+          </div>
+        </div>
+
+        <div className="progress-shell">
+          <div className="progress-labels">
+            <span>Round pressure</span>
+            <span>{Math.round(progress)}%</span>
+          </div>
+          <div className="progress-bar">
+            <div className="progress-bar__fill" style={{ width: `${progress}%` }} />
           </div>
         </div>
 
@@ -263,7 +325,9 @@ function PracticeScreen({ onExit }) {
               <button type="submit">Claim Word</button>
             </form>
 
-            <div className="notice-strip">{feedback}</div>
+            <div className={`notice-strip notice-strip--${feedbackTone}`}>
+              {feedback}
+            </div>
 
             <section className="practice-grid">
               <article className="panel">
@@ -288,13 +352,39 @@ function PracticeScreen({ onExit }) {
               </article>
 
               <article className="panel">
-                <h3>Scoring</h3>
-                <ul>
-                  <li>3 letters = 3 points</li>
-                  <li>4 letters = 5 points</li>
-                  <li>5 letters = 8 points</li>
-                  <li>6+ letters = 12 points</li>
-                </ul>
+                <h3>Round Intel</h3>
+                <div className="metrics-grid">
+                  <MetricCard
+                    label="Best word"
+                    value={bestWord || "--"}
+                    hint="Your longest accepted word so far"
+                  />
+                  <MetricCard
+                    label="Current streak"
+                    value={streak}
+                    hint="Accepted words in a row"
+                  />
+                  <MetricCard
+                    label="Round progress"
+                    value={`${dictionaryProgress}%`}
+                    hint={`${claimedWords.length}/${roundSeed.validWords.length} words found`}
+                  />
+                  <MetricCard
+                    label="Longest found"
+                    value={longestWord || "--"}
+                    hint="Best word discovered this round"
+                  />
+                </div>
+
+                <div className="rules-card">
+                  <h4>Scoring</h4>
+                  <ul>
+                    <li>3 letters = 3 points</li>
+                    <li>4 letters = 5 points</li>
+                    <li>5 letters = 8 points</li>
+                    <li>6+ letters = 12 points</li>
+                  </ul>
+                </div>
               </article>
             </section>
           </>
