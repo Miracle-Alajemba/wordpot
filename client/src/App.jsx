@@ -9,6 +9,7 @@ import {
 const ROUND_SECONDS = 60;
 const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL || "http://localhost:4000/api";
+const WALLET_STORAGE_KEY = "wordpot_connected_wallet";
 
 const GAME_RULES = [
   "Words must be at least 3 letters long",
@@ -43,11 +44,22 @@ function shortenWalletAddress(value) {
   return `${value.slice(0, 6)}...${value.slice(-4)}`;
 }
 
+function isWalletAddress(value) {
+  return /^0x[a-fA-F0-9]{40}$/.test(String(value || "").trim());
+}
+
+function getInjectedProvider() {
+  if (typeof window === "undefined") return null;
+  return window.ethereum || null;
+}
+
 function HomeScreen({
   onStartPractice,
   onQuickMatch,
   walletAddress,
-  onWalletChange,
+  walletStatus,
+  onConnectWallet,
+  onDisconnectWallet,
   walletHint,
 }) {
   return (
@@ -72,20 +84,36 @@ function HomeScreen({
             </button>
           </div>
 
-          <div className="name-panel">
-            <label htmlFor="walletAddress">Wallet address</label>
-            <input
-              id="walletAddress"
-              type="text"
-              value={walletAddress}
-              onChange={(event) => onWalletChange(event.target.value)}
-              placeholder="0x..."
-              autoComplete="off"
-            />
-            <p className="field-hint">
-              {walletHint ||
-                "For now, paste a wallet address. MiniPay wallet connect comes next."}
-            </p>
+          <div className="wallet-panel">
+            <div className="wallet-panel__copy">
+              <label>Wallet sign in</label>
+              <strong>
+                {walletAddress ? shortenWalletAddress(walletAddress) : "No wallet connected"}
+              </strong>
+              <p className="field-hint">
+                {walletHint ||
+                  "Connect your MiniPay-compatible wallet so rooms use your real onchain identity."}
+              </p>
+            </div>
+            <div className="wallet-panel__actions">
+              <button type="button" onClick={onConnectWallet}>
+                {walletAddress ? "Reconnect Wallet" : "Connect Wallet"}
+              </button>
+              {walletAddress ? (
+                <button
+                  type="button"
+                  className="button-secondary"
+                  onClick={onDisconnectWallet}
+                >
+                  Disconnect
+                </button>
+              ) : null}
+            </div>
+            {walletStatus ? (
+              <div className="wallet-status">
+                {walletStatus}
+              </div>
+            ) : null}
           </div>
 
           <div className="feature-strip">
@@ -257,10 +285,8 @@ function MatchRoomScreen({
   const isFinished = room?.status === "finished";
   const myScore =
     room?.scoreboard?.find((entry) => entry.playerId === playerId)?.score || 0;
-  const timeLeft = useMemo(() => {
-    if (!room?.endsAt) return 0;
-    return Math.max(0, Math.ceil((new Date(room.endsAt).getTime() - Date.now()) / 1000));
-  }, [room]);
+  const timeLeft = room?.timeLeftSeconds ?? 0;
+  const feed = room?.feed || [];
 
   function handleSubmit(event) {
     event.preventDefault();
@@ -281,10 +307,10 @@ function MatchRoomScreen({
 
         <div className="play-hero">
           <div>
-            <p className="play-label">Source word</p>
+            <p className="play-label">Contamination word</p>
             <h1>{room?.sourceWord || "READY"}</h1>
             <p className="lede">
-              Shared room feed is live now. Every claimed word shows up here for all players.
+              Type words from this source word. Every submission appears in the room feed for everyone.
             </p>
             <div className="letter-rack letter-rack--play">
               {(room?.sourceWord || "").split("").map((letter, index) => (
@@ -308,17 +334,68 @@ function MatchRoomScreen({
         {roomError ? <div className="notice-strip notice-strip--error">{roomError}</div> : null}
 
         {!isFinished ? (
-          <form className="submit-panel" onSubmit={handleSubmit}>
-            <input
-              type="text"
-              value={wordInput}
-              onChange={(event) => setWordInput(event.target.value)}
-              placeholder="Type a word to claim it"
-              autoComplete="off"
-              spellCheck="false"
-            />
-            <button type="submit">Claim Word</button>
-          </form>
+          <>
+            <section className="room-chat-shell">
+              <article className="panel panel-chat">
+                <h3>Live Room Feed</h3>
+                <div className="chat-feed">
+                  {feed.length ? (
+                    feed.map((entry, index) => (
+                      <div
+                        key={`${entry.createdAt}-${index}`}
+                        className={`chat-message chat-message--${entry.status}`}
+                      >
+                        <div className="chat-message__head">
+                          <strong>{shortenWalletAddress(entry.walletAddress)}</strong>
+                          <span>{entry.status === "accepted" ? "✅" : "❌"}</span>
+                        </div>
+                        <div className="chat-message__body">
+                          <span className="chat-word">{entry.word || "(empty)"}</span>
+                          <span className="chat-points">
+                            {entry.status === "accepted" ? `+${entry.score} pts` : entry.reason}
+                          </span>
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="empty-card">
+                      No submissions yet. Once players start typing, the room will feel like live chat.
+                    </div>
+                  )}
+                </div>
+              </article>
+
+              <article className="panel panel-scoreboard">
+                <h3>Live Scoreboard</h3>
+                <div className="player-list">
+                  {(room?.scoreboard || []).map((entry) => (
+                    <div key={entry.playerId} className="player-row">
+                      <div>
+                        <strong>{shortenWalletAddress(entry.walletAddress)}</strong>
+                        <p>{entry.wordsFound} accepted words</p>
+                      </div>
+                      <span className="self-pill">{entry.score} pts</span>
+                    </div>
+                  ))}
+                </div>
+              </article>
+            </section>
+
+            <form className="submit-panel submit-panel--sticky" onSubmit={handleSubmit}>
+              <input
+                type="text"
+                value={wordInput}
+                onChange={(event) => setWordInput(event.target.value)}
+                placeholder="Type a word to claim it"
+                autoComplete="off"
+                spellCheck="false"
+                disabled={timeLeft === 0}
+              />
+              <button type="submit" disabled={timeLeft === 0}>
+                Claim Word
+              </button>
+            </form>
+          </>
         ) : null}
 
         <div className="hero-actions">
@@ -327,56 +404,39 @@ function MatchRoomScreen({
           </button>
         </div>
 
-        <section className="practice-grid">
-          <article className="panel">
-            <h3>Room Feed</h3>
-            <div className="player-list">
-              {(room?.feed || []).length ? (
-                room.feed.map((entry, index) => (
-                  <div key={`${entry.word}-${index}`} className="player-row">
+        {isFinished ? (
+          <section className="practice-grid">
+            <article className="panel panel-chat">
+              <h3>Final Scores</h3>
+              <div className="player-list">
+                {(room?.scoreboard || []).map((entry) => (
+                  <div key={entry.playerId} className="player-row">
                     <div>
-                      <strong>{entry.word}</strong>
-                      <p>{shortenWalletAddress(entry.walletAddress)}</p>
+                      <strong>{shortenWalletAddress(entry.walletAddress)}</strong>
+                      <p>{entry.wordsFound} accepted words</p>
                     </div>
-                    <span className="self-pill">+{entry.score}</span>
+                    <span className="self-pill">{entry.score} pts</span>
                   </div>
-                ))
-              ) : (
-                <div className="empty-card">
-                  No shared words yet. Once anyone claims one, it will appear here for everyone.
-                </div>
-              )}
-            </div>
-          </article>
-
-          <article className="panel">
-            <h3>Scoreboard</h3>
-            <div className="player-list">
-              {(room?.scoreboard || []).map((entry) => (
-                <div key={entry.playerId} className="player-row">
-                  <div>
-                    <strong>{shortenWalletAddress(entry.walletAddress)}</strong>
-                    <p>{entry.wordsFound} words claimed</p>
-                  </div>
-                  <span className="self-pill">{entry.score} pts</span>
-                </div>
-              ))}
-            </div>
-
-            {isFinished ? (
-              <div className="rules-card">
-                <h4>Projected payouts</h4>
-                <ul>
-                  {(room?.payouts || []).map((entry) => (
-                    <li key={entry.walletAddress}>
-                      {shortenWalletAddress(entry.walletAddress)} - {entry.amount} cUSD
-                    </li>
-                  ))}
-                </ul>
+                ))}
               </div>
-            ) : null}
-          </article>
-        </section>
+            </article>
+
+            <article className="panel panel-scoreboard">
+              <h3>Reward Distribution</h3>
+              <div className="player-list">
+                {(room?.payouts || []).map((entry) => (
+                  <div key={entry.walletAddress} className="player-row">
+                    <div>
+                      <strong>{shortenWalletAddress(entry.walletAddress)}</strong>
+                      <p>Auto payout after settlement</p>
+                    </div>
+                    <span className="self-pill">{entry.amount} cUSD</span>
+                  </div>
+                ))}
+              </div>
+            </article>
+          </section>
+        ) : null}
       </section>
     </main>
   );
@@ -660,6 +720,7 @@ function PracticeScreen({ onExit }) {
 export default function App() {
   const [screen, setScreen] = useState("home");
   const [walletAddress, setWalletAddress] = useState("");
+  const [walletStatus, setWalletStatus] = useState("");
   const [room, setRoom] = useState(null);
   const [playerId, setPlayerId] = useState("");
   const [roomError, setRoomError] = useState("");
@@ -667,18 +728,89 @@ export default function App() {
 
   const walletHint = useMemo(() => {
     if (!walletAddress.trim()) return "";
-    const valid = /^0x[a-fA-F0-9]{40}$/.test(walletAddress.trim());
+    const valid = isWalletAddress(walletAddress.trim());
     return valid
       ? `Room identity will show as ${shortenWalletAddress(walletAddress.trim())}`
-      : "Enter a valid 42-character EVM wallet address.";
+      : "Connected account is not a valid EVM wallet address.";
   }, [walletAddress]);
+
+  useEffect(() => {
+    const storedWallet =
+      typeof window !== "undefined"
+        ? window.localStorage.getItem(WALLET_STORAGE_KEY) || ""
+        : "";
+
+    if (isWalletAddress(storedWallet)) {
+      setWalletAddress(storedWallet);
+      setWalletStatus("Using previously connected wallet.");
+    }
+
+    const provider = getInjectedProvider();
+    if (!provider?.on) return undefined;
+
+    function handleAccountsChanged(accounts) {
+      const nextWallet = accounts?.[0] || "";
+      if (isWalletAddress(nextWallet)) {
+        setWalletAddress(nextWallet);
+        setWalletStatus("Wallet changed.");
+        window.localStorage.setItem(WALLET_STORAGE_KEY, nextWallet);
+      } else {
+        setWalletAddress("");
+        setWalletStatus("Wallet disconnected.");
+        window.localStorage.removeItem(WALLET_STORAGE_KEY);
+      }
+    }
+
+    provider.on("accountsChanged", handleAccountsChanged);
+
+    return () => {
+      if (provider.removeListener) {
+        provider.removeListener("accountsChanged", handleAccountsChanged);
+      }
+    };
+  }, []);
+
+  async function connectWallet() {
+    const provider = getInjectedProvider();
+
+    if (!provider?.request) {
+      setWalletStatus("No injected wallet found. Open WordPot inside MiniPay or a wallet browser.");
+      return;
+    }
+
+    try {
+      setWalletStatus("Requesting wallet connection...");
+      const accounts = await provider.request({
+        method: "eth_requestAccounts",
+      });
+      const nextWallet = accounts?.[0] || "";
+
+      if (!isWalletAddress(nextWallet)) {
+        throw new Error("Connected account is not a valid wallet address.");
+      }
+
+      setWalletAddress(nextWallet);
+      setWalletStatus(`Connected ${shortenWalletAddress(nextWallet)}`);
+      window.localStorage.setItem(WALLET_STORAGE_KEY, nextWallet);
+    } catch (error) {
+      setWalletStatus(error.message || "Unable to connect wallet.");
+    }
+  }
+
+  function disconnectWallet() {
+    setWalletAddress("");
+    setWalletStatus("Wallet disconnected locally.");
+    if (typeof window !== "undefined") {
+      window.localStorage.removeItem(WALLET_STORAGE_KEY);
+    }
+  }
 
   async function handleQuickMatch() {
     setRoomError("");
     setRoomMessage("");
 
-    if (!/^0x[a-fA-F0-9]{40}$/.test(walletAddress.trim())) {
-      setRoomError("Enter a valid wallet address before joining quick match.");
+    if (!isWalletAddress(walletAddress.trim())) {
+      setRoomError("Connect a valid wallet before joining quick match.");
       return;
     }
 
@@ -833,7 +965,9 @@ export default function App() {
       onStartPractice={() => setScreen("practice")}
       onQuickMatch={handleQuickMatch}
       walletAddress={walletAddress}
-      onWalletChange={setWalletAddress}
+      walletStatus={walletStatus}
+      onConnectWallet={connectWallet}
+      onDisconnectWallet={disconnectWallet}
       walletHint={walletHint}
     />
   );

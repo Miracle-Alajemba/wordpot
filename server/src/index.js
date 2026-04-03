@@ -82,16 +82,10 @@ function pickRoundSeed() {
 }
 
 function getRoomFeed(room) {
-  return room.submissions
+  return (room.events || [])
     .slice()
     .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
-    .map((entry) => ({
-      word: entry.word,
-      score: entry.score,
-      playerId: entry.playerId,
-      walletAddress: entry.walletAddress,
-      createdAt: entry.createdAt,
-    }));
+    .map((entry) => ({ ...entry }));
 }
 
 function getScoreboard(room) {
@@ -156,6 +150,10 @@ function getRoomSummary(room) {
     createdAt: room.createdAt,
     startedAt: room.startedAt || null,
     endsAt: room.endsAt || null,
+    timeLeftSeconds:
+      room.status === "active" && room.endsAt
+        ? Math.max(0, Math.ceil((room.endsAt - Date.now()) / 1000))
+        : 0,
     players: room.players.map((player) => ({
       id: player.id,
       walletAddress: player.walletAddress,
@@ -215,6 +213,7 @@ app.post("/api/rooms/quick-match", (req, res) => {
       endsAt: null,
       validWords: [],
       submissions: [],
+      events: [],
     };
     rooms.set(room.id, room);
   }
@@ -282,6 +281,7 @@ app.post("/api/rooms/:roomId/start", (req, res) => {
   room.sourceWord = roundSeed.sourceWord;
   room.validWords = roundSeed.validWords;
   room.submissions = [];
+  room.events = [];
 
   return res.json({
     room: getRoomSummary(room),
@@ -308,28 +308,46 @@ app.post("/api/rooms/:roomId/submit", (req, res) => {
     return res.status(403).json({ error: "Player not found in this room." });
   }
 
+  function logEvent({ status, word, score = 0, reason = "" }) {
+    room.events.push({
+      playerId,
+      walletAddress: player.walletAddress,
+      word,
+      score,
+      status,
+      reason,
+      createdAt: new Date().toISOString(),
+    });
+  }
+
   if (!rawWord) {
+    logEvent({ status: "rejected", word: "", reason: "Empty submission" });
     return res.status(400).json({ error: "Type a word before claiming it." });
   }
 
   if (!/^[a-z]+$/.test(rawWord)) {
+    logEvent({ status: "rejected", word: rawWord, reason: "Letters only" });
     return res.status(400).json({ error: "Only letters are allowed." });
   }
 
   if (rawWord.length < 3) {
+    logEvent({ status: "rejected", word: rawWord, reason: "Too short" });
     return res.status(400).json({ error: "Words must be at least 3 letters." });
   }
 
   const alreadyClaimed = room.submissions.some((entry) => entry.word === rawWord);
   if (alreadyClaimed) {
+    logEvent({ status: "rejected", word: rawWord, reason: "Already used" });
     return res.status(409).json({ error: "Already used by another player." });
   }
 
   if (!canBuildFromSource(rawWord, room.sourceWord)) {
+    logEvent({ status: "rejected", word: rawWord, reason: "Outside source word" });
     return res.status(400).json({ error: "That word cannot be formed from the source word." });
   }
 
   if (!room.validWords.includes(rawWord)) {
+    logEvent({ status: "rejected", word: rawWord, reason: "Invalid word" });
     return res.status(400).json({ error: "That word is not valid for this round." });
   }
 
@@ -342,6 +360,11 @@ app.post("/api/rooms/:roomId/submit", (req, res) => {
   };
 
   room.submissions.push(submission);
+  logEvent({
+    status: "accepted",
+    word: rawWord,
+    score: submission.score,
+  });
 
   return res.status(201).json({
     submission,
