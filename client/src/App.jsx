@@ -3,7 +3,6 @@ import {
   evaluatePracticeSubmission,
   getWordScore,
   normalizeWord,
-  pickPracticeRound,
 } from "./game.js";
 
 const ROUND_SECONDS = 60;
@@ -480,7 +479,7 @@ function PracticeResults({ score, wordsFound, onReplay, onExit }) {
 }
 
 function PracticeScreen({ onExit }) {
-  const [roundSeed, setRoundSeed] = useState(() => pickPracticeRound());
+  const [roundSeed, setRoundSeed] = useState(null);
   const [timeLeft, setTimeLeft] = useState(ROUND_SECONDS);
   const [input, setInput] = useState("");
   const [score, setScore] = useState(0);
@@ -490,10 +489,46 @@ function PracticeScreen({ onExit }) {
   const [isFinished, setIsFinished] = useState(false);
   const [bestWord, setBestWord] = useState("");
   const [streak, setStreak] = useState(0);
+  const [loadingRound, setLoadingRound] = useState(true);
   const inputRef = useRef(null);
 
+  async function loadPracticeRound(nextFeedback = "New round loaded. Go fast and go clean.") {
+    setLoadingRound(true);
+    setFeedback("Loading a fresh round...");
+    setFeedbackTone("neutral");
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/rounds/practice`);
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Unable to load a practice round.");
+      }
+
+      setRoundSeed(data.round);
+      setTimeLeft(ROUND_SECONDS);
+      setInput("");
+      setScore(0);
+      setClaimedWords([]);
+      setIsFinished(false);
+      setBestWord("");
+      setStreak(0);
+      setFeedback(nextFeedback);
+      setFeedbackTone("neutral");
+    } catch (error) {
+      setFeedback(error.message || "Unable to load practice round.");
+      setFeedbackTone("error");
+    } finally {
+      setLoadingRound(false);
+    }
+  }
+
   useEffect(() => {
-    if (isFinished) return undefined;
+    loadPracticeRound("Build as many valid words as you can.");
+  }, []);
+
+  useEffect(() => {
+    if (isFinished || !roundSeed) return undefined;
 
     const interval = window.setInterval(() => {
       setTimeLeft((current) => {
@@ -508,7 +543,7 @@ function PracticeScreen({ onExit }) {
     }, 1000);
 
     return () => window.clearInterval(interval);
-  }, [isFinished, roundSeed.sourceWord]);
+  }, [isFinished, roundSeed?.sourceWord]);
 
   useEffect(() => {
     if (!isFinished) {
@@ -532,22 +567,13 @@ function PracticeScreen({ onExit }) {
   }, [claimedWords]);
 
   function resetRound() {
-    setRoundSeed(pickPracticeRound());
-    setTimeLeft(ROUND_SECONDS);
-    setInput("");
-    setScore(0);
-    setFeedback("New round. Go fast and go clean.");
-    setFeedbackTone("neutral");
-    setClaimedWords([]);
-    setIsFinished(false);
-    setBestWord("");
-    setStreak(0);
+    loadPracticeRound("New round. Go fast and go clean.");
   }
 
   function handleSubmit(event) {
     event.preventDefault();
 
-    if (isFinished) {
+    if (isFinished || !roundSeed) {
       return;
     }
 
@@ -596,12 +622,12 @@ function PracticeScreen({ onExit }) {
         <div className="play-hero">
           <div>
             <p className="play-label">Source word</p>
-            <h1>{roundSeed.sourceWord}</h1>
+            <h1>{roundSeed?.sourceWord || "LOADING"}</h1>
             <p className="lede">
               Make real words from these letters before the timer runs out.
             </p>
             <div className="letter-rack letter-rack--play">
-              {roundSeed.sourceWord.split("").map((letter, index) => (
+              {(roundSeed?.sourceWord || "").split("").map((letter, index) => (
                 <span key={`${letter}-${index}`} className="letter-tile letter-tile--play">
                   {letter}
                 </span>
@@ -626,7 +652,13 @@ function PracticeScreen({ onExit }) {
           </div>
         </div>
 
-        {isFinished ? (
+        {loadingRound ? (
+          <div className="results-sheet">
+            <p className="eyebrow">Loading Round</p>
+            <h2>...</h2>
+            <p>Pulling a fresh source word from the backend.</p>
+          </div>
+        ) : isFinished ? (
           <PracticeResults
             score={score}
             wordsFound={claimedWords}

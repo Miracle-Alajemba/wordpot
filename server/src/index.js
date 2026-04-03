@@ -1,6 +1,7 @@
 import cors from "cors";
 import dotenv from "dotenv";
 import express from "express";
+import { canBuildFromSource, deriveValidWords, getDynamicRound } from "./rounds.js";
 
 dotenv.config();
 
@@ -10,33 +11,6 @@ const ENTRY_FEE = "0.1 cUSD";
 const MIN_PLAYERS = 2;
 const MAX_PLAYERS = 5;
 const ROUND_SECONDS = 60;
-const ROUND_SEEDS = [
-  {
-    sourceWord: "BLOCKCHAIN",
-    validWords: [
-      "back","bach","bail","ball","bank","bin","black","block","blot","boat","bolt",
-      "chain","chalk","chat","chin","clan","clock","clot","coal","coat","coin","cold",
-      "hail","hall","halt","hat","hint","into","kick","lain","land","lack","loan","lock",
-      "loin","lot","mail","main","mall","mint","nail","night","path","thin","thank",
-      "tonic","tail","tank","talk",
-    ],
-  },
-  {
-    sourceWord: "REMITTANCE",
-    validWords: [
-      "ant","art","care","cart","cat","cement","certain","crate","crane","earn","eastern",
-      "enter","mare","meat","mint","name","near","rate","react","remain","rent","rice",
-      "scar","steam","stare","team","term","trace","train","treat",
-    ],
-  },
-  {
-    sourceWord: "COMMUNITY",
-    validWords: [
-      "coin","comic","commute","count","county","cut","mint","mono","moon","mount","mouth",
-      "unity","unto","tiny","tonic","touch","tour","trim","tunic","unit","omit","icon","city",
-    ],
-  },
-];
 const rooms = new Map();
 
 app.use(cors());
@@ -54,31 +28,11 @@ function normalizeWord(value) {
   return String(value || "").trim().toLowerCase();
 }
 
-function buildLetterCounts(word) {
-  return word.split("").reduce((counts, letter) => {
-    counts[letter] = (counts[letter] || 0) + 1;
-    return counts;
-  }, {});
-}
-
-function canBuildFromSource(candidate, sourceWord) {
-  const candidateCounts = buildLetterCounts(candidate.toLowerCase());
-  const sourceCounts = buildLetterCounts(sourceWord.toLowerCase());
-
-  return Object.entries(candidateCounts).every(
-    ([letter, count]) => (sourceCounts[letter] || 0) >= count,
-  );
-}
-
 function getWordScore(word) {
   if (word.length >= 6) return 12;
   if (word.length === 5) return 8;
   if (word.length === 4) return 5;
   return 3;
-}
-
-function pickRoundSeed() {
-  return ROUND_SEEDS[Math.floor(Math.random() * ROUND_SEEDS.length)];
 }
 
 function getRoomFeed(room) {
@@ -191,6 +145,17 @@ app.get("/api/meta", (_req, res) => {
   });
 });
 
+app.get("/api/rounds/practice", async (_req, res) => {
+  try {
+    const round = await getDynamicRound();
+    return res.json({ round });
+  } catch (error) {
+    return res.status(500).json({
+      error: error.message || "Unable to generate a practice round right now.",
+    });
+  }
+});
+
 app.post("/api/rooms/quick-match", (req, res) => {
   const walletAddress = String(req.body?.walletAddress || "").trim();
 
@@ -252,7 +217,7 @@ app.get("/api/rooms/:roomId", (req, res) => {
   });
 });
 
-app.post("/api/rooms/:roomId/start", (req, res) => {
+app.post("/api/rooms/:roomId/start", async (req, res) => {
   const room = rooms.get(req.params.roomId);
   const playerId = String(req.body?.playerId || "").trim();
 
@@ -277,7 +242,7 @@ app.post("/api/rooms/:roomId/start", (req, res) => {
   room.status = "active";
   room.startedAt = new Date().toISOString();
   room.endsAt = Date.now() + ROUND_SECONDS * 1000;
-  const roundSeed = pickRoundSeed();
+  const roundSeed = await getDynamicRound();
   room.sourceWord = roundSeed.sourceWord;
   room.validWords = roundSeed.validWords;
   room.submissions = [];
