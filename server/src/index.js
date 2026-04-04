@@ -38,7 +38,7 @@ function getWordScore(word) {
 function getRoomFeed(room) {
   return (room.events || [])
     .slice()
-    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+    .sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt))
     .map((entry) => ({ ...entry }));
 }
 
@@ -64,6 +64,12 @@ function settleRoom(room) {
   if (!room.endsAt) return;
   if (Date.now() < room.endsAt) return;
   room.status = "finished";
+  room.events.push({
+    type: "system",
+    status: "system",
+    message: "Game over! Results are ready.",
+    createdAt: new Date().toISOString(),
+  });
 }
 
 function getPayouts(room) {
@@ -86,6 +92,15 @@ function getPayouts(room) {
 
 function isWalletAddress(value) {
   return /^0x[a-fA-F0-9]{40}$/.test(value);
+}
+
+function pushSystemEvent(room, message) {
+  room.events.push({
+    type: "system",
+    status: "system",
+    message,
+    createdAt: new Date().toISOString(),
+  });
 }
 
 function getRoomSummary(room) {
@@ -198,6 +213,7 @@ app.post("/api/rooms/quick-match", (req, res) => {
   };
 
   room.players.push(player);
+  pushSystemEvent(room, `${player.walletAddress} joined the game`);
 
   return res.status(201).json({
     room: getRoomSummary(room),
@@ -247,6 +263,7 @@ app.post("/api/rooms/:roomId/start", async (req, res) => {
   room.validWords = roundSeed.validWords;
   room.submissions = [];
   room.events = [];
+  pushSystemEvent(room, "Game starting now");
 
   return res.json({
     room: getRoomSummary(room),
@@ -275,6 +292,7 @@ app.post("/api/rooms/:roomId/submit", (req, res) => {
 
   function logEvent({ status, word, score = 0, reason = "" }) {
     room.events.push({
+      type: "submission",
       playerId,
       walletAddress: player.walletAddress,
       word,
