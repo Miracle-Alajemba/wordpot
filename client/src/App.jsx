@@ -52,9 +52,397 @@ function getInjectedProvider() {
   return window.ethereum || null;
 }
 
+function getPlayerAlias(walletAddress, fallbackIndex = 1) {
+  const short = shortenWalletAddress(walletAddress);
+  if (!walletAddress) return `Player ${fallbackIndex}`;
+  return `Player ${short.slice(2, 6).toUpperCase()}`;
+}
+
+function getAvatarSeed(walletAddress = "") {
+  return walletAddress
+    .slice(2, 8)
+    .split("")
+    .reduce((sum, char) => sum + char.charCodeAt(0), 0);
+}
+
+function getAvatarStyle(walletAddress = "") {
+  const hue = getAvatarSeed(walletAddress) % 360;
+  return {
+    background: `linear-gradient(135deg, hsl(${hue} 55% 78%), hsl(${(hue + 36) % 360} 48% 68%))`,
+  };
+}
+
+function formatRoomTimer(seconds) {
+  const safe = Math.max(0, Number(seconds || 0));
+  const mins = Math.floor(safe / 60);
+  const secs = safe % 60;
+  return `${mins}:${String(secs).padStart(2, "0")}`;
+}
+
+function formatEventTime(value) {
+  if (!value) return "--:--";
+
+  return new Intl.DateTimeFormat([], {
+    hour: "numeric",
+    minute: "2-digit",
+  }).format(new Date(value));
+}
+
+function buildWordFromSelection(sourceWord, selectedIndexes) {
+  const letters = String(sourceWord || "").split("");
+  return selectedIndexes.map((index) => letters[index] || "").join("").toLowerCase();
+}
+
+function TimerTone({ seconds }) {
+  const safe = Math.max(0, Number(seconds || 0));
+  const className =
+    safe <= 10 ? "timer-pill timer-pill--late" : safe <= 25 ? "timer-pill timer-pill--warning" : "timer-pill";
+
+  return (
+    <div className={className}>
+      <span>{formatRoomTimer(safe)}</span>
+      <small>remaining</small>
+    </div>
+  );
+}
+
+function PlayerIdentity({ walletAddress, emphasis = false }) {
+  return (
+    <div className="player-identity">
+      <span className={`player-avatar ${emphasis ? "player-avatar--large" : ""}`} style={getAvatarStyle(walletAddress)}>
+        {walletAddress?.slice(2, 4).toUpperCase() || "WP"}
+      </span>
+      <div className="player-identity__copy">
+        <strong>{getPlayerAlias(walletAddress)}</strong>
+        <span>{shortenWalletAddress(walletAddress)}</span>
+      </div>
+    </div>
+  );
+}
+
+function RoomPlayersStrip({ players = [], scoreboard = [], playerId }) {
+  const scoreLookup = new Map(scoreboard.map((entry) => [entry.playerId, entry]));
+
+  return (
+    <div className="room-players-strip" aria-label="Players in room">
+      {players.map((player, index) => {
+        const scoreEntry = scoreLookup.get(player.id);
+        const isCurrentPlayer = player.id === playerId;
+        return (
+          <article key={player.id} className={`room-player-card ${isCurrentPlayer ? "room-player-card--self" : ""}`}>
+            <PlayerIdentity walletAddress={player.walletAddress} />
+            <div className="room-player-card__meta">
+              <span>{scoreEntry?.score || 0} pts</span>
+              <small>{scoreEntry?.wordsFound || 0} words</small>
+            </div>
+            {isCurrentPlayer ? <span className="self-pill">You</span> : null}
+            {index === 0 ? <span className="host-pill">Host</span> : null}
+          </article>
+        );
+      })}
+    </div>
+  );
+}
+
+function ChatMessage({ entry, isOwnMessage }) {
+  if (entry.type === "system") {
+    return (
+      <div className="system-message">
+        <span className="system-message__icon">+</span>
+        <div>
+          <strong>[System]</strong> {entry.message}
+        </div>
+        <small>{formatEventTime(entry.createdAt)}</small>
+      </div>
+    );
+  }
+
+  const accepted = entry.status === "accepted";
+  const rejectionLabel =
+    entry.reason === "Already used"
+      ? "Duplicate"
+      : entry.reason === "Invalid word"
+        ? "Not a valid word"
+        : entry.reason || "Rejected";
+
+  return (
+    <article className={`chat-bubble ${isOwnMessage ? "chat-bubble--self" : ""} ${accepted ? "chat-bubble--accepted" : "chat-bubble--rejected"}`}>
+      <PlayerIdentity walletAddress={entry.walletAddress} emphasis />
+      <div className="chat-bubble__main">
+        <span className={`chat-bubble__word ${accepted ? "" : "chat-bubble__word--muted"}`}>
+          {entry.word || "(empty)"}
+        </span>
+        <div className="chat-bubble__meta">
+          <span className={`chat-bubble__points ${accepted ? "" : "chat-bubble__points--muted"}`}>
+            {accepted ? `+${entry.score} pts` : entry.reason === "Already used" ? "Already used" : "0 pts"}
+          </span>
+          <span className={`validation-badge ${accepted ? "validation-badge--ok" : "validation-badge--bad"}`}>
+            {accepted ? "✓" : "✕"}
+          </span>
+        </div>
+      </div>
+      {!accepted ? <p className="chat-bubble__reason">{rejectionLabel}</p> : null}
+      <small className="chat-bubble__time">{formatEventTime(entry.createdAt)}</small>
+    </article>
+  );
+}
+
+function Icon({ name }) {
+  const common = {
+    fill: "none",
+    stroke: "currentColor",
+    strokeLinecap: "round",
+    strokeLinejoin: "round",
+    strokeWidth: "1.8",
+    viewBox: "0 0 24 24",
+  };
+
+  const paths = {
+    home: (
+      <>
+        <path d="M4 10.5 12 4l8 6.5" />
+        <path d="M6.5 9.5V20h11V9.5" />
+      </>
+    ),
+    profile: (
+      <>
+        <circle cx="12" cy="8" r="3.2" />
+        <path d="M6 19c1.2-3 3.4-4.5 6-4.5s4.8 1.5 6 4.5" />
+      </>
+    ),
+    leaderboard: (
+      <>
+        <path d="M6 19V10" />
+        <path d="M12 19V6" />
+        <path d="M18 19v-8" />
+      </>
+    ),
+    settings: (
+      <>
+        <circle cx="12" cy="12" r="3.2" />
+        <path d="m19 12 1.5-.7-.8-2-1.7.1a6.8 6.8 0 0 0-1.1-1.2l.2-1.7-2-1-1 1.4a6.5 6.5 0 0 0-1.6 0l-1-1.4-2 1 .2 1.7c-.4.3-.8.7-1.1 1.2l-1.7-.1-.8 2L5 12l-.7 1.4.8 2 1.7-.1c.3.5.7.9 1.1 1.2l-.2 1.7 2 1 1-1.4c.5.1 1.1.1 1.6 0l1 1.4 2-1-.2-1.7c.4-.3.8-.7 1.1-1.2l1.7.1.8-2z" />
+      </>
+    ),
+    wallet: (
+      <>
+        <path d="M4.5 8.5h13a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2h-13a2 2 0 0 1-2-2v-6a2 2 0 0 1 2-2Z" />
+        <path d="M6 8V7a2 2 0 0 1 2-2h9" />
+        <circle cx="16.5" cy="13.5" r="0.8" fill="currentColor" stroke="none" />
+      </>
+    ),
+    chat: (
+      <>
+        <path d="M5 18.5 4 21l3.1-1.8H18a2 2 0 0 0 2-2V7.8a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8.4a2 2 0 0 0 1 1.7Z" />
+      </>
+    ),
+  };
+
+  return <svg aria-hidden="true" {...common}>{paths[name] || paths.home}</svg>;
+}
+
+function AppBottomNav({ screen, onNavigate, walletAddress, onWalletAction }) {
+  const items = [
+    { id: "home", label: "Home", icon: "home" },
+    { id: "leaderboard", label: "Leaderboard", icon: "leaderboard" },
+    { id: "profile", label: "Profile", icon: "profile" },
+  ];
+
+  return (
+    <nav className="bottom-nav" aria-label="Primary">
+      {items.map((item) => (
+        <button
+          key={item.id}
+          type="button"
+          className={`bottom-nav__item ${screen === item.id ? "bottom-nav__item--active" : ""}`}
+          onClick={() => onNavigate(item.id)}
+        >
+          <Icon name={item.icon} />
+          <span>{item.label}</span>
+        </button>
+      ))}
+
+      <button type="button" className="bottom-nav__item" onClick={onWalletAction}>
+        <Icon name="wallet" />
+        <span>{walletAddress ? shortenWalletAddress(walletAddress) : "Wallet"}</span>
+      </button>
+    </nav>
+  );
+}
+
+function LeaderboardScreen({ room, onQuickMatch, onBack }) {
+  const entries = room?.scoreboard?.length
+    ? room.scoreboard
+    : [
+        { playerId: "demo-1", walletAddress: "0xA8C5A8000000000000000000000000000000A8C5", score: 148, wordsFound: 12 },
+        { playerId: "demo-2", walletAddress: "0xE8B4A8000000000000000000000000000000E8B4", score: 132, wordsFound: 11 },
+        { playerId: "demo-3", walletAddress: "0x7A9FB50000000000000000000000000000007A9F", score: 119, wordsFound: 9 },
+      ];
+
+  return (
+    <main className="page-shell">
+      <section className="play-shell">
+        <div className="play-header">
+          <button type="button" className="ghost-button" onClick={onBack}>Back</button>
+          <p className="eyebrow">Community Leaderboard</p>
+        </div>
+
+        <section className="profile-shell">
+          <article className="panel profile-panel profile-panel--hero">
+            <div>
+              <h1 className="profile-title">Leaderboard</h1>
+              <p className="profile-subtitle">See who is shaping the cleanest runs and sharpest word streaks.</p>
+            </div>
+            <button type="button" onClick={onQuickMatch}>Join Game</button>
+          </article>
+
+          <article className="panel profile-panel">
+            <div className="room-panel__header">
+              <div>
+                <h3>Top Players</h3>
+                <p>Live ranking from current and recent arena sessions.</p>
+              </div>
+            </div>
+            <div className="leaderboard-table">
+              {entries.map((entry, index) => (
+                <div key={entry.playerId} className={`leaderboard-table__row ${index === 0 ? "leaderboard-table__row--top" : ""}`}>
+                  <div className="leaderboard-table__rank">#{index + 1}</div>
+                  <PlayerIdentity walletAddress={entry.walletAddress} emphasis />
+                  <div className="leaderboard-table__stats">
+                    <strong>{entry.score} pts</strong>
+                    <span>{entry.wordsFound} words</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </article>
+        </section>
+      </section>
+    </main>
+  );
+}
+
+function ProfileScreen({ walletAddress, onConnectWallet, onBack }) {
+  const connected = isWalletAddress(walletAddress);
+  const alias = connected ? getPlayerAlias(walletAddress) : "Guest Player";
+  const achievements = ["First Win", "Clean Streak", "Sharp Eye", "Fast Fingers", "Word Artist", "Night Owl"];
+
+  return (
+    <main className="page-shell">
+      <section className="play-shell">
+        <div className="play-header">
+          <button type="button" className="ghost-button" onClick={onBack}>Back</button>
+          <p className="eyebrow">Profile</p>
+        </div>
+
+        <section className="profile-shell">
+          <article className="panel profile-panel profile-panel--hero">
+            <div className="profile-head">
+              <span className="profile-avatar" style={getAvatarStyle(walletAddress || "guest-wallet")}>
+                {(connected ? walletAddress.slice(2, 4) : "WP").toUpperCase()}
+              </span>
+              <div>
+                <h1 className="profile-title">{alias}</h1>
+                <p className="profile-subtitle">{connected ? shortenWalletAddress(walletAddress) : "Connect a wallet to personalise your profile."}</p>
+                <span className="rank-badge">Word Artist • Level 7</span>
+              </div>
+            </div>
+            {!connected ? <button type="button" onClick={onConnectWallet}>Connect Wallet</button> : null}
+          </article>
+
+          <article className="panel profile-panel">
+            <h3>Stats</h3>
+            <div className="profile-stats-grid">
+              <MetricCard label="Wins" value="18" hint="Lifetime arena wins" />
+              <MetricCard label="Streak" value="4" hint="Current win streak" />
+              <MetricCard label="Level" value="7" hint="Progression level" />
+              <MetricCard label="Earnings" value="$24.60" hint="Total rewards earned" />
+            </div>
+          </article>
+
+          <article className="panel profile-panel">
+            <div className="room-panel__header">
+              <div>
+                <h3>Achievements</h3>
+                <p>Soft milestones that unlock as you keep playing.</p>
+              </div>
+            </div>
+            <div className="achievement-grid">
+              {achievements.map((item, index) => (
+                <div key={item} className={`achievement-chip ${index > 3 ? "achievement-chip--locked" : ""}`}>
+                  <span>{index > 3 ? "◌" : "✦"}</span>
+                  <strong>{item}</strong>
+                </div>
+              ))}
+            </div>
+          </article>
+        </section>
+      </section>
+    </main>
+  );
+}
+
+function SettingsScreen({ settings, onToggle, onBack }) {
+  return (
+    <main className="page-shell">
+      <section className="play-shell">
+        <div className="play-header">
+          <button type="button" className="ghost-button" onClick={onBack}>Back</button>
+          <p className="eyebrow">Settings</p>
+        </div>
+
+        <section className="profile-shell">
+          <article className="panel profile-panel">
+            <h3>Sound & Haptics</h3>
+            <div className="settings-list">
+              <button type="button" className="settings-row" onClick={() => onToggle("sound")}>
+                <span>Sound effects</span>
+                <strong>{settings.sound ? "On" : "Off"}</strong>
+              </button>
+              <button type="button" className="settings-row" onClick={() => onToggle("haptics")}>
+                <span>Haptic feedback</span>
+                <strong>{settings.haptics ? "On" : "Off"}</strong>
+              </button>
+            </div>
+          </article>
+
+          <article className="panel profile-panel">
+            <h3>Display</h3>
+            <div className="settings-list">
+              <button type="button" className="settings-row" onClick={() => onToggle("highContrast")}>
+                <span>High contrast mode</span>
+                <strong>{settings.highContrast ? "Enabled" : "Disabled"}</strong>
+              </button>
+              <button type="button" className="settings-row" onClick={() => onToggle("largeText")}>
+                <span>Larger text</span>
+                <strong>{settings.largeText ? "Enabled" : "Disabled"}</strong>
+              </button>
+            </div>
+          </article>
+
+          <article className="panel profile-panel">
+            <h3>Privacy</h3>
+            <div className="settings-list">
+              <button type="button" className="settings-row" onClick={() => onToggle("showEarnings")}>
+                <span>Show earnings publicly</span>
+                <strong>{settings.showEarnings ? "Shown" : "Hidden"}</strong>
+              </button>
+              <button type="button" className="settings-row" onClick={() => onToggle("showRank")}>
+                <span>Show rank publicly</span>
+                <strong>{settings.showRank ? "Shown" : "Hidden"}</strong>
+              </button>
+            </div>
+          </article>
+        </section>
+      </section>
+    </main>
+  );
+}
+
 function HomeScreen({
   onStartPractice,
   onQuickMatch,
+  onOpenLeaderboard,
+  onOpenProfile,
   walletAddress,
   walletStatus,
   onConnectWallet,
@@ -75,11 +463,14 @@ function HomeScreen({
           </p>
 
           <div className="hero-actions">
-            <button type="button" onClick={onStartPractice}>
-              Start Practice
+            <button type="button" onClick={onQuickMatch}>
+              Join Game
             </button>
-            <button type="button" className="button-secondary" onClick={onQuickMatch}>
-              Quick Match
+            <button type="button" className="button-secondary" onClick={onStartPractice}>
+              Practice Arena
+            </button>
+            <button type="button" className="button-secondary button-accent-blue" onClick={onOpenLeaderboard}>
+              Leaderboard
             </button>
           </div>
 
@@ -119,6 +510,8 @@ function HomeScreen({
             <div className="feature-pill">60 second rounds</div>
             <div className="feature-pill">0.1 cUSD stake</div>
             <div className="feature-pill">90% split by score</div>
+            <div className="feature-pill">Live room chat</div>
+            <div className="feature-pill">Free practice arena</div>
           </div>
         </div>
 
@@ -137,6 +530,16 @@ function HomeScreen({
             <span>Stake: 0.1 cUSD</span>
             <span>Players: 2-5</span>
             <span>Pool: 90% shared by score</span>
+          </div>
+          <div className="hero-card__actions">
+            <button type="button" className="button-secondary" onClick={onOpenProfile}>
+              View Profile
+            </button>
+            {!walletAddress ? (
+              <button type="button" onClick={onConnectWallet}>
+                Connect Wallet
+              </button>
+            ) : null}
           </div>
         </div>
       </section>
@@ -171,6 +574,23 @@ function HomeScreen({
             the reward pool.
           </p>
         </article>
+
+        <article className="panel panel-wide">
+          <div className="featured-stats">
+            <div className="featured-stats__item">
+              <span>Prize Pool</span>
+              <strong>$248</strong>
+            </div>
+            <div className="featured-stats__item">
+              <span>Players Online</span>
+              <strong>124</strong>
+            </div>
+            <div className="featured-stats__item">
+              <span>Connected Wallet</span>
+              <strong>{walletAddress ? shortenWalletAddress(walletAddress) : "Not connected"}</strong>
+            </div>
+          </div>
+        </article>
       </section>
     </main>
   );
@@ -199,24 +619,15 @@ function LobbyScreen({
           <p className="eyebrow">Quick Match Lobby</p>
         </div>
 
-        <div className="play-hero">
+        <div className="room-topbar">
           <div>
-            <p className="play-label">Room code</p>
+            <p className="play-label">WordPot Arena</p>
             <h1>{room?.id || "LOADING"}</h1>
-            <p className="lede">
-              Bring in players, wait for the lobby to fill, then start the round.
-            </p>
-            <div className="feature-strip">
-              <div className="feature-pill">Entry: {room?.entryFee || "0.1 cUSD"}</div>
-              <div className="feature-pill">{room?.rewardPool || "--"} reward pool</div>
-              <div className="feature-pill">{room?.status || "waiting"} status</div>
-            </div>
           </div>
-
-          <div className="score-row">
-            <ScoreBadge label="Players" value={room?.players?.length || 0} />
-            <ScoreBadge label="Min" value={room?.minPlayers || 2} />
-            <ScoreBadge label="Max" value={room?.maxPlayers || 5} />
+          <div className="room-topbar__stats">
+            <span>{room?.entryFee || "0.1 cUSD"}</span>
+            <span>{room?.rewardPool || "--"}</span>
+            <span>{room?.players?.length || 0}/{room?.maxPlayers || 5} players</span>
           </div>
         </div>
 
@@ -225,25 +636,34 @@ function LobbyScreen({
         ) : null}
         {error ? <div className="notice-strip notice-strip--error">{error}</div> : null}
 
-        <section className="practice-grid">
-          <article className="panel">
-            <h3>Players In Room</h3>
-            <div className="player-list">
-              {(room?.players || []).map((player) => (
-                <div key={player.id} className="player-row">
-                  <div>
-                    <strong>{shortenWalletAddress(player.walletAddress)}</strong>
-                    <p>{player.isHost ? "Host wallet" : "Player wallet"}</p>
-                  </div>
-                  {player.id === playerId ? <span className="self-pill">You</span> : null}
-                </div>
-              ))}
+        <section className="chat-room-layout">
+          <article className="panel room-panel">
+            <div className="room-panel__header">
+              <div>
+                <h3>Room Lobby</h3>
+                <p>Waiting for players to join before the live word chat begins.</p>
+              </div>
+              <TimerTone seconds={0} />
             </div>
-          </article>
 
-          <article className="panel">
-            <h3>Lobby Actions</h3>
-            <div className="lobby-actions">
+            <div className="lobby-summary-grid">
+              <div className="lobby-stat-card">
+                <span>Entry Fee</span>
+                <strong>{room?.entryFee || "0.1 cUSD"}</strong>
+              </div>
+              <div className="lobby-stat-card">
+                <span>Prize Pool</span>
+                <strong>{room?.rewardPool || "--"}</strong>
+              </div>
+              <div className="lobby-stat-card">
+                <span>Players Joined</span>
+                <strong>{room?.players?.length || 0}/{room?.maxPlayers || 5}</strong>
+              </div>
+            </div>
+
+            <RoomPlayersStrip players={room?.players} scoreboard={room?.scoreboard} playerId={playerId} />
+
+            <div className="lobby-actions lobby-actions--row">
               <button type="button" onClick={onRefresh}>
                 Refresh Lobby
               </button>
@@ -253,16 +673,30 @@ function LobbyScreen({
                 onClick={onStart}
                 disabled={!canStart}
               >
-                {isHost ? "Start Match" : "Waiting for host"}
+                {isHost ? "Start Arena" : "Waiting for host"}
               </button>
             </div>
-            <div className="rules-card">
-              <h4>How this works</h4>
-              <ul>
-                <li>Quick Match finds the next open public room.</li>
-                <li>The host starts once at least 2 players are ready.</li>
-                <li>Live shared gameplay is the next build step after this lobby flow.</li>
-              </ul>
+          </article>
+
+          <article className="panel room-panel">
+            <div className="room-panel__header">
+              <div>
+                <h3>Room Feed</h3>
+                <p>Join and start updates show up here like a live group chat.</p>
+              </div>
+            </div>
+            <div className="chat-feed chat-feed--lobby">
+              {(room?.feed || []).length ? (
+                (room.feed || []).map((entry, index) => (
+                  <ChatMessage
+                    key={`${entry.createdAt}-${index}`}
+                    entry={entry}
+                    isOwnMessage={entry.playerId === playerId}
+                  />
+                ))
+              ) : (
+                <div className="empty-card">Waiting for players...</div>
+              )}
             </div>
           </article>
         </section>
@@ -280,18 +714,62 @@ function MatchRoomScreen({
   onSubmitWord,
   onBackHome,
 }) {
-  const [wordInput, setWordInput] = useState("");
+  const [draftWord, setDraftWord] = useState("");
+  const [selectedIndexes, setSelectedIndexes] = useState([]);
+  const [pausedAutoScroll, setPausedAutoScroll] = useState(false);
+  const chatFeedRef = useRef(null);
   const isFinished = room?.status === "finished";
   const myScore =
     room?.scoreboard?.find((entry) => entry.playerId === playerId)?.score || 0;
   const timeLeft = room?.timeLeftSeconds ?? 0;
   const feed = room?.feed || [];
+  const myPlayer = room?.players?.find((entry) => entry.id === playerId);
+  const sourceLetters = String(room?.sourceWord || "").split("");
+  const selectedWord = draftWord;
+
+  useEffect(() => {
+    setDraftWord("");
+    setSelectedIndexes([]);
+  }, [room?.sourceWord, room?.id]);
+
+  useEffect(() => {
+    const node = chatFeedRef.current;
+    if (!node || pausedAutoScroll) return;
+
+    node.scrollTo({
+      top: node.scrollHeight,
+      behavior: "smooth",
+    });
+  }, [feed, pausedAutoScroll]);
+
+  function handleFeedScroll() {
+    const node = chatFeedRef.current;
+    if (!node) return;
+    const nearBottom = node.scrollHeight - node.scrollTop - node.clientHeight < 48;
+    setPausedAutoScroll(!nearBottom);
+  }
 
   function handleSubmit(event) {
     event.preventDefault();
-    if (!wordInput.trim()) return;
-    onSubmitWord(wordInput);
-    setWordInput("");
+    if (!selectedWord.trim()) return;
+    onSubmitWord(selectedWord);
+    setDraftWord("");
+    setSelectedIndexes([]);
+  }
+
+  function handleToggleTile(index) {
+    setSelectedIndexes((current) => {
+      const nextIndexes = current.includes(index)
+        ? current.filter((value) => value !== index)
+        : [...current, index];
+      setDraftWord(buildWordFromSelection(room?.sourceWord, nextIndexes));
+      return nextIndexes;
+    });
+  }
+
+  function clearSelection() {
+    setDraftWord("");
+    setSelectedIndexes([]);
   }
 
   return (
@@ -304,26 +782,27 @@ function MatchRoomScreen({
           <p className="eyebrow">Live Room</p>
         </div>
 
-        <div className="play-hero">
+        <div className="room-topbar">
           <div>
-            <p className="play-label">Contamination word</p>
-            <h1>{room?.sourceWord || "READY"}</h1>
-            <p className="lede">
-              Type words from this source word. Every submission appears in the room feed for everyone.
-            </p>
-            <div className="letter-rack letter-rack--play">
-              {(room?.sourceWord || "").split("").map((letter, index) => (
-                <span key={`${letter}-${index}`} className="letter-tile letter-tile--play">
-                  {letter}
-                </span>
-              ))}
-            </div>
+            <p className="play-label">WordPot Arena</p>
+            <h1>{room?.id || "LIVE"}</h1>
           </div>
+          <div className="room-topbar__stats">
+            <span>{room?.players?.length || 0}/{room?.maxPlayers || 5} players online</span>
+            <span>{room?.rewardPool || "--"}</span>
+            <span>{room?.entryFee || "0.1 cUSD"}</span>
+          </div>
+        </div>
 
-          <div className="score-row">
-            <ScoreBadge label="Time left" value={`${timeLeft}s`} />
-            <ScoreBadge label="Your score" value={myScore} />
-            <ScoreBadge label="Players" value={room?.players?.length || 0} />
+        <div className="room-live-header">
+          <TimerTone seconds={timeLeft} />
+          <div className="room-live-header__meta">
+            <strong>Source Word: {room?.sourceWord || "READY"}</strong>
+            <span>{myPlayer ? `${getPlayerAlias(myPlayer.walletAddress)} • ${shortenWalletAddress(myPlayer.walletAddress)}` : "Connected player"}</span>
+          </div>
+          <div className="room-live-header__score">
+            <small>Your score</small>
+            <strong>{myScore} pts</strong>
           </div>
         </div>
 
@@ -334,46 +813,80 @@ function MatchRoomScreen({
 
         {!isFinished ? (
           <>
-            <section className="room-chat-shell">
-              <article className="panel panel-chat">
-                <h3>Live Room Feed</h3>
-                <div className="chat-feed">
+            <div className="compact-board">
+              <div className="compact-board__top">
+                <span>Source Word</span>
+                <strong>{room?.sourceWord || "READY"}</strong>
+              </div>
+              <div className="letter-rack letter-rack--play letter-rack--compact">
+                {sourceLetters.map((letter, index) => (
+                  <button
+                    key={`${letter}-${index}`}
+                    type="button"
+                    className={`letter-tile letter-tile--compact letter-tile--interactive ${selectedIndexes.includes(index) ? "letter-tile--selected" : ""}`}
+                    onClick={() => handleToggleTile(index)}
+                    aria-label={`Select letter ${letter}`}
+                  >
+                    {letter}
+                  </button>
+                ))}
+              </div>
+              <div className="word-preview">
+                {selectedWord ? selectedWord.toUpperCase().split("").join(" - ") : "S-E-A"}
+              </div>
+            </div>
+
+            <RoomPlayersStrip players={room?.players} scoreboard={room?.scoreboard} playerId={playerId} />
+
+            <section className="chat-room-layout">
+              <article className="panel panel-chat panel-chat--primary">
+                <div className="room-panel__header">
+                  <div>
+                    <h3>Live Chat Feed</h3>
+                    <p>Every word claim lands here for the whole room to see.</p>
+                  </div>
+                  {selectedIndexes.length ? <span className="typing-indicator">You are forming a word...</span> : null}
+                </div>
+
+                <div
+                  ref={chatFeedRef}
+                  className="chat-feed chat-feed--live"
+                  onScroll={handleFeedScroll}
+                >
                   {feed.length ? (
                     feed.map((entry, index) => (
-                      <div
+                      <ChatMessage
                         key={`${entry.createdAt}-${index}`}
-                        className={`chat-message chat-message--${entry.status}`}
-                      >
-                        <div className="chat-message__head">
-                          <strong>{shortenWalletAddress(entry.walletAddress)}</strong>
-                          <span>{entry.status === "accepted" ? "✅" : "❌"}</span>
-                        </div>
-                        <div className="chat-message__body">
-                          <span className="chat-word">{entry.word || "(empty)"}</span>
-                          <span className="chat-points">
-                            {entry.status === "accepted" ? `+${entry.score} pts` : entry.reason}
-                          </span>
-                        </div>
-                      </div>
+                        entry={entry}
+                        isOwnMessage={entry.playerId === playerId}
+                      />
                     ))
                   ) : (
                     <div className="empty-card">
-                      No submissions yet. Once players start typing, the room will feel like live chat.
+                      Waiting for the first word claim...
                     </div>
                   )}
                 </div>
               </article>
 
-              <article className="panel panel-scoreboard">
-                <h3>Live Scoreboard</h3>
-                <div className="player-list">
+              <article className="panel panel-scoreboard panel-scoreboard--live">
+                <div className="room-panel__header">
+                  <div>
+                    <h3>Leaderboard</h3>
+                    <p>Scores shift live as valid words land.</p>
+                  </div>
+                </div>
+                <div className="player-list player-list--leaderboard">
                   {(room?.scoreboard || []).map((entry) => (
-                    <div key={entry.playerId} className="player-row">
+                    <div key={entry.playerId} className={`player-row ${entry.playerId === playerId ? "player-row--self" : ""}`}>
                       <div>
-                        <strong>{shortenWalletAddress(entry.walletAddress)}</strong>
-                        <p>{entry.wordsFound} accepted words</p>
+                        <strong>{getPlayerAlias(entry.walletAddress)}</strong>
+                        <p>{shortenWalletAddress(entry.walletAddress)}</p>
                       </div>
-                      <span className="self-pill">{entry.score} pts</span>
+                      <div className="leaderboard-points">
+                        <span>{entry.score} pts</span>
+                        <small>{entry.wordsFound} words</small>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -383,15 +896,21 @@ function MatchRoomScreen({
             <form className="submit-panel submit-panel--sticky" onSubmit={handleSubmit}>
               <input
                 type="text"
-                value={wordInput}
-                onChange={(event) => setWordInput(event.target.value)}
-                placeholder="Type a word to claim it"
+                value={selectedWord}
+                onChange={(event) => {
+                  setDraftWord(event.target.value);
+                  setSelectedIndexes([]);
+                }}
+                placeholder="Tap letters or type your word"
                 autoComplete="off"
                 spellCheck="false"
                 disabled={timeLeft === 0}
               />
-              <button type="submit" disabled={timeLeft === 0}>
-                Claim Word
+              <button type="button" className="button-secondary" onClick={clearSelection}>
+                Clear
+              </button>
+              <button type="submit" disabled={timeLeft === 0 || !selectedWord}>
+                Submit Word
               </button>
             </form>
           </>
@@ -404,30 +923,51 @@ function MatchRoomScreen({
         </div>
 
         {isFinished ? (
-          <section className="practice-grid">
-            <article className="panel panel-chat">
-              <h3>Final Scores</h3>
+          <section className="chat-room-layout">
+            <article className="panel panel-chat panel-chat--primary">
+              <div className="room-panel__header">
+                <div>
+                  <h3>Game History</h3>
+                  <p>Every word from the room stays visible after the round ends.</p>
+                </div>
+              </div>
+              <div className="chat-feed chat-feed--live">
+                {feed.map((entry, index) => (
+                  <ChatMessage
+                    key={`${entry.createdAt}-${index}`}
+                    entry={entry}
+                    isOwnMessage={entry.playerId === playerId}
+                  />
+                ))}
+              </div>
+            </article>
+
+            <article className="panel panel-scoreboard panel-scoreboard--live">
+              <div className="room-panel__header">
+                <div>
+                  <h3>Game Over</h3>
+                  <p>Final ranking and payout split for this arena.</p>
+                </div>
+              </div>
               <div className="player-list">
                 {(room?.scoreboard || []).map((entry) => (
-                  <div key={entry.playerId} className="player-row">
+                  <div key={entry.playerId} className={`player-row ${entry.playerId === playerId ? "player-row--self" : ""}`}>
                     <div>
-                      <strong>{shortenWalletAddress(entry.walletAddress)}</strong>
-                      <p>{entry.wordsFound} accepted words</p>
+                      <strong>{getPlayerAlias(entry.walletAddress)}</strong>
+                      <p>{shortenWalletAddress(entry.walletAddress)} • {entry.wordsFound} words</p>
                     </div>
                     <span className="self-pill">{entry.score} pts</span>
                   </div>
                 ))}
               </div>
-            </article>
 
-            <article className="panel panel-scoreboard">
-              <h3>Reward Distribution</h3>
+              <div className="results-subtitle">Reward Distribution</div>
               <div className="player-list">
                 {(room?.payouts || []).map((entry) => (
                   <div key={entry.walletAddress} className="player-row">
                     <div>
-                      <strong>{shortenWalletAddress(entry.walletAddress)}</strong>
-                      <p>Auto payout after settlement</p>
+                      <strong>{getPlayerAlias(entry.walletAddress)}</strong>
+                      <p>{shortenWalletAddress(entry.walletAddress)}</p>
                     </div>
                     <span className="self-pill">{entry.amount} cUSD</span>
                   </div>
@@ -481,7 +1021,8 @@ function PracticeResults({ score, wordsFound, onReplay, onExit }) {
 function PracticeScreen({ onExit }) {
   const [roundSeed, setRoundSeed] = useState(null);
   const [timeLeft, setTimeLeft] = useState(ROUND_SECONDS);
-  const [input, setInput] = useState("");
+  const [draftWord, setDraftWord] = useState("");
+  const [selectedIndexes, setSelectedIndexes] = useState([]);
   const [score, setScore] = useState(0);
   const [feedback, setFeedback] = useState("Build as many valid words as you can.");
   const [feedbackTone, setFeedbackTone] = useState("neutral");
@@ -490,7 +1031,8 @@ function PracticeScreen({ onExit }) {
   const [bestWord, setBestWord] = useState("");
   const [streak, setStreak] = useState(0);
   const [loadingRound, setLoadingRound] = useState(true);
-  const inputRef = useRef(null);
+  const sourceLetters = String(roundSeed?.sourceWord || "").split("");
+  const selectedWord = draftWord;
 
   async function loadPracticeRound(nextFeedback = "New round loaded. Go fast and go clean.") {
     setLoadingRound(true);
@@ -507,7 +1049,8 @@ function PracticeScreen({ onExit }) {
 
       setRoundSeed(data.round);
       setTimeLeft(ROUND_SECONDS);
-      setInput("");
+      setDraftWord("");
+      setSelectedIndexes([]);
       setScore(0);
       setClaimedWords([]);
       setIsFinished(false);
@@ -545,20 +1088,15 @@ function PracticeScreen({ onExit }) {
     return () => window.clearInterval(interval);
   }, [isFinished, roundSeed?.sourceWord]);
 
-  useEffect(() => {
-    if (!isFinished) {
-      inputRef.current?.focus();
-    }
-  }, [isFinished]);
-
   const claimedSet = useMemo(
     () => new Set(claimedWords.map((entry) => entry.word)),
     [claimedWords],
   );
   const progress = ((ROUND_SECONDS - timeLeft) / ROUND_SECONDS) * 100;
-  const dictionaryProgress = Math.round(
-    (claimedWords.length / roundSeed.validWords.length) * 100,
-  );
+  const totalValidWords = roundSeed?.validWords?.length || 0;
+  const dictionaryProgress = totalValidWords
+    ? Math.round((claimedWords.length / totalValidWords) * 100)
+    : 0;
   const longestWord = useMemo(() => {
     return claimedWords.reduce((current, entry) => {
       if (!current) return entry.word;
@@ -577,8 +1115,9 @@ function PracticeScreen({ onExit }) {
       return;
     }
 
-    const normalized = normalizeWord(input);
-    setInput("");
+    const normalized = normalizeWord(selectedWord);
+    setDraftWord("");
+    setSelectedIndexes([]);
     const evaluation = evaluatePracticeSubmission({
       input: normalized,
       sourceWord: roundSeed.sourceWord,
@@ -609,6 +1148,21 @@ function PracticeScreen({ onExit }) {
     }
   }
 
+  function handleToggleTile(index) {
+    setSelectedIndexes((current) => {
+      const nextIndexes = current.includes(index)
+        ? current.filter((value) => value !== index)
+        : [...current, index];
+      setDraftWord(buildWordFromSelection(roundSeed?.sourceWord, nextIndexes));
+      return nextIndexes;
+    });
+  }
+
+  function clearSelection() {
+    setDraftWord("");
+    setSelectedIndexes([]);
+  }
+
   return (
     <main className="page-shell">
       <section className="play-shell">
@@ -627,11 +1181,20 @@ function PracticeScreen({ onExit }) {
               Make real words from these letters before the timer runs out.
             </p>
             <div className="letter-rack letter-rack--play">
-              {(roundSeed?.sourceWord || "").split("").map((letter, index) => (
-                <span key={`${letter}-${index}`} className="letter-tile letter-tile--play">
+              {sourceLetters.map((letter, index) => (
+                <button
+                  key={`${letter}-${index}`}
+                  type="button"
+                  className={`letter-tile letter-tile--play letter-tile--interactive ${selectedIndexes.includes(index) ? "letter-tile--selected" : ""}`}
+                  onClick={() => handleToggleTile(index)}
+                  aria-label={`Select letter ${letter}`}
+                >
                   {letter}
-                </span>
+                </button>
               ))}
+            </div>
+            <div className="word-preview word-preview--practice">
+              {selectedWord ? selectedWord.toUpperCase().split("").join(" - ") : "Tap letters to form a word"}
             </div>
           </div>
 
@@ -669,15 +1232,20 @@ function PracticeScreen({ onExit }) {
           <>
             <form className="submit-panel" onSubmit={handleSubmit}>
               <input
-                ref={inputRef}
                 type="text"
-                value={input}
-                onChange={(event) => setInput(event.target.value)}
-                placeholder="Type a word and hit enter"
+                value={selectedWord}
+                onChange={(event) => {
+                  setDraftWord(event.target.value);
+                  setSelectedIndexes([]);
+                }}
+                placeholder="Tap letters or type your word"
                 autoComplete="off"
                 spellCheck="false"
               />
-              <button type="submit">Claim Word</button>
+              <button type="button" className="button-secondary" onClick={clearSelection}>
+                Clear
+              </button>
+              <button type="submit" disabled={!selectedWord}>Claim Word</button>
             </form>
 
             <div className={`notice-strip notice-strip--${feedbackTone}`}>
@@ -700,7 +1268,7 @@ function PracticeScreen({ onExit }) {
                       ))
                   ) : (
                     <div className="empty-card">
-                      No words yet. Start with a clean 3-letter word and build up.
+                      No words yet. Build a word from the tiles and claim it.
                     </div>
                   )}
                 </div>
@@ -722,7 +1290,7 @@ function PracticeScreen({ onExit }) {
                   <MetricCard
                     label="Round progress"
                     value={`${dictionaryProgress}%`}
-                    hint={`${claimedWords.length}/${roundSeed.validWords.length} words found`}
+                    hint={`${claimedWords.length}/${totalValidWords} words found`}
                   />
                   <MetricCard
                     label="Longest found"
@@ -757,6 +1325,14 @@ export default function App() {
   const [playerId, setPlayerId] = useState("");
   const [roomError, setRoomError] = useState("");
   const [roomMessage, setRoomMessage] = useState("");
+  const [settings, setSettings] = useState({
+    sound: true,
+    haptics: true,
+    highContrast: false,
+    largeText: false,
+    showEarnings: true,
+    showRank: true,
+  });
 
   const walletHint = useMemo(() => {
     if (!walletAddress.trim()) return "";
@@ -948,6 +1524,13 @@ export default function App() {
     setRoomError("");
   }
 
+  function toggleSetting(key) {
+    setSettings((current) => ({
+      ...current,
+      [key]: !current[key],
+    }));
+  }
+
   useEffect(() => {
     if (screen !== "lobby" && screen !== "match-room") {
       return undefined;
@@ -960,12 +1543,24 @@ export default function App() {
     return () => window.clearInterval(interval);
   }, [screen, room?.id]);
 
-  if (screen === "practice") {
-    return <PracticeScreen onExit={() => setScreen("home")} />;
-  }
+  let content = (
+    <HomeScreen
+      onStartPractice={() => setScreen("practice")}
+      onQuickMatch={handleQuickMatch}
+      onOpenLeaderboard={() => setScreen("leaderboard")}
+      onOpenProfile={() => setScreen("profile")}
+      walletAddress={walletAddress}
+      walletStatus={walletStatus}
+      onConnectWallet={connectWallet}
+      onDisconnectWallet={disconnectWallet}
+      walletHint={walletHint}
+    />
+  );
 
-  if (screen === "lobby") {
-    return (
+  if (screen === "practice") {
+    content = <PracticeScreen onExit={() => setScreen("home")} />;
+  } else if (screen === "lobby") {
+    content = (
       <LobbyScreen
         room={room}
         playerId={playerId}
@@ -976,10 +1571,8 @@ export default function App() {
         onBack={backHome}
       />
     );
-  }
-
-  if (screen === "match-room") {
-    return (
+  } else if (screen === "match-room") {
+    content = (
       <MatchRoomScreen
         room={room}
         playerId={playerId}
@@ -990,17 +1583,43 @@ export default function App() {
         onBackHome={backHome}
       />
     );
+  } else if (screen === "profile") {
+    content = (
+      <ProfileScreen
+        walletAddress={walletAddress}
+        onConnectWallet={connectWallet}
+        onBack={backHome}
+      />
+    );
+  } else if (screen === "leaderboard") {
+    content = (
+      <LeaderboardScreen
+        room={room}
+        onQuickMatch={handleQuickMatch}
+        onBack={backHome}
+      />
+    );
+  } else if (screen === "settings") {
+    content = (
+      <SettingsScreen
+        settings={settings}
+        onToggle={toggleSetting}
+        onBack={backHome}
+      />
+    );
   }
 
   return (
-    <HomeScreen
-      onStartPractice={() => setScreen("practice")}
-      onQuickMatch={handleQuickMatch}
-      walletAddress={walletAddress}
-      walletStatus={walletStatus}
-      onConnectWallet={connectWallet}
-      onDisconnectWallet={disconnectWallet}
-      walletHint={walletHint}
-    />
+    <>
+      <div className={`${settings.largeText ? "app-text-scale" : ""} ${settings.highContrast ? "app-high-contrast" : ""}`.trim()}>
+        {content}
+      </div>
+      <AppBottomNav
+        screen={screen}
+        onNavigate={setScreen}
+        walletAddress={walletAddress}
+        onWalletAction={walletAddress ? disconnectWallet : connectWallet}
+      />
+    </>
   );
 }
