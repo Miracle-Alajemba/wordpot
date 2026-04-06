@@ -1,7 +1,7 @@
 import cors from "cors";
 import dotenv from "dotenv";
 import express from "express";
-import { canBuildFromSource, deriveValidWords, getDynamicRound } from "./rounds.js";
+import { canBuildFromSource, getDynamicRound } from "./rounds.js";
 
 dotenv.config();
 
@@ -11,6 +11,11 @@ const ENTRY_FEE = "0.1 cUSD";
 const MIN_PLAYERS = 2;
 const MAX_PLAYERS = 5;
 const ROUND_SECONDS = 60;
+const TREASURY_WALLET = process.env.TREASURY_WALLET || "0x0000000000000000000000000000000000000000";
+const WORDPOT_CONTRACT_ADDRESS = process.env.WORDPOT_CONTRACT_ADDRESS || "";
+const CELO_CHAIN_ID = Number(process.env.CELO_CHAIN_ID || 42220);
+const JOIN_PAYMENT_WEI = process.env.JOIN_PAYMENT_WEI || "1000000000000000";
+const JOIN_PAYMENT_DISPLAY = process.env.JOIN_PAYMENT_DISPLAY || "0.001 CELO";
 const rooms = new Map();
 
 app.use(cors());
@@ -33,6 +38,14 @@ function getWordScore(word) {
   if (word.length === 5) return 8;
   if (word.length === 4) return 5;
   return 3;
+}
+
+function isWalletAddress(value) {
+  return /^0x[a-fA-F0-9]{40}$/.test(String(value || "").trim());
+}
+
+function isTxHash(value) {
+  return /^0x([A-Fa-f0-9]{64})$/.test(String(value || "").trim());
 }
 
 function getRoomFeed(room) {
@@ -90,10 +103,6 @@ function getPayouts(room) {
   }));
 }
 
-function isWalletAddress(value) {
-  return /^0x[a-fA-F0-9]{40}$/.test(value);
-}
-
 function pushSystemEvent(room, message) {
   room.events.push({
     type: "system",
@@ -132,6 +141,16 @@ function getRoomSummary(room) {
     feed: getRoomFeed(room),
     scoreboard: getScoreboard(room),
     payouts: room.status === "finished" ? getPayouts(room) : [],
+    onchain: {
+      chainId: CELO_CHAIN_ID,
+      treasuryWallet: TREASURY_WALLET,
+      contractAddress: WORDPOT_CONTRACT_ADDRESS,
+      joinPaymentWei: JOIN_PAYMENT_WEI,
+      joinPaymentDisplay: JOIN_PAYMENT_DISPLAY,
+      payoutMode: isWalletAddress(WORDPOT_CONTRACT_ADDRESS) ? "contract_claim" : "treasury_beta",
+      joinTransactions: room.joinTransactions || [],
+      claimTransactions: room.claimTransactions || [],
+    },
   };
 }
 
@@ -139,6 +158,15 @@ function getWaitingRoom() {
   return Array.from(rooms.values()).find(
     (room) => room.status === "waiting" && room.players.length < MAX_PLAYERS,
   );
+}
+
+function getRoomOr404(roomId, res) {
+  const room = rooms.get(roomId);
+  if (!room) {
+    res.status(404).json({ error: "Room not found." });
+    return null;
+  }
+  return room;
 }
 
 app.get("/api/health", (_req, res) => {
@@ -157,6 +185,14 @@ app.get("/api/meta", (_req, res) => {
     minPlayers: MIN_PLAYERS,
     maxPlayers: MAX_PLAYERS,
     minWordLength: 3,
+    onchain: {
+      chainId: CELO_CHAIN_ID,
+      treasuryWallet: TREASURY_WALLET,
+      contractAddress: WORDPOT_CONTRACT_ADDRESS,
+      joinPaymentWei: JOIN_PAYMENT_WEI,
+      joinPaymentDisplay: JOIN_PAYMENT_DISPLAY,
+      payoutMode: isWalletAddress(WORDPOT_CONTRACT_ADDRESS) ? "contract_claim" : "treasury_beta",
+    },
   });
 });
 
@@ -194,6 +230,8 @@ app.post("/api/rooms/quick-match", (req, res) => {
       validWords: [],
       submissions: [],
       events: [],
+      joinTransactions: [],
+      claimTransactions: [],
     };
     rooms.set(room.id, room);
   }
@@ -222,24 +260,16 @@ app.post("/api/rooms/quick-match", (req, res) => {
 });
 
 app.get("/api/rooms/:roomId", (req, res) => {
-  const room = rooms.get(req.params.roomId);
+  const room = getRoomOr404(req.params.roomId, res);
+  if (!room) return;
 
-  if (!room) {
-    return res.status(404).json({ error: "Room not found." });
-  }
-
-  return res.json({
-    room: getRoomSummary(room),
-  });
+  return res.json({ room: getRoomSummary(room) });
 });
 
 app.post("/api/rooms/:roomId/start", async (req, res) => {
-  const room = rooms.get(req.params.roomId);
+  const room = getRoomOr404(req.params.roomId, res);
   const playerId = String(req.body?.playerId || "").trim();
-
-  if (!room) {
-    return res.status(404).json({ error: "Room not found." });
-  }
+  if (!room) return;
 
   if (room.status !== "waiting") {
     return res.status(400).json({ error: "This room has already started." });
@@ -255,29 +285,24 @@ app.post("/api/rooms/:roomId/start", async (req, res) => {
     });
   }
 
+  const roundSeed = await getDynamicRound();
   room.status = "active";
   room.startedAt = new Date().toISOString();
   room.endsAt = Date.now() + ROUND_SECONDS * 1000;
-  const roundSeed = await getDynamicRound();
   room.sourceWord = roundSeed.sourceWord;
   room.validWords = roundSeed.validWords;
   room.submissions = [];
   room.events = [];
   pushSystemEvent(room, "Game starting now");
 
-  return res.json({
-    room: getRoomSummary(room),
-  });
+  return res.json({ room: getRoomSummary(room) });
 });
 
 app.post("/api/rooms/:roomId/submit", (req, res) => {
-  const room = rooms.get(req.params.roomId);
+  const room = getRoomOr404(req.params.roomId, res);
   const playerId = String(req.body?.playerId || "").trim();
   const rawWord = normalizeWord(req.body?.word);
-
-  if (!room) {
-    return res.status(404).json({ error: "Room not found." });
-  }
+  if (!room) return;
 
   settleRoom(room);
 
@@ -343,17 +368,84 @@ app.post("/api/rooms/:roomId/submit", (req, res) => {
   };
 
   room.submissions.push(submission);
-  logEvent({
-    status: "accepted",
-    word: rawWord,
-    score: submission.score,
-  });
+  logEvent({ status: "accepted", word: rawWord, score: submission.score });
 
   return res.status(201).json({
     submission,
     room: getRoomSummary(room),
   });
 });
+
+app.post("/api/rooms/:roomId/join-tx", (req, res) => {
+  const room = getRoomOr404(req.params.roomId, res);
+  if (!room) return;
+
+  const playerId = String(req.body?.playerId || "").trim();
+  const txHash = String(req.body?.txHash || "").trim();
+  const amount = String(req.body?.amount || JOIN_PAYMENT_DISPLAY).trim();
+  const mode = String(req.body?.mode || "treasury_beta").trim();
+  const player = room.players.find((entry) => entry.id === playerId);
+
+  if (!player) {
+    return res.status(403).json({ error: "Player not found in this room." });
+  }
+
+  if (!isTxHash(txHash)) {
+    return res.status(400).json({ error: "A valid transaction hash is required." });
+  }
+
+  const duplicate = room.joinTransactions.some((entry) => entry.txHash.toLowerCase() === txHash.toLowerCase());
+  if (!duplicate) {
+    room.joinTransactions.push({
+      playerId,
+      walletAddress: player.walletAddress,
+      txHash,
+      amount,
+      mode,
+      createdAt: new Date().toISOString(),
+    });
+    pushSystemEvent(room, `${shortenAddress(player.walletAddress)} funded the room onchain`);
+  }
+
+  return res.status(201).json({ room: getRoomSummary(room) });
+});
+
+app.post("/api/rooms/:roomId/claim-tx", (req, res) => {
+  const room = getRoomOr404(req.params.roomId, res);
+  if (!room) return;
+
+  const playerId = String(req.body?.playerId || "").trim();
+  const txHash = String(req.body?.txHash || "").trim();
+  const amount = String(req.body?.amount || "0").trim();
+  const player = room.players.find((entry) => entry.id === playerId);
+
+  if (!player) {
+    return res.status(403).json({ error: "Player not found in this room." });
+  }
+
+  if (!isTxHash(txHash)) {
+    return res.status(400).json({ error: "A valid transaction hash is required." });
+  }
+
+  const duplicate = room.claimTransactions.some((entry) => entry.txHash.toLowerCase() === txHash.toLowerCase());
+  if (!duplicate) {
+    room.claimTransactions.push({
+      playerId,
+      walletAddress: player.walletAddress,
+      txHash,
+      amount,
+      createdAt: new Date().toISOString(),
+    });
+    pushSystemEvent(room, `${shortenAddress(player.walletAddress)} claimed a reward onchain`);
+  }
+
+  return res.status(201).json({ room: getRoomSummary(room) });
+});
+
+function shortenAddress(value) {
+  if (!value) return "--";
+  return `${value.slice(0, 6)}...${value.slice(-4)}`;
+}
 
 app.listen(port, () => {
   console.log(`WordPot server listening on http://localhost:${port}`);

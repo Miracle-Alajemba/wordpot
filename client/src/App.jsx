@@ -9,6 +9,8 @@ const ROUND_SECONDS = 60;
 const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL || "http://localhost:4000/api";
 const WALLET_STORAGE_KEY = "wordpot_connected_wallet";
+const CELO_MAINNET_CHAIN_ID = 42220;
+
 
 const GAME_RULES = [
   "Words must be at least 3 letters long",
@@ -50,6 +52,46 @@ function isWalletAddress(value) {
 function getInjectedProvider() {
   if (typeof window === "undefined") return null;
   return window.ethereum || null;
+}
+
+function toHexChainId(chainId) {
+  return `0x${Number(chainId).toString(16)}`;
+}
+
+function shortenHash(value) {
+  if (!value) return "--";
+  return `${value.slice(0, 10)}...${value.slice(-6)}`;
+}
+
+async function ensureCeloMainnet(provider, chainId = CELO_MAINNET_CHAIN_ID) {
+  const targetChainId = toHexChainId(chainId);
+  const currentChainId = await provider.request({ method: "eth_chainId" });
+
+  if (String(currentChainId).toLowerCase() === targetChainId.toLowerCase()) {
+    return;
+  }
+
+  try {
+    await provider.request({
+      method: "wallet_switchEthereumChain",
+      params: [{ chainId: targetChainId }],
+    });
+  } catch (error) {
+    if (error?.code !== 4902) {
+      throw error;
+    }
+
+    await provider.request({
+      method: "wallet_addEthereumChain",
+      params: [{
+        chainId: targetChainId,
+        chainName: "Celo Mainnet",
+        nativeCurrency: { name: "CELO", symbol: "CELO", decimals: 18 },
+        rpcUrls: ["https://forno.celo.org"],
+        blockExplorerUrls: ["https://celoscan.io"],
+      }],
+    });
+  }
 }
 
 function getPlayerAlias(walletAddress, fallbackIndex = 1) {
@@ -603,11 +645,15 @@ function LobbyScreen({
   error,
   onRefresh,
   onStart,
+  onPayEntryFee,
+  paymentBusy,
   onBack,
 }) {
   const isHost = room?.hostPlayerId === playerId;
   const canStart =
     room?.status === "waiting" && room?.players?.length >= 2 && isHost;
+  const joinPayment = room?.onchain?.joinPaymentDisplay || "0.001 CELO";
+  const hasPaid = (room?.onchain?.joinTransactions || []).some((entry) => entry.playerId === playerId);
 
   return (
     <main className="page-shell">
@@ -656,9 +702,19 @@ function LobbyScreen({
                 <strong>{room?.rewardPool || "--"}</strong>
               </div>
               <div className="lobby-stat-card">
+                <span>Onchain Join</span>
+                <strong>{joinPayment}</strong>
+              </div>
+              <div className="lobby-stat-card">
                 <span>Players Joined</span>
                 <strong>{room?.players?.length || 0}/{room?.maxPlayers || 5}</strong>
               </div>
+            </div>
+
+            <div className="notice-strip notice-strip--neutral">
+              {hasPaid
+                ? `Onchain join recorded: ${shortenHash((room?.onchain?.joinTransactions || []).find((entry) => entry.playerId === playerId)?.txHash)}`
+                : `Pay ${joinPayment} on Celo mainnet to start generating real hackathon activity.`}
             </div>
 
             <RoomPlayersStrip players={room?.players} scoreboard={room?.scoreboard} playerId={playerId} />
@@ -666,6 +722,14 @@ function LobbyScreen({
             <div className="lobby-actions lobby-actions--row">
               <button type="button" onClick={onRefresh}>
                 Refresh Lobby
+              </button>
+              <button
+                type="button"
+                className="button-secondary"
+                onClick={onPayEntryFee}
+                disabled={paymentBusy || hasPaid}
+              >
+                {paymentBusy ? "Processing..." : hasPaid ? "Entry Paid" : `Pay ${joinPayment}`}
               </button>
               <button
                 type="button"
@@ -1325,6 +1389,7 @@ export default function App() {
   const [playerId, setPlayerId] = useState("");
   const [roomError, setRoomError] = useState("");
   const [roomMessage, setRoomMessage] = useState("");
+  const [paymentBusy, setPaymentBusy] = useState(false);
   const [settings, setSettings] = useState({
     sound: true,
     haptics: true,
@@ -1467,6 +1532,72 @@ export default function App() {
     }
   }
 
+  async function payEntryFeeOnchain() {
+    if (!room?.id || !playerId) return;
+
+    const provider = getInjectedProvider();
+    if (!provider?.request) {
+      setRoomError("Open WordPot inside MiniPay or a wallet browser to pay onchain.");
+      return;
+    }
+
+    if (!isWalletAddress(walletAddress.trim())) {
+      setRoomError("Connect a valid wallet before sending the join payment.");
+      return;
+    }
+
+    const treasuryWallet = room?.onchain?.treasuryWallet;
+    const joinPaymentWei = room?.onchain?.joinPaymentWei;
+    const joinPaymentDisplay = room?.onchain?.joinPaymentDisplay || "0.001 CELO";
+
+    if (!isWalletAddress(treasuryWallet) || !joinPaymentWei) {
+      setRoomError("Onchain join is not configured yet. Add the treasury wallet in the server env.");
+      return;
+    }
+
+    try {
+      setPaymentBusy(true);
+      setRoomError("");
+      setRoomMessage("Preparing Celo mainnet payment...");
+
+      await ensureCeloMainnet(provider, room?.onchain?.chainId || CELO_MAINNET_CHAIN_ID);
+
+      const txHash = await provider.request({
+        method: "eth_sendTransaction",
+        params: [{
+          from: walletAddress.trim(),
+          to: treasuryWallet,
+          value: `0x${BigInt(joinPaymentWei).toString(16)}`,
+        }],
+      });
+
+      const recordResponse = await fetch(`${API_BASE_URL}/rooms/${room.id}/join-tx`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          playerId,
+          txHash,
+          amount: joinPaymentDisplay,
+          mode: room?.onchain?.payoutMode || "treasury_beta",
+        }),
+      });
+      const recordData = await recordResponse.json();
+
+      if (!recordResponse.ok) {
+        throw new Error(recordData.error || "Unable to record the onchain join transaction.");
+      }
+
+      setRoom(recordData.room);
+      setRoomMessage(`Onchain join recorded: ${shortenHash(txHash)}`);
+    } catch (error) {
+      setRoomError(error.message || "Unable to complete the onchain join payment.");
+    } finally {
+      setPaymentBusy(false);
+    }
+  }
+
   async function startRoom() {
     if (!room?.id || !playerId) return;
 
@@ -1568,6 +1699,8 @@ export default function App() {
         error={roomError}
         onRefresh={refreshRoom}
         onStart={startRoom}
+        onPayEntryFee={payEntryFeeOnchain}
+        paymentBusy={paymentBusy}
         onBack={backHome}
       />
     );

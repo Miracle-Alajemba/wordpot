@@ -1,49 +1,83 @@
 # WordPot
 
-WordPot is a MiniPay-first multiplayer word game where players pay a small stake,
-race to make valid words from a shared source word, and earn a share of the pot
-based on performance.
+WordPot is a MiniPay-first multiplayer word game where players join a live room,
+make words from a shared source word, and compete for a score-based share of the
+reward pool.
 
-## Planned MVP
+## What Is Live Now
 
-- MiniPay-friendly mobile UI
-- Practice mode
-- Public quick match rooms
+- Practice arena
+- Quick match rooms
 - Wallet-based player identity
-- 60-second rounds
-- Duplicate-word blocking
-- Real-time scoring
-- Leaderboard
-- Automatic score-based payout flow
+- Shared room feed and scoreboard
+- Tile tap plus typing input
+- Beta onchain join flow from the lobby
+
+## Onchain Plan
+
+WordPot is being upgraded in two stages:
+
+1. `Beta join flow`
+   - players can send a real Celo mainnet transaction from the lobby
+   - the tx hash is recorded on the room
+   - this starts generating real onchain activity, fees, and transaction count
+
+2. `Contract payout flow`
+   - the `contracts/WordPotArena.sol` scaffold holds room entry fees
+   - keeps a treasury cut
+   - supports score-based reward claims after settlement
 
 ## Project Structure
 
 - `client/` React frontend
-- `server/` Express backend and game logic
-- `contracts/` payout contract notes and Solidity later
+- `server/` Express backend and room logic
+- `contracts/` Solidity scaffold for escrow and claims
 - `docs/` product and rules notes
-
-## Current Status
-
-Initial project scaffold is ready. Next we build:
-
-1. practice mode UI
-2. core word validation
-3. multiplayer room logic
-4. proportional payout flow
 
 ## Prize Model
 
-- Standard room entry: `0.1 cUSD`
-- Each player contributes to the room pot
-- `10%` goes to treasury
-- `90%` is shared across players based on score
-
-### Payout Formula
-
-Each player earns:
+- Offchain game entry display: `0.1 cUSD`
+- Treasury cut: `10%`
+- Reward pool: `90%`
+- Payout formula:
 
 `(player score / total room score) × reward pool`
 
-This means strong players earn more, but everyone who scores can still win
-something.
+## Environment
+
+Create `server/.env` from `server/.env.example` and set:
+
+- `TREASURY_WALLET`
+- `WORDPOT_CONTRACT_ADDRESS`
+- `CELO_CHAIN_ID`
+- `JOIN_PAYMENT_WEI`
+- `JOIN_PAYMENT_DISPLAY`
+
+If `WORDPOT_CONTRACT_ADDRESS` is not set yet, the lobby uses the treasury beta
+join-payment flow while payout remains preview-only in the UI.
+
+## Run Locally
+
+### Client
+
+```bash
+cd client
+npm install
+npm run dev
+```
+
+### Server
+
+```bash
+cd server
+npm install
+cp .env.example .env
+npm run dev
+```
+
+## Next Upgrade
+
+- deploy `WordPotArena.sol`
+- switch join flow from treasury beta to contract entry
+- add claim reward transaction flow in the results screen
+- move room sync from polling to sockets
