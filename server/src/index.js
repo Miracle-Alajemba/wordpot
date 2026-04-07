@@ -72,6 +72,18 @@ function getScoreboard(room) {
     .sort((a, b) => b.score - a.score);
 }
 
+function getPaidPlayerIds(room) {
+  return new Set((room.joinTransactions || []).map((entry) => entry.playerId));
+}
+
+function hasPlayerPaid(room, playerId) {
+  return getPaidPlayerIds(room).has(playerId);
+}
+
+function hasPlayerClaimRecord(room, playerId) {
+  return (room.claimTransactions || []).some((entry) => entry.playerId === playerId);
+}
+
 function settleRoom(room) {
   if (room.status !== "active") return;
   if (!room.endsAt) return;
@@ -137,6 +149,8 @@ function getRoomSummary(room) {
       walletAddress: player.walletAddress,
       joinedAt: player.joinedAt,
       isHost: player.id === room.hostPlayerId,
+      joinPaid: hasPlayerPaid(room, player.id),
+      claimRecorded: hasPlayerClaimRecord(room, player.id),
     })),
     feed: getRoomFeed(room),
     scoreboard: getScoreboard(room),
@@ -150,6 +164,7 @@ function getRoomSummary(room) {
       payoutMode: isWalletAddress(WORDPOT_CONTRACT_ADDRESS) ? "contract_claim" : "treasury_beta",
       joinTransactions: room.joinTransactions || [],
       claimTransactions: room.claimTransactions || [],
+      paidPlayersCount: getPaidPlayerIds(room).size,
     },
   };
 }
@@ -282,6 +297,13 @@ app.post("/api/rooms/:roomId/start", async (req, res) => {
   if (room.players.length < MIN_PLAYERS) {
     return res.status(400).json({
       error: `At least ${MIN_PLAYERS} players are needed before the room can start.`,
+    });
+  }
+
+  const unpaidPlayers = room.players.filter((entry) => !hasPlayerPaid(room, entry.id));
+  if (unpaidPlayers.length) {
+    return res.status(400).json({
+      error: `All players must complete the onchain join payment before the room starts. ${unpaidPlayers.length} unpaid.`,
     });
   }
 
@@ -421,6 +443,12 @@ app.post("/api/rooms/:roomId/claim-tx", (req, res) => {
 
   if (!player) {
     return res.status(403).json({ error: "Player not found in this room." });
+  }
+
+  settleRoom(room);
+
+  if (room.status !== "finished") {
+    return res.status(400).json({ error: "Rewards can only be claimed after the room ends." });
   }
 
   if (!isTxHash(txHash)) {

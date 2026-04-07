@@ -179,6 +179,7 @@ function RoomPlayersStrip({ players = [], scoreboard = [], playerId }) {
             </div>
             {isCurrentPlayer ? <span className="self-pill">You</span> : null}
             {index === 0 ? <span className="host-pill">Host</span> : null}
+            {player.joinPaid ? <span className="host-pill">Paid</span> : null}
           </article>
         );
       })}
@@ -650,8 +651,11 @@ function LobbyScreen({
   onBack,
 }) {
   const isHost = room?.hostPlayerId === playerId;
+  const paidPlayersCount = room?.onchain?.paidPlayersCount || 0;
+  const totalPlayers = room?.players?.length || 0;
+  const allPaid = totalPlayers > 0 && paidPlayersCount === totalPlayers;
   const canStart =
-    room?.status === "waiting" && room?.players?.length >= 2 && isHost;
+    room?.status === "waiting" && room?.players?.length >= 2 && isHost && allPaid;
   const joinPayment = room?.onchain?.joinPaymentDisplay || "0.001 CELO";
   const hasPaid = (room?.onchain?.joinTransactions || []).some((entry) => entry.playerId === playerId);
 
@@ -706,6 +710,10 @@ function LobbyScreen({
                 <strong>{joinPayment}</strong>
               </div>
               <div className="lobby-stat-card">
+                <span>Paid Onchain</span>
+                <strong>{paidPlayersCount}/{totalPlayers || room?.maxPlayers || 5}</strong>
+              </div>
+              <div className="lobby-stat-card">
                 <span>Players Joined</span>
                 <strong>{room?.players?.length || 0}/{room?.maxPlayers || 5}</strong>
               </div>
@@ -716,6 +724,12 @@ function LobbyScreen({
                 ? `Onchain join recorded: ${shortenHash((room?.onchain?.joinTransactions || []).find((entry) => entry.playerId === playerId)?.txHash)}`
                 : `Pay ${joinPayment} on Celo mainnet to start generating real hackathon activity.`}
             </div>
+
+            {!allPaid ? (
+              <div className="notice-strip notice-strip--neutral">
+                {`${paidPlayersCount}/${totalPlayers || 0} players have paid onchain. Everyone must pay before the host can start the arena.`}
+              </div>
+            ) : null}
 
             <RoomPlayersStrip players={room?.players} scoreboard={room?.scoreboard} playerId={playerId} />
 
@@ -737,7 +751,7 @@ function LobbyScreen({
                 onClick={onStart}
                 disabled={!canStart}
               >
-                {isHost ? "Start Arena" : "Waiting for host"}
+                {isHost ? (allPaid ? "Start Arena" : "Waiting for payments") : "Waiting for host"}
               </button>
             </div>
           </article>
@@ -776,6 +790,8 @@ function MatchRoomScreen({
   roomError,
   onRefresh,
   onSubmitWord,
+  onClaimReward,
+  claimBusy,
   onBackHome,
 }) {
   const [draftWord, setDraftWord] = useState("");
@@ -788,6 +804,11 @@ function MatchRoomScreen({
   const timeLeft = room?.timeLeftSeconds ?? 0;
   const feed = room?.feed || [];
   const myPlayer = room?.players?.find((entry) => entry.id === playerId);
+  const myPayout = (room?.payouts || []).find(
+    (entry) => entry.walletAddress === myPlayer?.walletAddress,
+  );
+  const claimRecorded = myPlayer?.claimRecorded;
+  const claimEnabled = room?.onchain?.payoutMode === "contract_claim" && Number(myPayout?.amount || 0) > 0 && !claimRecorded;
   const sourceLetters = String(room?.sourceWord || "").split("");
   const selectedWord = draftWord;
 
@@ -1036,6 +1057,25 @@ function MatchRoomScreen({
                     <span className="self-pill">{entry.amount} cUSD</span>
                   </div>
                 ))}
+              </div>
+
+              <div className="notice-strip notice-strip--neutral">
+                {room?.onchain?.payoutMode === "contract_claim"
+                  ? "Contract payout mode is configured. Claim from here once the contract room wiring is connected."
+                  : "Beta mode: join payments are onchain now, while reward claim stays in preview until contract payout is deployed."}
+              </div>
+
+              <div className="hero-actions">
+                <button
+                  type="button"
+                  onClick={onClaimReward}
+                  disabled={!claimEnabled || claimBusy}
+                >
+                  {claimBusy ? "Claiming..." : claimRecorded ? "Claim Recorded" : "Claim Reward"}
+                </button>
+                <button type="button" className="button-secondary" onClick={onRefresh}>
+                  Refresh Results
+                </button>
               </div>
             </article>
           </section>
@@ -1390,6 +1430,7 @@ export default function App() {
   const [roomError, setRoomError] = useState("");
   const [roomMessage, setRoomMessage] = useState("");
   const [paymentBusy, setPaymentBusy] = useState(false);
+  const [claimBusy, setClaimBusy] = useState(false);
   const [settings, setSettings] = useState({
     sound: true,
     haptics: true,
@@ -1649,6 +1690,25 @@ export default function App() {
     }
   }
 
+  async function claimRewardOnchain() {
+    if (!room?.id || !playerId) return;
+
+    if (room?.onchain?.payoutMode !== "contract_claim") {
+      setRoomError("Reward claiming will go live after the WordPot payout contract is deployed.");
+      return;
+    }
+
+    setClaimBusy(true);
+    try {
+      setRoomError("");
+      setRoomMessage("Contract claim flow is the next onchain step. Deploy the contract and wire the room id to enable this button.");
+    } catch (error) {
+      setRoomError(error.message || "Unable to claim reward.");
+    } finally {
+      setClaimBusy(false);
+    }
+  }
+
   function backHome() {
     setScreen("home");
     setRoomMessage("");
@@ -1713,6 +1773,8 @@ export default function App() {
         roomError={roomError}
         onRefresh={refreshRoom}
         onSubmitWord={submitRoomWord}
+        onClaimReward={claimRewardOnchain}
+        claimBusy={claimBusy}
         onBackHome={backHome}
       />
     );
