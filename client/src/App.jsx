@@ -594,6 +594,8 @@ function HomeScreen({
             <li>Join a room</li>
             <li>Get a shared source word</li>
             <li>Submit valid words before time ends</li>
+
+
             <li>Score points from word length</li>
             <li>Reward pool is shared by score</li>
           </ol>

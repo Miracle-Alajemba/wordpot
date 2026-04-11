@@ -21,9 +21,9 @@ const config = {
     },
   },
   networks: {
-    alfajores: {
-      url: process.env.ALFAJORES_RPC_URL || "https://alfajores-forno.celo-testnet.org",
-      chainId: 44787,
+    celoSepolia: {
+      url: process.env.CELO_SEPOLIA_RPC_URL || "https://forno.celo-sepolia.celo-testnet.org",
+      chainId: 11142220,
       accounts: withAccounts(),
     },
     celo: {

@@ -23,7 +23,7 @@ Copy `.env.example` to `.env` inside `contracts/` and set:
 cd contracts
 npm install
 npm run compile
-npm run deploy:alfajores
+npm run deploy:sepolia
 ```
 
 When you are happy with the flow, deploy to mainnet:

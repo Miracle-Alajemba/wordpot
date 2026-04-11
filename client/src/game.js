@@ -23,12 +23,12 @@ export function getWordScore(word) {
 
 export function normalizeWord(value) {
   return value.trim().toLowerCase();
-}
+ }
 
 export function evaluatePracticeSubmission({
   input,
   sourceWord,
-  validWords,
+  validWords, 
   claimedWords,
 }) {
   const normalized = normalizeWord(input);
