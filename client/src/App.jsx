@@ -54,6 +54,16 @@ function getInjectedProvider() {
   return window.ethereum || null;
 }
 
+function parseChainId(value) {
+  if (!value) return null;
+  if (typeof value === "number") return value;
+  try {
+    return Number(BigInt(value));
+  } catch {
+    return Number(value) || null;
+  }
+}
+
 function toHexChainId(chainId) {
   return `0x${Number(chainId).toString(16)}`;
 }
@@ -92,6 +102,21 @@ async function ensureCeloMainnet(provider, chainId = CELO_MAINNET_CHAIN_ID) {
       }],
     });
   }
+}
+
+function getWalletProviderName(provider) {
+  if (!provider) return "No wallet";
+  if (provider.isMiniPay) return "MiniPay";
+  if (provider.isMetaMask) return "MetaMask";
+  return "Injected wallet";
+}
+
+function getNetworkLabel(chainId) {
+  const normalized = parseChainId(chainId);
+  if (!normalized) return "Unknown network";
+  if (normalized === CELO_MAINNET_CHAIN_ID) return "Celo Mainnet";
+  if (normalized === 11142220) return "Celo Sepolia";
+  return `Chain ${normalized}`;
 }
 
 function getPlayerAlias(walletAddress, fallbackIndex = 1) {
@@ -488,10 +513,15 @@ function HomeScreen({
   onOpenProfile,
   walletAddress,
   walletStatus,
+  walletReady,
+  walletProviderName,
+  walletNetworkLabel,
   onConnectWallet,
   onDisconnectWallet,
   walletHint,
 }) {
+  const joinDisabled = !walletAddress;
+
   return (
     <main className="page-shell">
       <section className="hero">
@@ -506,8 +536,8 @@ function HomeScreen({
           </p>
 
           <div className="hero-actions">
-            <button type="button" onClick={onQuickMatch}>
-              Join Game
+            <button type="button" onClick={onQuickMatch} disabled={joinDisabled}>
+              {joinDisabled ? "Connect Wallet to Join" : "Join Game"}
             </button>
             <button type="button" className="button-secondary" onClick={onStartPractice}>
               Practice Arena
@@ -523,6 +553,15 @@ function HomeScreen({
               <strong>
                 {walletAddress ? shortenWalletAddress(walletAddress) : "No wallet connected"}
               </strong>
+              <div className="wallet-state-strip">
+                <span className="wallet-chip">{walletProviderName}</span>
+                <span className={`wallet-chip ${walletReady ? "wallet-chip--ok" : "wallet-chip--soft"}`}>
+                  {walletNetworkLabel}
+                </span>
+                <span className={`wallet-chip ${walletReady ? "wallet-chip--ok" : "wallet-chip--warn"}`}>
+                  {walletReady ? "Ready to play" : walletAddress ? "Needs setup" : "Not connected"}
+                </span>
+              </div>
               <p className="field-hint">
                 {walletHint ||
                   "Connect your MiniPay-compatible wallet so rooms use your real onchain identity."}
@@ -530,7 +569,7 @@ function HomeScreen({
             </div>
             <div className="wallet-panel__actions">
               <button type="button" onClick={onConnectWallet}>
-                {walletAddress ? "Reconnect Wallet" : "Connect Wallet"}
+                {walletAddress ? (walletReady ? "Reconnect Wallet" : "Switch to Celo") : "Connect Wallet"}
               </button>
               {walletAddress ? (
                 <button
@@ -806,11 +845,32 @@ function MatchRoomScreen({
   const timeLeft = room?.timeLeftSeconds ?? 0;
   const feed = room?.feed || [];
   const myPlayer = room?.players?.find((entry) => entry.id === playerId);
+  const myJoinTx = (room?.onchain?.joinTransactions || []).find(
+    (entry) => entry.playerId === playerId,
+  );
+  const myClaimTx = (room?.onchain?.claimTransactions || []).find(
+    (entry) => entry.playerId === playerId,
+  );
   const myPayout = (room?.payouts || []).find(
     (entry) => entry.walletAddress === myPlayer?.walletAddress,
   );
   const claimRecorded = myPlayer?.claimRecorded;
   const claimEnabled = room?.onchain?.payoutMode === "contract_claim" && Number(myPayout?.amount || 0) > 0 && !claimRecorded;
+  const payoutAmount = Number(myPayout?.amount || 0);
+  const claimStatusTitle = claimRecorded
+    ? "Claim recorded"
+    : room?.onchain?.payoutMode === "contract_claim"
+      ? payoutAmount > 0
+        ? "Ready to claim"
+        : "No reward to claim"
+      : "Claim preview only";
+  const claimStatusCopy = claimRecorded
+    ? `Your latest claim reference is ${shortenHash(myClaimTx?.txHash)}.`
+    : room?.onchain?.payoutMode === "contract_claim"
+      ? payoutAmount > 0
+        ? "This room is contract-ready. Once claim wiring is complete, this button will send your onchain reward claim."
+        : "You finished the room, but there is no positive payout available for this wallet."
+      : "The beta flow already records onchain joins. Contract reward claims are the next deployment step.";
   const sourceLetters = String(room?.sourceWord || "").split("");
   const selectedWord = draftWord;
 
@@ -1036,6 +1096,46 @@ function MatchRoomScreen({
                   <p>Final ranking and payout split for this arena.</p>
                 </div>
               </div>
+
+              <div className="claim-card">
+                <div className="claim-card__top">
+                  <div>
+                    <span className="claim-card__label">Your reward</span>
+                    <strong className="claim-card__amount">{payoutAmount.toFixed(4)} cUSD</strong>
+                  </div>
+                  <span className={`claim-card__status ${claimRecorded ? "claim-card__status--success" : payoutAmount > 0 ? "claim-card__status--ready" : ""}`}>
+                    {claimStatusTitle}
+                  </span>
+                </div>
+                <p className="claim-card__copy">{claimStatusCopy}</p>
+                <div className="claim-card__meta">
+                  <div className="claim-meta-chip">
+                    <span>Join Tx</span>
+                    <strong>{myJoinTx?.txHash ? shortenHash(myJoinTx.txHash) : "Pending"}</strong>
+                  </div>
+                  <div className="claim-meta-chip">
+                    <span>Claim Tx</span>
+                    <strong>{myClaimTx?.txHash ? shortenHash(myClaimTx.txHash) : "Not claimed"}</strong>
+                  </div>
+                  <div className="claim-meta-chip">
+                    <span>Payout Mode</span>
+                    <strong>{room?.onchain?.payoutMode === "contract_claim" ? "Contract" : "Beta"}</strong>
+                  </div>
+                </div>
+                <div className="hero-actions">
+                  <button
+                    type="button"
+                    onClick={onClaimReward}
+                    disabled={!claimEnabled || claimBusy}
+                  >
+                    {claimBusy ? "Claiming..." : claimRecorded ? "Claim Recorded" : payoutAmount > 0 ? "Claim Reward" : "No Reward"}
+                  </button>
+                  <button type="button" className="button-secondary" onClick={onRefresh}>
+                    Refresh Results
+                  </button>
+                </div>
+              </div>
+
               <div className="player-list">
                 {(room?.scoreboard || []).map((entry) => (
                   <div key={entry.playerId} className={`player-row ${entry.playerId === playerId ? "player-row--self" : ""}`}>
@@ -1067,18 +1167,31 @@ function MatchRoomScreen({
                   : "Beta mode: join payments are onchain now, while reward claim stays in preview until contract payout is deployed."}
               </div>
 
-              <div className="hero-actions">
-                <button
-                  type="button"
-                  onClick={onClaimReward}
-                  disabled={!claimEnabled || claimBusy}
-                >
-                  {claimBusy ? "Claiming..." : claimRecorded ? "Claim Recorded" : "Claim Reward"}
-                </button>
-                <button type="button" className="button-secondary" onClick={onRefresh}>
-                  Refresh Results
-                </button>
-              </div>
+              {(room?.onchain?.joinTransactions?.length || room?.onchain?.claimTransactions?.length) ? (
+                <>
+                  <div className="results-subtitle">Onchain Activity</div>
+                  <div className="tx-list">
+                    {(room?.onchain?.joinTransactions || []).map((entry) => (
+                      <div key={entry.txHash} className="tx-row">
+                        <div>
+                          <strong>{getPlayerAlias(entry.walletAddress)}</strong>
+                          <p>Join payment • {entry.amount}</p>
+                        </div>
+                        <span>{shortenHash(entry.txHash)}</span>
+                      </div>
+                    ))}
+                    {(room?.onchain?.claimTransactions || []).map((entry) => (
+                      <div key={entry.txHash} className="tx-row">
+                        <div>
+                          <strong>{getPlayerAlias(entry.walletAddress)}</strong>
+                          <p>Reward claim • {entry.amount || "tracked"}</p>
+                        </div>
+                        <span>{shortenHash(entry.txHash)}</span>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              ) : null}
             </article>
           </section>
         ) : null}
@@ -1427,6 +1540,7 @@ export default function App() {
   const [screen, setScreen] = useState("home");
   const [walletAddress, setWalletAddress] = useState("");
   const [walletStatus, setWalletStatus] = useState("");
+  const [walletChainId, setWalletChainId] = useState(null);
   const [room, setRoom] = useState(null);
   const [playerId, setPlayerId] = useState("");
   const [roomError, setRoomError] = useState("");
@@ -1446,9 +1560,20 @@ export default function App() {
     if (!walletAddress.trim()) return "";
     const valid = isWalletAddress(walletAddress.trim());
     return valid
-      ? `Room identity will show as ${shortenWalletAddress(walletAddress.trim())}`
+      ? parseChainId(walletChainId) === CELO_MAINNET_CHAIN_ID
+        ? `Room identity will show as ${shortenWalletAddress(walletAddress.trim())} and your wallet is ready for Celo mainnet play.`
+        : `Room identity will show as ${shortenWalletAddress(walletAddress.trim())}. Switch to Celo Mainnet before paying to join a live room.`
       : "Connected account is not a valid EVM wallet address.";
-  }, [walletAddress]);
+  }, [walletAddress, walletChainId]);
+  const walletProviderName = useMemo(
+    () => getWalletProviderName(getInjectedProvider()),
+    [],
+  );
+  const walletNetworkLabel = useMemo(
+    () => getNetworkLabel(walletChainId),
+    [walletChainId],
+  );
+  const walletReady = Boolean(walletAddress) && parseChainId(walletChainId) === CELO_MAINNET_CHAIN_ID;
 
   useEffect(() => {
     const storedWallet =
@@ -1462,6 +1587,10 @@ export default function App() {
     }
 
     const provider = getInjectedProvider();
+    provider?.request?.({ method: "eth_chainId" })
+      .then((chainId) => setWalletChainId(parseChainId(chainId)))
+      .catch(() => {});
+
     if (!provider?.on) return undefined;
 
     function handleAccountsChanged(accounts) {
@@ -1477,11 +1606,19 @@ export default function App() {
       }
     }
 
+    function handleChainChanged(chainId) {
+      const normalized = parseChainId(chainId);
+      setWalletChainId(normalized);
+      setWalletStatus(normalized === CELO_MAINNET_CHAIN_ID ? "Wallet ready on Celo Mainnet." : `Connected on ${getNetworkLabel(normalized)}.`);
+    }
+
     provider.on("accountsChanged", handleAccountsChanged);
+    provider.on("chainChanged", handleChainChanged);
 
     return () => {
       if (provider.removeListener) {
         provider.removeListener("accountsChanged", handleAccountsChanged);
+        provider.removeListener("chainChanged", handleChainChanged);
       }
     };
   }, []);
@@ -1505,8 +1642,13 @@ export default function App() {
         throw new Error("Connected account is not a valid wallet address.");
       }
 
+      setWalletStatus("Wallet connected. Preparing Celo Mainnet...");
+      await ensureCeloMainnet(provider, CELO_MAINNET_CHAIN_ID);
+      const chainId = await provider.request({ method: "eth_chainId" });
+
       setWalletAddress(nextWallet);
-      setWalletStatus(`Connected ${shortenWalletAddress(nextWallet)}`);
+      setWalletChainId(parseChainId(chainId));
+      setWalletStatus(`Ready on Celo Mainnet as ${shortenWalletAddress(nextWallet)}`);
       window.localStorage.setItem(WALLET_STORAGE_KEY, nextWallet);
     } catch (error) {
       setWalletStatus(error.message || "Unable to connect wallet.");
@@ -1515,6 +1657,7 @@ export default function App() {
 
   function disconnectWallet() {
     setWalletAddress("");
+    setWalletChainId(null);
     setWalletStatus("Wallet disconnected locally.");
     if (typeof window !== "undefined") {
       window.localStorage.removeItem(WALLET_STORAGE_KEY);
@@ -1744,6 +1887,9 @@ export default function App() {
       onOpenProfile={() => setScreen("profile")}
       walletAddress={walletAddress}
       walletStatus={walletStatus}
+      walletReady={walletReady}
+      walletProviderName={walletProviderName}
+      walletNetworkLabel={walletNetworkLabel}
       onConnectWallet={connectWallet}
       onDisconnectWallet={disconnectWallet}
       walletHint={walletHint}
