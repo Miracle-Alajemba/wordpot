@@ -175,6 +175,46 @@ function getWaitingRoom() {
   );
 }
 
+function getCommunityLeaderboard() {
+  const aggregate = new Map();
+
+  for (const room of rooms.values()) {
+    settleRoom(room);
+    const scoreboard = getScoreboard(room);
+
+    for (const entry of scoreboard) {
+      const current = aggregate.get(entry.walletAddress) || {
+        walletAddress: entry.walletAddress,
+        score: 0,
+        wordsFound: 0,
+        gamesPlayed: 0,
+        wins: 0,
+      };
+
+      current.score += entry.score;
+      current.wordsFound += entry.wordsFound;
+      current.gamesPlayed += 1;
+
+      if (scoreboard[0]?.walletAddress === entry.walletAddress && entry.score > 0) {
+        current.wins += 1;
+      }
+
+      aggregate.set(entry.walletAddress, current);
+    }
+  }
+
+  return Array.from(aggregate.values())
+    .sort((a, b) => {
+      if (b.score !== a.score) return b.score - a.score;
+      if (b.wins !== a.wins) return b.wins - a.wins;
+      return b.wordsFound - a.wordsFound;
+    })
+    .map((entry, index) => ({
+      rank: index + 1,
+      ...entry,
+    }));
+}
+
 function getRoomOr404(roomId, res) {
   const room = rooms.get(roomId);
   if (!room) {
@@ -208,6 +248,13 @@ app.get("/api/meta", (_req, res) => {
       joinPaymentDisplay: JOIN_PAYMENT_DISPLAY,
       payoutMode: isWalletAddress(WORDPOT_CONTRACT_ADDRESS) ? "contract_claim" : "treasury_beta",
     },
+  });
+});
+
+app.get("/api/leaderboard", (_req, res) => {
+  res.json({
+    entries: getCommunityLeaderboard(),
+    updatedAt: new Date().toISOString(),
   });
 });
 

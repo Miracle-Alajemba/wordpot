@@ -338,13 +338,58 @@ function AppBottomNav({ screen, onNavigate, walletAddress, onWalletAction }) {
 }
 
 function LeaderboardScreen({ room, onQuickMatch, onBack }) {
-  const entries = room?.scoreboard?.length
-    ? room.scoreboard
-    : [
-        { playerId: "demo-1", walletAddress: "0xA8C5A8000000000000000000000000000000A8C5", score: 148, wordsFound: 12 },
-        { playerId: "demo-2", walletAddress: "0xE8B4A8000000000000000000000000000000E8B4", score: 132, wordsFound: 11 },
-        { playerId: "demo-3", walletAddress: "0x7A9FB50000000000000000000000000000007A9F", score: 119, wordsFound: 9 },
-      ];
+  const [entries, setEntries] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    let active = true;
+
+    async function loadLeaderboard() {
+      try {
+        setLoading(true);
+        setError("");
+
+        const response = await fetch(`${API_BASE_URL}/leaderboard`);
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.error || "Unable to load leaderboard.");
+        }
+
+        if (!active) return;
+        setEntries(data.entries || []);
+      } catch (leaderboardError) {
+        if (!active) return;
+
+        if (room?.scoreboard?.length) {
+          setEntries(
+            room.scoreboard.map((entry, index) => ({
+              rank: index + 1,
+              walletAddress: entry.walletAddress,
+              score: entry.score,
+              wordsFound: entry.wordsFound,
+              gamesPlayed: 1,
+              wins: index === 0 && entry.score > 0 ? 1 : 0,
+            })),
+          );
+          setError("Showing the current room leaderboard while the server feed catches up.");
+        } else {
+          setEntries([]);
+          setError(leaderboardError.message || "Unable to load leaderboard.");
+        }
+      } finally {
+        if (active) {
+          setLoading(false);
+        }
+      }
+    }
+
+    loadLeaderboard();
+    return () => {
+      active = false;
+    };
+  }, [room]);
 
   return (
     <main className="page-shell">
@@ -370,18 +415,25 @@ function LeaderboardScreen({ room, onQuickMatch, onBack }) {
                 <p>Live ranking from current and recent arena sessions.</p>
               </div>
             </div>
-            <div className="leaderboard-table">
-              {entries.map((entry, index) => (
-                <div key={entry.playerId} className={`leaderboard-table__row ${index === 0 ? "leaderboard-table__row--top" : ""}`}>
-                  <div className="leaderboard-table__rank">#{index + 1}</div>
-                  <PlayerIdentity walletAddress={entry.walletAddress} emphasis />
-                  <div className="leaderboard-table__stats">
-                    <strong>{entry.score} pts</strong>
-                    <span>{entry.wordsFound} words</span>
+            {error ? <div className="notice-strip notice-strip--neutral">{error}</div> : null}
+            {loading ? (
+              <div className="empty-card">Loading leaderboard...</div>
+            ) : entries.length ? (
+              <div className="leaderboard-table">
+                {entries.map((entry, index) => (
+                  <div key={`${entry.walletAddress}-${entry.rank || index}`} className={`leaderboard-table__row ${index === 0 ? "leaderboard-table__row--top" : ""}`}>
+                    <div className="leaderboard-table__rank">#{entry.rank || index + 1}</div>
+                    <PlayerIdentity walletAddress={entry.walletAddress} emphasis />
+                    <div className="leaderboard-table__stats">
+                      <strong>{entry.score} pts</strong>
+                      <span>{entry.wordsFound} words • {entry.wins || 0} wins</span>
+                    </div>
                   </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            ) : (
+              <div className="empty-card">No player results yet. Finish a live room and this board will update.</div>
+            )}
           </article>
         </section>
       </section>
