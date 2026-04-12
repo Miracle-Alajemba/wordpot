@@ -751,6 +751,14 @@ function LobbyScreen({
     room?.status === "waiting" && room?.players?.length >= 2 && isHost && allPaid;
   const joinPayment = room?.onchain?.joinPaymentDisplay || "0.001 CELO";
   const hasPaid = (room?.onchain?.joinTransactions || []).some((entry) => entry.playerId === playerId);
+  const unpaidPlayers = (room?.players || []).filter((entry) => !entry.joinPaid);
+  const lobbyTitle = hasPaid
+    ? allPaid
+      ? isHost
+        ? "Everyone is funded. You can start the arena."
+        : "Everyone is funded. Waiting for the host to start."
+      : "Your entry is funded. Waiting for the rest of the room."
+    : "Fund your seat to lock your place in this room.";
 
   return (
     <main className="page-shell">
@@ -784,9 +792,20 @@ function LobbyScreen({
             <div className="room-panel__header">
               <div>
                 <h3>Room Lobby</h3>
-                <p>Waiting for players to join before the live word chat begins.</p>
+                <p>{lobbyTitle}</p>
               </div>
               <TimerTone seconds={0} />
+            </div>
+
+            <div className={`lobby-readiness-card ${allPaid ? "lobby-readiness-card--ready" : ""}`}>
+              <div>
+                <span className="lobby-readiness-card__label">Room readiness</span>
+                <strong>{allPaid ? "Arena ready" : "Waiting for payments"}</strong>
+              </div>
+              <div className="lobby-readiness-card__progress">
+                <div className="lobby-readiness-card__count">{paidPlayersCount}/{totalPlayers || 0}</div>
+                <small>{allPaid ? "All joined players have funded their seats." : "Players with onchain join payment recorded."}</small>
+              </div>
             </div>
 
             <div className="lobby-summary-grid">
@@ -820,7 +839,9 @@ function LobbyScreen({
 
             {!allPaid ? (
               <div className="notice-strip notice-strip--neutral">
-                {`${paidPlayersCount}/${totalPlayers || 0} players have paid onchain. Everyone must pay before the host can start the arena.`}
+                {unpaidPlayers.length
+                  ? `Still waiting on ${unpaidPlayers.length} player${unpaidPlayers.length > 1 ? "s" : ""}: ${unpaidPlayers.map((entry) => getPlayerAlias(entry.walletAddress)).join(", ")}.`
+                  : `${paidPlayersCount}/${totalPlayers || 0} players have paid onchain. Everyone must pay before the host can start the arena.`}
               </div>
             ) : null}
 
@@ -832,7 +853,7 @@ function LobbyScreen({
               </button>
               <button
                 type="button"
-                className="button-secondary"
+                className={hasPaid ? "button-secondary" : ""}
                 onClick={onPayEntryFee}
                 disabled={paymentBusy || hasPaid}
               >

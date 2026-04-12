@@ -1142,6 +1142,57 @@ button:disabled {
   flex-wrap: wrap;
 }
 
+.lobby-readiness-card {
+  align-items: center;
+  background: rgba(255, 255, 255, 0.78);
+  border: 1px solid var(--line-soft);
+  border-radius: 20px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.9rem;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+  padding: 1rem 1.05rem;
+}
+
+.lobby-readiness-card--ready {
+  background: rgba(168, 197, 168, 0.16);
+  border-color: rgba(168, 197, 168, 0.34);
+}
+
+.lobby-readiness-card__label {
+  color: var(--muted);
+  display: block;
+  font-size: 0.76rem;
+  letter-spacing: 0.04em;
+  margin-bottom: 0.3rem;
+  text-transform: uppercase;
+}
+
+.lobby-readiness-card strong {
+  color: var(--charcoal);
+  font-size: 1.05rem;
+}
+
+.lobby-readiness-card__progress {
+  display: grid;
+  gap: 0.2rem;
+  justify-items: end;
+}
+
+.lobby-readiness-card__count {
+  color: var(--sage-deep);
+  font-size: 1.15rem;
+  font-weight: 800;
+}
+
+.lobby-readiness-card__progress small {
+  color: var(--muted);
+  font-size: 0.74rem;
+  max-width: 220px;
+  text-align: right;
+}
+
 .lobby-summary-grid {
   display: grid;
   gap: 0.8rem;
@@ -1250,6 +1301,11 @@ button:disabled {
   .metrics-grid,
   .lobby-summary-grid {
     grid-template-columns: 1fr;
+  }
+
+  .lobby-readiness-card,
+  .lobby-readiness-card__progress {
+    justify-items: start;
   }
 
   .hero-copy,
