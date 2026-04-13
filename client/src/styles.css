@@ -1,6 +1,6 @@
 :root {
   color: #f5f7ff;
-  font-family: "Sora", "Inter", "Segoe UI", sans-serif;
+  font-family: "Space Grotesk", "Inter", "Segoe UI", sans-serif;
   background:
     radial-gradient(circle at 16% 12%, rgba(255, 191, 92, 0.2), transparent 18%),
     radial-gradient(circle at 84% 14%, rgba(99, 244, 202, 0.16), transparent 18%),
@@ -77,6 +77,7 @@ input {
 }
 
 button {
+  font-family: "Space Grotesk", "Inter", "Segoe UI", sans-serif;
   background: linear-gradient(135deg, #ffad33 0%, #ff7a18 100%);
   border: 0;
   border-radius: 999px;
@@ -84,7 +85,7 @@ button {
   color: #111827;
   cursor: pointer;
   font-weight: 800;
-  letter-spacing: 0.01em;
+  letter-spacing: 0.015em;
   padding: 0.9rem 1.3rem;
   transition: transform 140ms ease, box-shadow 140ms ease;
 }
@@ -119,6 +120,9 @@ button:disabled {
   --charcoal: #2c2c2c;
   --muted: #6f7680;
   --line-soft: rgba(44, 44, 44, 0.08);
+  --font-ui: "Space Grotesk", "Inter", "Segoe UI", sans-serif;
+  --font-display: "Oxanium", "Space Grotesk", sans-serif;
+  --font-mono: "Space Mono", monospace;
 }
 
 .page-shell {
@@ -1398,7 +1402,8 @@ button:hover {
 .rules-card h4,
 .results-sheet h2 {
   color: var(--charcoal);
-  font-family: "Poppins", "Outfit", "DM Sans", "Inter", sans-serif;
+  font-family: var(--font-display);
+  letter-spacing: -0.02em;
   text-transform: none;
 }
 
@@ -1432,6 +1437,15 @@ button:hover {
   color: var(--charcoal);
 }
 
+.room-topbar h1,
+.profile-title,
+.hero-card h2,
+.claim-card__amount,
+.compact-board__top strong {
+  font-family: var(--font-display);
+  letter-spacing: -0.02em;
+}
+
 .wallet-status,
 .feature-pill,
 .hero-card__grid span,
@@ -1450,6 +1464,19 @@ button:hover {
 
 .wallet-chip {
   color: var(--charcoal);
+}
+
+.score-badge strong,
+.leaderboard-points span,
+.self-pill,
+.claim-meta-chip strong,
+.tx-row span,
+.room-topbar__stats span,
+.wallet-status,
+.player-identity__copy span,
+.chat-bubble__time,
+.chat-bubble__reason {
+  font-family: var(--font-mono);
 }
 
 .hero-card__actions,
@@ -1897,4 +1924,392 @@ button:hover {
   .leaderboard-table__row {
     grid-template-columns: 1fr;
   }
+}
+
+/* Premium arena polish: unify the UI around a darker game-forward look */
+:root {
+  --surface-dark: rgba(11, 17, 33, 0.9);
+  --surface-dark-2: rgba(17, 24, 44, 0.94);
+  --surface-soft: rgba(255, 255, 255, 0.06);
+  --surface-line-strong: rgba(110, 139, 255, 0.16);
+  --text-high: #f8fbff;
+  --text-soft: #aab6d4;
+  --text-muted-2: #7f8db2;
+  --accent-cyan: #63f4ca;
+  --accent-warm: #ffb347;
+  --accent-coral-deep: #ff9a8a;
+}
+
+button {
+  background: linear-gradient(135deg, #63f4ca 0%, #ffb347 58%, #ff7a18 100%);
+  box-shadow: 0 18px 34px rgba(255, 138, 51, 0.22);
+  color: #09111f;
+  font-family: var(--font-display);
+  font-size: 0.84rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+button:hover {
+  box-shadow: 0 22px 40px rgba(255, 138, 51, 0.28);
+}
+
+.button-secondary,
+.ghost-button {
+  background: rgba(15, 21, 39, 0.78);
+  border: 1px solid rgba(130, 152, 235, 0.18);
+  box-shadow: none;
+  color: var(--text-high);
+}
+
+.button-accent-blue {
+  background: linear-gradient(135deg, rgba(99, 244, 202, 0.18), rgba(86, 127, 255, 0.2));
+  color: var(--text-high);
+}
+
+.hero-copy,
+.hero-card,
+.panel,
+.play-hero,
+.results-sheet,
+.room-topbar,
+.room-live-header,
+.room-panel,
+.compact-board,
+.lobby-readiness-card,
+.player-row,
+.room-player-card,
+.leaderboard-table__row,
+.claim-card,
+.tx-row,
+.featured-stats__item,
+.achievement-chip,
+.settings-row,
+.metric-card,
+.rules-card,
+.wallet-status,
+.wallet-chip,
+.feature-pill,
+.score-badge,
+.empty-card,
+.word-chip,
+.system-message,
+.submit-panel--sticky {
+  background: linear-gradient(180deg, rgba(18, 25, 46, 0.94), rgba(9, 13, 25, 0.96));
+  border-color: var(--surface-line-strong);
+  box-shadow:
+    0 20px 50px rgba(2, 6, 17, 0.38),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+.eyebrow,
+.play-label,
+.hero-card__label,
+.claim-card__label,
+.lobby-readiness-card__label,
+.compact-board__top span,
+.results-subtitle,
+.featured-stats__item span {
+  color: var(--accent-cyan);
+  font-family: var(--font-display);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.hero-copy h1,
+.play-hero h1,
+.panel h3,
+.rules-card h4,
+.results-sheet h2,
+.room-topbar h1,
+.profile-title,
+.hero-card h2,
+.claim-card__amount,
+.compact-board__top strong {
+  color: var(--text-high);
+  font-family: var(--font-display);
+  letter-spacing: -0.035em;
+  text-shadow: 0 6px 30px rgba(99, 244, 202, 0.08);
+}
+
+.hero-copy h1,
+.play-hero h1,
+.room-topbar h1 {
+  text-transform: uppercase;
+}
+
+.lede,
+.panel p,
+.panel li,
+.results-sheet p,
+.room-panel__header p,
+.profile-subtitle,
+.claim-card__copy,
+.tx-row p,
+.metric-card p,
+.leaderboard-table__stats span,
+.system-message small,
+.typing-indicator,
+.player-row p,
+.wallet-panel__copy label,
+.field-hint,
+.wallet-status,
+.hero-card__grid,
+.hero-card__grid span,
+.room-player-card__meta,
+.chat-bubble__reason,
+.chat-bubble__time {
+  color: var(--text-soft);
+}
+
+.wallet-panel__copy strong,
+.metric-card strong,
+.score-badge strong,
+.results-subtitle,
+.hero-card h2,
+.player-row strong,
+.tx-row strong,
+.room-live-header__meta strong,
+.room-live-header__score strong,
+.claim-meta-chip strong,
+.leaderboard-table__stats strong,
+.lobby-readiness-card strong,
+.featured-stats__item strong {
+  color: var(--text-high);
+}
+
+.wallet-status,
+.wallet-chip,
+.feature-pill,
+.hero-card__grid span,
+.metric-card,
+.rules-card,
+.score-badge,
+.empty-card,
+.word-chip,
+.room-topbar__stats span,
+.claim-meta-chip,
+.validation-badge,
+.system-message__icon {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(130, 152, 235, 0.18);
+}
+
+.wallet-chip,
+.room-topbar__stats span,
+.feature-pill,
+.claim-meta-chip span,
+.score-badge span,
+.metric-card span,
+.room-live-header__score small,
+.leaderboard-table__rank,
+.leaderboard-points small {
+  color: var(--accent-cyan);
+}
+
+.wallet-chip--ok,
+.validation-badge--ok,
+.self-pill,
+.timer-pill {
+  background: rgba(99, 244, 202, 0.12);
+  border-color: rgba(99, 244, 202, 0.24);
+  color: #d7fff4;
+}
+
+.wallet-chip--warn,
+.notice-strip--error,
+.validation-badge--bad {
+  background: rgba(255, 154, 138, 0.12);
+  border-color: rgba(255, 154, 138, 0.24);
+  color: #ffd5cd;
+}
+
+.timer-pill--warning {
+  background: rgba(255, 179, 71, 0.12);
+  border-color: rgba(255, 179, 71, 0.26);
+  color: #ffe2b2;
+}
+
+.timer-pill--late {
+  background: rgba(122, 159, 181, 0.16);
+  border-color: rgba(122, 159, 181, 0.3);
+  color: #d8e9f6;
+}
+
+.timer-pill span,
+.score-badge strong,
+.leaderboard-points span,
+.room-live-header__score strong,
+.claim-card__amount,
+.room-topbar__stats span,
+.wallet-status,
+.player-identity__copy span,
+.chat-bubble__time,
+.chat-bubble__reason,
+.tx-row span,
+.claim-meta-chip strong {
+  font-family: var(--font-mono);
+}
+
+.hero-card__grid span,
+.featured-stats__item,
+.score-badge,
+.metric-card,
+.rules-card,
+.compact-board,
+.claim-card,
+.leaderboard-table__row,
+.room-player-card,
+.player-row,
+.tx-row {
+  backdrop-filter: blur(12px);
+}
+
+.room-topbar {
+  background: linear-gradient(180deg, rgba(14, 19, 35, 0.94), rgba(8, 12, 23, 0.98));
+}
+
+.room-topbar__stats span,
+.wallet-chip,
+.feature-pill {
+  font-size: 0.77rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.room-live-header__meta span,
+.player-identity__copy span,
+.leaderboard-points small,
+.leaderboard-table__stats span {
+  color: var(--text-muted-2);
+}
+
+.room-player-card--self,
+.player-row--self,
+.leaderboard-table__row--top {
+  background: linear-gradient(180deg, rgba(232, 180, 168, 0.14), rgba(255, 179, 71, 0.12));
+  border-color: rgba(255, 179, 71, 0.24);
+}
+
+.letter-tile {
+  background: linear-gradient(180deg, rgba(26, 35, 62, 0.98), rgba(12, 17, 31, 0.98));
+  border: 1px solid rgba(130, 152, 235, 0.18);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    0 12px 20px rgba(2, 6, 17, 0.24);
+  color: var(--text-high);
+  font-family: var(--font-display);
+  letter-spacing: 0.05em;
+}
+
+.letter-tile--selected {
+  background: linear-gradient(180deg, rgba(99, 244, 202, 0.24), rgba(50, 125, 106, 0.24));
+  border-color: rgba(99, 244, 202, 0.4);
+  box-shadow: 0 16px 28px rgba(99, 244, 202, 0.18);
+}
+
+.word-preview {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(99, 244, 202, 0.18);
+  color: var(--text-high);
+  font-family: var(--font-display);
+  letter-spacing: 0.2em;
+}
+
+.submit-panel--sticky {
+  background: linear-gradient(180deg, rgba(12, 17, 31, 0.94), rgba(9, 13, 24, 0.98));
+}
+
+.submit-panel input {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(130, 152, 235, 0.16);
+  color: var(--text-high);
+}
+
+.submit-panel input::placeholder {
+  color: var(--text-muted-2);
+}
+
+.submit-panel input:focus {
+  border-color: rgba(99, 244, 202, 0.38);
+  box-shadow: 0 0 0 4px rgba(99, 244, 202, 0.09);
+}
+
+.chat-bubble {
+  background: linear-gradient(180deg, rgba(16, 22, 40, 0.96), rgba(9, 13, 25, 0.96));
+  border-color: rgba(130, 152, 235, 0.14);
+}
+
+.chat-bubble--self {
+  background: linear-gradient(180deg, rgba(21, 43, 39, 0.96), rgba(11, 25, 23, 0.96));
+}
+
+.chat-bubble--accepted {
+  border-color: rgba(99, 244, 202, 0.24);
+}
+
+.chat-bubble--rejected {
+  background: linear-gradient(180deg, rgba(44, 24, 27, 0.95), rgba(24, 11, 15, 0.96));
+  border-color: rgba(255, 154, 138, 0.22);
+}
+
+.chat-bubble__word {
+  background: rgba(99, 244, 202, 0.12);
+  color: var(--text-high);
+  font-family: var(--font-display);
+  letter-spacing: 0.08em;
+}
+
+.chat-bubble__word--muted,
+.chat-bubble__points--muted {
+  color: var(--text-soft);
+}
+
+.chat-bubble__points {
+  color: var(--accent-warm);
+  font-weight: 700;
+}
+
+.player-identity__copy strong {
+  color: var(--text-high);
+  font-size: 0.88rem;
+}
+
+.profile-avatar,
+.player-avatar {
+  box-shadow: 0 12px 22px rgba(2, 6, 17, 0.24);
+}
+
+.claim-card__status--ready {
+  background: rgba(99, 244, 202, 0.12);
+  border-color: rgba(99, 244, 202, 0.26);
+  color: #d7fff4;
+}
+
+.claim-card__status--success {
+  background: rgba(255, 179, 71, 0.12);
+  border-color: rgba(255, 179, 71, 0.26);
+  color: #ffe2b2;
+}
+
+.bottom-nav {
+  background: rgba(9, 13, 24, 0.88);
+  border-color: rgba(130, 152, 235, 0.16);
+  box-shadow: 0 18px 44px rgba(2, 6, 17, 0.28);
+}
+
+.bottom-nav__item {
+  color: var(--text-soft);
+}
+
+.bottom-nav__item span {
+  font-family: var(--font-display);
+  font-size: 0.7rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.bottom-nav__item--active {
+  background: rgba(99, 244, 202, 0.12);
+  color: var(--text-high);
 }
