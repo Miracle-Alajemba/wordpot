@@ -224,6 +224,34 @@ function getRoomOr404(roomId, res) {
   return room;
 }
 
+function getValidatedPlayerOrError(room, playerId, walletAddress, res) {
+  const normalizedWallet = String(walletAddress || "").trim();
+
+  if (!playerId) {
+    res.status(400).json({ error: "Player id is required." });
+    return null;
+  }
+
+  if (!isWalletAddress(normalizedWallet)) {
+    res.status(400).json({ error: "A valid wallet address is required." });
+    return null;
+  }
+
+  const player = room.players.find((entry) => entry.id === playerId);
+
+  if (!player) {
+    res.status(403).json({ error: "Player not found in this room." });
+    return null;
+  }
+
+  if (player.walletAddress.toLowerCase() !== normalizedWallet.toLowerCase()) {
+    res.status(403).json({ error: "Wallet does not match this room player." });
+    return null;
+  }
+
+  return player;
+}
+
 app.get("/api/health", (_req, res) => {
   res.json({
     status: "ok",
@@ -331,13 +359,17 @@ app.get("/api/rooms/:roomId", (req, res) => {
 app.post("/api/rooms/:roomId/start", async (req, res) => {
   const room = getRoomOr404(req.params.roomId, res);
   const playerId = String(req.body?.playerId || "").trim();
+  const walletAddress = String(req.body?.walletAddress || "").trim();
   if (!room) return;
+
+  const player = getValidatedPlayerOrError(room, playerId, walletAddress, res);
+  if (!player) return;
 
   if (room.status !== "waiting") {
     return res.status(400).json({ error: "This room has already started." });
   }
 
-  if (room.hostPlayerId !== playerId) {
+  if (room.hostPlayerId !== player.id) {
     return res.status(403).json({ error: "Only the host can start this room." });
   }
 
@@ -370,6 +402,7 @@ app.post("/api/rooms/:roomId/start", async (req, res) => {
 app.post("/api/rooms/:roomId/submit", (req, res) => {
   const room = getRoomOr404(req.params.roomId, res);
   const playerId = String(req.body?.playerId || "").trim();
+  const walletAddress = String(req.body?.walletAddress || "").trim();
   const rawWord = normalizeWord(req.body?.word);
   if (!room) return;
 
@@ -379,10 +412,8 @@ app.post("/api/rooms/:roomId/submit", (req, res) => {
     return res.status(400).json({ error: "This room is not active." });
   }
 
-  const player = room.players.find((entry) => entry.id === playerId);
-  if (!player) {
-    return res.status(403).json({ error: "Player not found in this room." });
-  }
+  const player = getValidatedPlayerOrError(room, playerId, walletAddress, res);
+  if (!player) return;
 
   function logEvent({ status, word, score = 0, reason = "" }) {
     room.events.push({
@@ -450,14 +481,12 @@ app.post("/api/rooms/:roomId/join-tx", (req, res) => {
   if (!room) return;
 
   const playerId = String(req.body?.playerId || "").trim();
+  const walletAddress = String(req.body?.walletAddress || "").trim();
   const txHash = String(req.body?.txHash || "").trim();
   const amount = String(req.body?.amount || JOIN_PAYMENT_DISPLAY).trim();
   const mode = String(req.body?.mode || "treasury_beta").trim();
-  const player = room.players.find((entry) => entry.id === playerId);
-
-  if (!player) {
-    return res.status(403).json({ error: "Player not found in this room." });
-  }
+  const player = getValidatedPlayerOrError(room, playerId, walletAddress, res);
+  if (!player) return;
 
   if (!isTxHash(txHash)) {
     return res.status(400).json({ error: "A valid transaction hash is required." });
@@ -484,13 +513,11 @@ app.post("/api/rooms/:roomId/claim-tx", (req, res) => {
   if (!room) return;
 
   const playerId = String(req.body?.playerId || "").trim();
+  const walletAddress = String(req.body?.walletAddress || "").trim();
   const txHash = String(req.body?.txHash || "").trim();
   const amount = String(req.body?.amount || "0").trim();
-  const player = room.players.find((entry) => entry.id === playerId);
-
-  if (!player) {
-    return res.status(403).json({ error: "Player not found in this room." });
-  }
+  const player = getValidatedPlayerOrError(room, playerId, walletAddress, res);
+  if (!player) return;
 
   settleRoom(room);
 

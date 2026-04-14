@@ -9,6 +9,7 @@ const ROUND_SECONDS = 60;
 const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL || "http://localhost:4000/api";
 const WALLET_STORAGE_KEY = "wordpot_connected_wallet";
+const ROOM_SESSION_STORAGE_KEY = "wordpot_room_session";
 const CELO_MAINNET_CHAIN_ID = 42220;
 
 
@@ -25,7 +26,7 @@ function ScoreBadge({ label, value }) {
   return (
     <div className="score-badge">
       <span>{label}</span>
-      <strong>{value}</strong>
+      <strong className="live-score">{value}</strong>
     </div>
   );
 }
@@ -34,7 +35,7 @@ function MetricCard({ label, value, hint }) {
   return (
     <div className="metric-card">
       <span>{label}</span>
-      <strong>{value}</strong>
+      <strong className="data-highlight">{value}</strong>
       {hint ? <p>{hint}</p> : null}
     </div>
   );
@@ -71,6 +72,34 @@ function toHexChainId(chainId) {
 function shortenHash(value) {
   if (!value) return "--";
   return `${value.slice(0, 10)}...${value.slice(-6)}`;
+}
+
+function saveRoomSession(session) {
+  if (typeof window === "undefined") return;
+  window.localStorage.setItem(ROOM_SESSION_STORAGE_KEY, JSON.stringify(session));
+}
+
+function readRoomSession() {
+  if (typeof window === "undefined") return null;
+
+  try {
+    const raw = window.localStorage.getItem(ROOM_SESSION_STORAGE_KEY);
+    if (!raw) return null;
+
+    const parsed = JSON.parse(raw);
+    if (!parsed?.roomId || !parsed?.playerId || !parsed?.walletAddress) {
+      return null;
+    }
+
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+function clearRoomSession() {
+  if (typeof window === "undefined") return;
+  window.localStorage.removeItem(ROOM_SESSION_STORAGE_KEY);
 }
 
 async function ensureCeloMainnet(provider, chainId = CELO_MAINNET_CHAIN_ID) {
@@ -136,6 +165,27 @@ function getAvatarStyle(walletAddress = "") {
   const hue = getAvatarSeed(walletAddress) % 360;
   return {
     background: `linear-gradient(135deg, hsl(${hue} 55% 78%), hsl(${(hue + 36) % 360} 48% 68%))`,
+  };
+}
+
+function getSyncStatusMeta(syncStatus) {
+  if (syncStatus === "live") {
+    return {
+      label: "Live",
+      className: "status-pill status-pill--live",
+    };
+  }
+
+  if (syncStatus === "retrying") {
+    return {
+      label: "Reconnecting",
+      className: "status-pill status-pill--warn",
+    };
+  }
+
+  return {
+    label: "Sync Idle",
+    className: "status-pill status-pill--idle",
   };
 }
 
@@ -571,8 +621,13 @@ function HomeScreen({
   onConnectWallet,
   onDisconnectWallet,
   walletHint,
+  roomError,
 }) {
-  const joinDisabled = !walletAddress;
+  const joinLabel = !walletAddress
+    ? "Connect Wallet to Join"
+    : walletReady
+      ? "Join Game"
+      : "Switch to Celo to Join";
 
   return (
     <main className="page-shell">
@@ -588,8 +643,8 @@ function HomeScreen({
           </p>
 
           <div className="hero-actions">
-            <button type="button" onClick={onQuickMatch} disabled={joinDisabled}>
-              {joinDisabled ? "Connect Wallet to Join" : "Join Game"}
+            <button type="button" onClick={onQuickMatch}>
+              {joinLabel}
             </button>
             <button type="button" className="button-secondary" onClick={onStartPractice}>
               Practice Arena
@@ -598,6 +653,12 @@ function HomeScreen({
               Leaderboard
             </button>
           </div>
+
+          {roomError ? (
+            <div className="notice-strip notice-strip--error">
+              {roomError}
+            </div>
+          ) : null}
 
           <div className="wallet-panel">
             <div className="wallet-panel__copy">
@@ -661,7 +722,7 @@ function HomeScreen({
           </div>
           <div className="hero-card__grid">
             <span>Timer: 60s</span>
-            <span>Stake: 0.1 cUSD</span>
+            <span>Stake: 1.0 cUSD</span>
             <span>Players: 2-5</span>
             <span>Pool: 90% shared by score</span>
           </div>
@@ -737,12 +798,14 @@ function LobbyScreen({
   playerId,
   statusMessage,
   error,
+  syncStatus,
   onRefresh,
   onStart,
   onPayEntryFee,
   paymentBusy,
   onBack,
 }) {
+  const syncMeta = getSyncStatusMeta(syncStatus);
   const isHost = room?.hostPlayerId === playerId;
   const paidPlayersCount = room?.onchain?.paidPlayersCount || 0;
   const totalPlayers = room?.players?.length || 0;
@@ -752,13 +815,15 @@ function LobbyScreen({
   const joinPayment = room?.onchain?.joinPaymentDisplay || "0.001 CELO";
   const hasPaid = (room?.onchain?.joinTransactions || []).some((entry) => entry.playerId === playerId);
   const unpaidPlayers = (room?.players || []).filter((entry) => !entry.joinPaid);
+  const unpaidCount = unpaidPlayers.length;
+  const joinedCount = room?.players?.length || 0;
   const lobbyTitle = hasPaid
     ? allPaid
       ? isHost
-        ? "Everyone is funded. You can start the arena."
-        : "Everyone is funded. Waiting for the host to start."
-      : "Your entry is funded. Waiting for the rest of the room."
-    : "Fund your seat to lock your place in this room.";
+        ? "Everyone is ready. You can start the round now."
+        : "Everyone is ready. Waiting for the host to begin."
+      : "Your entry is confirmed. Waiting for the rest of the room."
+    : "Complete your entry to confirm your seat in this round.";
 
   return (
     <main className="page-shell">
@@ -779,6 +844,7 @@ function LobbyScreen({
             <span>{room?.entryFee || "0.1 cUSD"}</span>
             <span>{room?.rewardPool || "--"}</span>
             <span>{room?.players?.length || 0}/{room?.maxPlayers || 5} players</span>
+            <span className={syncMeta.className}>{syncMeta.label}</span>
           </div>
         </div>
 
@@ -791,7 +857,7 @@ function LobbyScreen({
           <article className="panel room-panel">
             <div className="room-panel__header">
               <div>
-                <h3>Room Lobby</h3>
+                <h3>Match Lobby</h3>
                 <p>{lobbyTitle}</p>
               </div>
               <TimerTone seconds={0} />
@@ -799,12 +865,12 @@ function LobbyScreen({
 
             <div className={`lobby-readiness-card ${allPaid ? "lobby-readiness-card--ready" : ""}`}>
               <div>
-                <span className="lobby-readiness-card__label">Room readiness</span>
-                <strong>{allPaid ? "Arena ready" : "Waiting for payments"}</strong>
+                <span className="lobby-readiness-card__label">Round status</span>
+                <strong>{allPaid ? "Ready to start" : "Waiting for player confirmations"}</strong>
               </div>
               <div className="lobby-readiness-card__progress">
                 <div className="lobby-readiness-card__count">{paidPlayersCount}/{totalPlayers || 0}</div>
-                <small>{allPaid ? "All joined players have funded their seats." : "Players with onchain join payment recorded."}</small>
+                <small>{allPaid ? "All joined players have confirmed entry." : "Joined players who have completed entry payment."}</small>
               </div>
             </div>
 
@@ -818,30 +884,32 @@ function LobbyScreen({
                 <strong>{room?.rewardPool || "--"}</strong>
               </div>
               <div className="lobby-stat-card">
-                <span>Onchain Join</span>
+                <span>Entry Payment</span>
                 <strong>{joinPayment}</strong>
               </div>
               <div className="lobby-stat-card">
-                <span>Paid Onchain</span>
+                <span>Confirmed</span>
                 <strong>{paidPlayersCount}/{totalPlayers || room?.maxPlayers || 5}</strong>
               </div>
               <div className="lobby-stat-card">
-                <span>Players Joined</span>
+                <span>Players in Room</span>
                 <strong>{room?.players?.length || 0}/{room?.maxPlayers || 5}</strong>
               </div>
             </div>
 
             <div className="notice-strip notice-strip--neutral">
               {hasPaid
-                ? `Onchain join recorded: ${shortenHash((room?.onchain?.joinTransactions || []).find((entry) => entry.playerId === playerId)?.txHash)}`
-                : `Pay ${joinPayment} on Celo mainnet to start generating real hackathon activity.`}
+                ? `Entry confirmed. Payment reference: ${shortenHash((room?.onchain?.joinTransactions || []).find((entry) => entry.playerId === playerId)?.txHash)}`
+                : `Pay ${joinPayment} to confirm your seat. The round starts once every joined player has paid.`}
             </div>
 
             {!allPaid ? (
               <div className="notice-strip notice-strip--neutral">
-                {unpaidPlayers.length
-                  ? `Still waiting on ${unpaidPlayers.length} player${unpaidPlayers.length > 1 ? "s" : ""}: ${unpaidPlayers.map((entry) => getPlayerAlias(entry.walletAddress)).join(", ")}.`
-                  : `${paidPlayersCount}/${totalPlayers || 0} players have paid onchain. Everyone must pay before the host can start the arena.`}
+                {unpaidCount
+                  ? `Waiting for ${unpaidCount} player${unpaidCount > 1 ? "s" : ""} to confirm entry: ${unpaidPlayers.map((entry) => getPlayerAlias(entry.walletAddress)).join(", ")}.`
+                  : joinedCount < (room?.minPlayers || 2)
+                    ? `At least ${room?.minPlayers || 2} players are needed before the round can begin.`
+                    : "All joined players must confirm entry before the host can start the round."}
               </div>
             ) : null}
 
@@ -874,7 +942,7 @@ function LobbyScreen({
             <div className="room-panel__header">
               <div>
                 <h3>Room Feed</h3>
-                <p>Join and start updates show up here like a live group chat.</p>
+                <p>Entry confirmations and room activity appear here in real time.</p>
               </div>
             </div>
             <div className="chat-feed chat-feed--lobby">
@@ -902,12 +970,14 @@ function MatchRoomScreen({
   playerId,
   roomMessage,
   roomError,
+  syncStatus,
   onRefresh,
   onSubmitWord,
   onClaimReward,
   claimBusy,
   onBackHome,
 }) {
+  const syncMeta = getSyncStatusMeta(syncStatus);
   const [draftWord, setDraftWord] = useState("");
   const [selectedIndexes, setSelectedIndexes] = useState([]);
   const [pausedAutoScroll, setPausedAutoScroll] = useState(false);
@@ -1011,6 +1081,7 @@ function MatchRoomScreen({
             <span>{room?.players?.length || 0}/{room?.maxPlayers || 5} players online</span>
             <span>{room?.rewardPool || "--"}</span>
             <span>{room?.entryFee || "0.1 cUSD"}</span>
+            <span className={syncMeta.className}>{syncMeta.label}</span>
           </div>
         </div>
 
@@ -1022,7 +1093,7 @@ function MatchRoomScreen({
           </div>
           <div className="room-live-header__score">
             <small>Your score</small>
-            <strong>{myScore} pts</strong>
+            <strong className="live-score">{myScore} pts</strong>
           </div>
         </div>
 
@@ -1104,7 +1175,7 @@ function MatchRoomScreen({
                         <p>{shortenWalletAddress(entry.walletAddress)}</p>
                       </div>
                       <div className="leaderboard-points">
-                        <span>{entry.score} pts</span>
+                        <span className="live-score">{entry.score} pts</span>
                         <small>{entry.wordsFound} words</small>
                       </div>
                     </div>
@@ -1338,7 +1409,6 @@ function PracticeScreen({ onExit }) {
       if (!response.ok) {
         throw new Error(data.error || "Unable to load a practice round.");
       }
-
       setRoundSeed(data.round);
       setTimeLeft(ROUND_SECONDS);
       setDraftWord("");
@@ -1620,6 +1690,7 @@ export default function App() {
   const [roomMessage, setRoomMessage] = useState("");
   const [paymentBusy, setPaymentBusy] = useState(false);
   const [claimBusy, setClaimBusy] = useState(false);
+  const [roomSyncStatus, setRoomSyncStatus] = useState("idle");
   const [settings, setSettings] = useState({
     sound: true,
     haptics: true,
@@ -1696,6 +1767,63 @@ export default function App() {
     };
   }, []);
 
+  useEffect(() => {
+    if (!isWalletAddress(walletAddress)) return undefined;
+
+    const session = readRoomSession();
+    if (!session) return undefined;
+    if (session.walletAddress.toLowerCase() !== walletAddress.toLowerCase()) return undefined;
+    if (room?.id === session.roomId && playerId === session.playerId) return undefined;
+
+    let cancelled = false;
+
+    async function restoreRoomSession() {
+      try {
+        const response = await fetch(`${API_BASE_URL}/rooms/${session.roomId}`);
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.error || "Unable to restore your room session.");
+        }
+
+        if (cancelled) return;
+
+        const restoredPlayer = (data.room?.players || []).find(
+          (entry) => entry.id === session.playerId,
+        );
+
+        if (
+          !restoredPlayer ||
+          restoredPlayer.walletAddress.toLowerCase() !== session.walletAddress.toLowerCase()
+        ) {
+          throw new Error("Saved room session no longer matches this wallet.");
+        }
+
+        setRoom(data.room);
+        setPlayerId(session.playerId);
+        setScreen(data.room.status === "waiting" ? "lobby" : "match-room");
+        setRoomError("");
+        setRoomMessage(
+          data.room.status === "waiting"
+            ? "Room restored from the backend."
+            : data.room.status === "finished"
+              ? "Finished room restored from the backend."
+              : "Live room restored from the backend.",
+        );
+      } catch (error) {
+        if (cancelled) return;
+        clearRoomSession();
+        setRoomError(error.message || "Unable to restore room session.");
+      }
+    }
+
+    restoreRoomSession();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [walletAddress, room?.id, playerId]);
+
   async function connectWallet() {
     const provider = getInjectedProvider();
 
@@ -1726,6 +1854,22 @@ export default function App() {
     } catch (error) {
       setWalletStatus(error.message || "Unable to connect wallet.");
     }
+  }
+
+  async function handleHomeJoin() {
+    setRoomError("");
+
+    if (!walletAddress) {
+      await connectWallet();
+      return;
+    }
+
+    if (!walletReady) {
+      await connectWallet();
+      return;
+    }
+
+    await handleQuickMatch();
   }
 
   function disconnectWallet() {
@@ -1762,6 +1906,11 @@ export default function App() {
 
       setRoom(data.room);
       setPlayerId(data.playerId);
+      saveRoomSession({
+        roomId: data.room.id,
+        playerId: data.playerId,
+        walletAddress: walletAddress.trim(),
+      });
       setRoomMessage("You joined a public room. Invite more players or refresh the lobby.");
       setScreen("lobby");
     } catch (error) {
@@ -1769,10 +1918,15 @@ export default function App() {
     }
   }
 
-  async function refreshRoom() {
+  async function refreshRoom(options = {}) {
     if (!room?.id) return;
+    const { silent = false } = options;
 
     try {
+      if (!silent) {
+        setRoomSyncStatus("syncing");
+      }
+
       const response = await fetch(`${API_BASE_URL}/rooms/${room.id}`);
       const data = await response.json();
 
@@ -1780,14 +1934,41 @@ export default function App() {
         throw new Error(data.error || "Unable to refresh this room.");
       }
 
+      const previousStatus = room?.status;
+      const nextStatus = data.room.status;
       setRoom(data.room);
-      if (data.room.status === "active") {
-        setScreen("match-room");
+      setScreen(data.room.status === "waiting" ? "lobby" : "match-room");
+      saveRoomSession({
+        roomId: data.room.id,
+        playerId,
+        walletAddress: walletAddress.trim(),
+      });
+
+      if (!silent) {
+        setRoomMessage(
+          nextStatus === "waiting"
+            ? "Lobby updated."
+            : nextStatus === "finished"
+              ? "Results updated."
+              : "Room updated.",
+        );
+      } else if (previousStatus !== nextStatus) {
+        setRoomMessage(
+          nextStatus === "active"
+            ? "The arena is live now."
+            : nextStatus === "finished"
+              ? "Round finished. Results are ready."
+              : "Room state changed.",
+        );
       }
-      setRoomMessage(data.room.status === "active" ? "Room updated." : "Lobby updated.");
       setRoomError("");
+      setRoomSyncStatus("live");
     } catch (error) {
-      setRoomError(error.message || "Unable to refresh room.");
+      if (!silent) {
+        setRoomError(error.message || "Unable to refresh room.");
+      } else {
+        setRoomSyncStatus("retrying");
+      }
     }
   }
 
@@ -1817,7 +1998,7 @@ export default function App() {
     try {
       setPaymentBusy(true);
       setRoomError("");
-      setRoomMessage("Preparing Celo mainnet payment...");
+      setRoomMessage("Confirm the entry payment in your wallet...");
 
       await ensureCeloMainnet(provider, room?.onchain?.chainId || CELO_MAINNET_CHAIN_ID);
 
@@ -1837,6 +2018,7 @@ export default function App() {
         },
         body: JSON.stringify({
           playerId,
+          walletAddress: walletAddress.trim(),
           txHash,
           amount: joinPaymentDisplay,
           mode: room?.onchain?.payoutMode || "treasury_beta",
@@ -1849,7 +2031,7 @@ export default function App() {
       }
 
       setRoom(recordData.room);
-      setRoomMessage(`Onchain join recorded: ${shortenHash(txHash)}`);
+      setRoomMessage("Entry confirmed. Your seat is now locked in.");
     } catch (error) {
       setRoomError(error.message || "Unable to complete the onchain join payment.");
     } finally {
@@ -1866,7 +2048,10 @@ export default function App() {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ playerId }),
+        body: JSON.stringify({
+          playerId,
+          walletAddress: walletAddress.trim(),
+        }),
       });
       const data = await response.json();
 
@@ -1875,8 +2060,14 @@ export default function App() {
       }
 
       setRoom(data.room);
+      saveRoomSession({
+        roomId: data.room.id,
+        playerId,
+        walletAddress: walletAddress.trim(),
+      });
       setRoomMessage("");
       setRoomError("");
+      setRoomSyncStatus("live");
       setScreen("match-room");
     } catch (error) {
       setRoomError(error.message || "Unable to start room.");
@@ -1892,7 +2083,11 @@ export default function App() {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ playerId, word }),
+        body: JSON.stringify({
+          playerId,
+          walletAddress: walletAddress.trim(),
+          word,
+        }),
       });
       const data = await response.json();
 
@@ -1903,6 +2098,7 @@ export default function App() {
       setRoom(data.room);
       setRoomMessage(`Locked in ${data.submission.word} for +${data.submission.score} points.`);
       setRoomError("");
+      setRoomSyncStatus("live");
     } catch (error) {
       setRoomError(error.message || "Unable to submit word.");
     }
@@ -1928,9 +2124,13 @@ export default function App() {
   }
 
   function backHome() {
+    clearRoomSession();
+    setRoom(null);
+    setPlayerId("");
     setScreen("home");
     setRoomMessage("");
     setRoomError("");
+    setRoomSyncStatus("idle");
   }
 
   function toggleSetting(key) {
@@ -1946,16 +2146,16 @@ export default function App() {
     }
 
     const interval = window.setInterval(() => {
-      refreshRoom();
+      refreshRoom({ silent: true });
     }, 2000);
 
     return () => window.clearInterval(interval);
-  }, [screen, room?.id]);
+  }, [screen, room?.id, playerId, walletAddress]);
 
   let content = (
     <HomeScreen
       onStartPractice={() => setScreen("practice")}
-      onQuickMatch={handleQuickMatch}
+      onQuickMatch={handleHomeJoin}
       onOpenLeaderboard={() => setScreen("leaderboard")}
       onOpenProfile={() => setScreen("profile")}
       walletAddress={walletAddress}
@@ -1966,6 +2166,7 @@ export default function App() {
       onConnectWallet={connectWallet}
       onDisconnectWallet={disconnectWallet}
       walletHint={walletHint}
+      roomError={roomError}
     />
   );
 
@@ -1978,6 +2179,7 @@ export default function App() {
         playerId={playerId}
         statusMessage={roomMessage}
         error={roomError}
+        syncStatus={roomSyncStatus}
         onRefresh={refreshRoom}
         onStart={startRoom}
         onPayEntryFee={payEntryFeeOnchain}
@@ -1992,6 +2194,7 @@ export default function App() {
         playerId={playerId}
         roomMessage={roomMessage}
         roomError={roomError}
+        syncStatus={roomSyncStatus}
         onRefresh={refreshRoom}
         onSubmitWord={submitRoomWord}
         onClaimReward={claimRewardOnchain}

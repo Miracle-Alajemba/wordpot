@@ -1935,7 +1935,7 @@ button:hover {
   --text-high: #f8fbff;
   --text-soft: #aab6d4;
   --text-muted-2: #7f8db2;
-  --accent-cyan: #63f4ca;
+  --accent-cyan: #afac0a;
   --accent-warm: #ffb347;
   --accent-coral-deep: #ff9a8a;
 }
@@ -2312,4 +2312,481 @@ button:hover {
 .bottom-nav__item--active {
   background: rgba(99, 244, 202, 0.12);
   color: var(--text-high);
+}
+
+/* Layout cleanup for lobby/live room density and overflow */
+.page-shell {
+  padding-bottom: 9rem;
+}
+
+.chat-room-layout,
+.practice-grid,
+.content-grid,
+.hero,
+.play-hero,
+.room-live-header,
+.lobby-summary-grid,
+.score-row,
+.metrics-grid,
+.submit-panel {
+  min-width: 0;
+}
+
+.room-panel,
+.panel,
+.chat-feed,
+.room-players-strip,
+.player-list {
+  min-width: 0;
+}
+
+.room-panel {
+  overflow: hidden;
+}
+
+.chat-room-layout {
+  align-items: start;
+  grid-template-columns: minmax(0, 1.15fr) minmax(320px, 0.85fr);
+}
+
+.chat-feed {
+  overflow-x: hidden;
+  overscroll-behavior: contain;
+  padding-right: 0.35rem;
+  scrollbar-gutter: stable;
+}
+
+.chat-feed--lobby {
+  min-height: 260px;
+}
+
+.chat-bubble,
+.system-message,
+.empty-card {
+  width: 100%;
+}
+
+.chat-bubble {
+  max-width: min(100%, 34rem);
+}
+
+.chat-bubble__main,
+.room-panel__header,
+.compact-board__top,
+.lobby-readiness-card,
+.room-live-header,
+.room-topbar {
+  min-width: 0;
+}
+
+.chat-bubble__main {
+  flex-wrap: wrap;
+}
+
+.chat-bubble__word,
+.chat-bubble__reason,
+.player-identity__copy strong,
+.player-identity__copy span,
+.system-message,
+.tx-row p,
+.notice-strip {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.system-message {
+  max-width: min(100%, 32rem);
+  padding-inline: 1.1rem;
+}
+
+.room-players-strip {
+  padding-bottom: 0.9rem;
+}
+
+.lobby-summary-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.lobby-stat-card,
+.lobby-readiness-card,
+.notice-strip,
+.room-player-card {
+  border-radius: 20px;
+}
+
+.bottom-nav {
+  bottom: 16px;
+  max-width: 780px;
+}
+
+@media (max-width: 1100px) {
+  .chat-room-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 760px) {
+  .room-topbar__stats,
+  .room-live-header,
+  .room-panel__header,
+  .lobby-readiness-card {
+    grid-template-columns: 1fr;
+  }
+
+  .room-topbar,
+  .room-live-header,
+  .room-panel__header,
+  .lobby-readiness-card,
+  .compact-board__top {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .room-live-header__score,
+  .lobby-readiness-card__progress {
+    justify-items: start;
+    text-align: left;
+  }
+
+  .lobby-summary-grid,
+  .score-row,
+  .metrics-grid,
+  .submit-panel {
+    grid-template-columns: 1fr;
+  }
+
+  .bottom-nav {
+    width: calc(100% - 18px);
+  }
+}
+
+@media (max-width: 560px) {
+  .page-shell {
+    padding-inline: 0.85rem;
+    padding-bottom: 8.5rem;
+  }
+
+  .chat-bubble {
+    max-width: 100%;
+    padding: 0.85rem;
+  }
+
+  .chat-bubble__word {
+    width: 100%;
+    text-align: center;
+  }
+
+  .room-player-card {
+    min-width: 86%;
+  }
+
+  .bottom-nav {
+    border-radius: 20px;
+    padding: 0.35rem;
+  }
+
+  .bottom-nav__item {
+    min-height: 56px;
+    padding-inline: 0.35rem;
+  }
+
+  .bottom-nav__item span {
+    font-size: 0.62rem;
+    letter-spacing: 0.06em;
+  }
+}
+
+/* Enhanced premium dark arena system */
+:root {
+  --gray-300: #a0a8b8;
+  --gray-500: #6b7280;
+  --gray-700: #374151;
+  --space-xs: 4px;
+  --space-sm: 8px;
+  --space-md: 16px;
+  --space-lg: 24px;
+  --space-xl: 32px;
+  --touch-target: 44px;
+  --elevation-1: 0 2px 8px rgba(0, 0, 0, 0.3);
+  --elevation-2: 0 4px 16px rgba(0, 0, 0, 0.5);
+  --elevation-3: 0 8px 24px rgba(0, 0, 0, 0.6);
+  --elevation-4: 0 12px 32px rgba(0, 0, 0, 0.7);
+  --elevation-5: 0 16px 48px rgba(0, 0, 0, 0.8);
+  --glass-inner-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+body {
+  font-family: var(--font-ui);
+  letter-spacing: -0.2px;
+  line-height: 1.5;
+}
+
+button,
+.bottom-nav__item,
+.status-pill {
+  min-height: var(--touch-target);
+}
+
+button {
+  box-shadow: var(--elevation-3);
+}
+
+button:hover {
+  box-shadow:
+    var(--elevation-3),
+    0 0 16px rgba(255, 215, 0, 0.3);
+}
+
+.hero-copy,
+.hero-card,
+.panel,
+.play-hero,
+.results-sheet,
+.room-topbar,
+.room-live-header,
+.room-panel,
+.compact-board,
+.lobby-readiness-card,
+.player-row,
+.room-player-card,
+.leaderboard-table__row,
+.claim-card,
+.tx-row,
+.featured-stats__item,
+.achievement-chip,
+.settings-row,
+.metric-card,
+.rules-card,
+.wallet-status,
+.wallet-chip,
+.feature-pill,
+.score-badge,
+.empty-card,
+.word-chip,
+.system-message,
+.submit-panel--sticky {
+  box-shadow:
+    var(--elevation-3),
+    var(--glass-inner-shadow);
+}
+
+.room-topbar,
+.room-live-header,
+.bottom-nav {
+  box-shadow:
+    var(--elevation-4),
+    var(--glass-inner-shadow);
+}
+
+.hero-copy h1,
+.play-hero h1,
+.room-topbar h1 {
+  letter-spacing: 0.5px;
+}
+
+.panel h3,
+.rules-card h4,
+.results-sheet h2,
+.compact-board__top strong,
+.claim-card__amount {
+  letter-spacing: 0.1px;
+}
+
+.lede,
+.panel p,
+.panel li,
+.results-sheet p,
+.room-panel__header p,
+.profile-subtitle,
+.claim-card__copy,
+.tx-row p,
+.metric-card p,
+.leaderboard-table__stats span,
+.system-message small,
+.typing-indicator,
+.player-row p,
+.wallet-panel__copy label,
+.field-hint,
+.wallet-status,
+.hero-card__grid,
+.hero-card__grid span,
+.room-player-card__meta,
+.chat-bubble__reason,
+.chat-bubble__time,
+.player-identity__copy span,
+.room-live-header__meta span,
+.leaderboard-points small {
+  color: var(--gray-300);
+}
+
+button:disabled,
+.button-secondary:disabled,
+.ghost-button:disabled {
+  color: var(--gray-500);
+}
+
+.status-pill {
+  align-items: center;
+  border-radius: 999px;
+  display: inline-flex;
+  font-family: var(--font-display);
+  font-size: 0.74rem;
+  font-weight: 700;
+  justify-content: center;
+  letter-spacing: 0.12em;
+  padding: 0.45rem 0.8rem;
+  text-transform: uppercase;
+}
+
+.status-pill--live {
+  animation: livePulse 1.5s ease-in-out infinite;
+  background: rgba(99, 244, 202, 0.12);
+  border: 1px solid rgba(99, 244, 202, 0.28);
+  color: var(--accent-cyan);
+}
+
+.status-pill--warn {
+  background: rgba(255, 154, 138, 0.12);
+  border: 1px solid rgba(255, 154, 138, 0.28);
+  color: #ffd5cd;
+}
+
+.status-pill--idle {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(130, 152, 235, 0.18);
+  color: var(--gray-500);
+}
+
+.live-score,
+.data-highlight {
+  font-family: var(--font-mono);
+  letter-spacing: 0;
+  line-height: 1.2;
+}
+
+.live-score {
+  animation: scoreGlow 400ms ease-out;
+  display: inline-block;
+  transform-origin: center;
+}
+
+.room-live-header__score .live-score,
+.score-badge .live-score,
+.leaderboard-points .live-score {
+  font-size: clamp(1.05rem, 2vw, 1.25rem);
+  font-weight: 700;
+}
+
+.notice-strip {
+  border-left: 4px solid transparent;
+}
+
+.notice-strip--success {
+  border-left-color: var(--accent-cyan);
+}
+
+.notice-strip--error {
+  border-left-color: var(--accent-coral-deep);
+}
+
+.notice-strip--neutral {
+  border-left-color: var(--gray-700);
+}
+
+.chat-bubble {
+  animation: chatSlideIn 250ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.chat-bubble--rejected {
+  border-left: 4px solid var(--accent-coral-deep);
+}
+
+.room-topbar__stats span,
+.wallet-chip,
+.feature-pill,
+.claim-meta-chip span,
+.score-badge span,
+.metric-card span,
+.room-live-header__score small,
+.leaderboard-table__rank,
+.leaderboard-points small,
+.lobby-readiness-card__label {
+  color: var(--accent-cyan);
+}
+
+@keyframes livePulse {
+  0% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.6;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+@keyframes chatSlideIn {
+  0% {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes scoreGlow {
+  0% {
+    transform: scale(1);
+    text-shadow: 0 0 0 rgba(255, 215, 0, 0);
+  }
+  45% {
+    transform: scale(1.2);
+    text-shadow: 0 0 16px rgba(255, 215, 0, 0.32);
+  }
+  100% {
+    transform: scale(1);
+    text-shadow: 0 0 0 rgba(255, 215, 0, 0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .status-pill--live,
+  .chat-bubble,
+  .live-score,
+  button,
+  .letter-tile--interactive {
+    animation: none !important;
+    transition: none !important;
+    transform: none !important;
+  }
+}
+
+/* Achievement readability tune */
+.achievement-chip {
+  background: linear-gradient(180deg, rgba(17, 24, 44, 0.94), rgba(10, 14, 26, 0.98));
+  border-color: rgba(110, 139, 255, 0.18);
+}
+
+.achievement-chip span {
+  color: #8fd8ff;
+}
+
+.achievement-chip strong {
+  color: #e7eefc;
+  font-size: 0.95rem;
+}
+
+.achievement-chip--locked {
+  opacity: 0.82;
+}
+
+.achievement-chip--locked span {
+  color: #94a3b8;
+}
+
+.achievement-chip--locked strong {
+  color: #c7d2e6;
 }
