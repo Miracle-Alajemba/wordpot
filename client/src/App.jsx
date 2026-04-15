@@ -4,6 +4,25 @@ import {
   getWordScore,
   normalizeWord,
 } from "./game.js";
+import {
+  ChatMessage,
+  MetricCard,
+  PlayerIdentity,
+  RoomPlayersStrip,
+  ScoreBadge,
+  TimerTone,
+} from "./components/ui/game-ui.jsx";
+import { AppBottomNav } from "./components/ui/navigation.jsx";
+import {
+  LeaderboardScreen,
+  ProfileScreen,
+  SettingsScreen,
+} from "./components/screens/meta-screens.jsx";
+import {
+  getPlayerAlias,
+  isWalletAddress,
+  shortenWalletAddress,
+} from "./utils/ui-helpers.js";
 
 const ROUND_SECONDS = 60;
 const API_BASE_URL =
@@ -21,34 +40,6 @@ const GAME_RULES = [
   "90% of the pot is shared by score",
   "Practice mode is free while we build multiplayer",
 ];
-
-function ScoreBadge({ label, value }) {
-  return (
-    <div className="score-badge">
-      <span>{label}</span>
-      <strong className="live-score">{value}</strong>
-    </div>
-  );
-}
-
-function MetricCard({ label, value, hint }) {
-  return (
-    <div className="metric-card">
-      <span>{label}</span>
-      <strong className="data-highlight">{value}</strong>
-      {hint ? <p>{hint}</p> : null}
-    </div>
-  );
-}
-
-function shortenWalletAddress(value) {
-  if (!value) return "--";
-  return `${value.slice(0, 6)}...${value.slice(-4)}`;
-}
-
-function isWalletAddress(value) {
-  return /^0x[a-fA-F0-9]{40}$/.test(String(value || "").trim());
-}
 
 function getInjectedProvider() {
   if (typeof window === "undefined") return null;
@@ -148,26 +139,6 @@ function getNetworkLabel(chainId) {
   return `Chain ${normalized}`;
 }
 
-function getPlayerAlias(walletAddress, fallbackIndex = 1) {
-  const short = shortenWalletAddress(walletAddress);
-  if (!walletAddress) return `Player ${fallbackIndex}`;
-  return `Player ${short.slice(2, 6).toUpperCase()}`;
-}
-
-function getAvatarSeed(walletAddress = "") {
-  return walletAddress
-    .slice(2, 8)
-    .split("")
-    .reduce((sum, char) => sum + char.charCodeAt(0), 0);
-}
-
-function getAvatarStyle(walletAddress = "") {
-  const hue = getAvatarSeed(walletAddress) % 360;
-  return {
-    background: `linear-gradient(135deg, hsl(${hue} 55% 78%), hsl(${(hue + 36) % 360} 48% 68%))`,
-  };
-}
-
 function getSyncStatusMeta(syncStatus) {
   if (syncStatus === "live") {
     return {
@@ -189,423 +160,9 @@ function getSyncStatusMeta(syncStatus) {
   };
 }
 
-function formatRoomTimer(seconds) {
-  const safe = Math.max(0, Number(seconds || 0));
-  const mins = Math.floor(safe / 60);
-  const secs = safe % 60;
-  return `${mins}:${String(secs).padStart(2, "0")}`;
-}
-
-function formatEventTime(value) {
-  if (!value) return "--:--";
-
-  return new Intl.DateTimeFormat([], {
-    hour: "numeric",
-    minute: "2-digit",
-  }).format(new Date(value));
-}
-
 function buildWordFromSelection(sourceWord, selectedIndexes) {
   const letters = String(sourceWord || "").split("");
   return selectedIndexes.map((index) => letters[index] || "").join("").toLowerCase();
-}
-
-function TimerTone({ seconds }) {
-  const safe = Math.max(0, Number(seconds || 0));
-  const className =
-    safe <= 10 ? "timer-pill timer-pill--late" : safe <= 25 ? "timer-pill timer-pill--warning" : "timer-pill";
-
-  return (
-    <div className={className}>
-      <span>{formatRoomTimer(safe)}</span>
-      <small>remaining</small>
-    </div>
-  );
-}
-
-function PlayerIdentity({ walletAddress, emphasis = false }) {
-  return (
-    <div className="player-identity">
-      <span className={`player-avatar ${emphasis ? "player-avatar--large" : ""}`} style={getAvatarStyle(walletAddress)}>
-        {walletAddress?.slice(2, 4).toUpperCase() || "WP"}
-      </span>
-      <div className="player-identity__copy">
-        <strong>{getPlayerAlias(walletAddress)}</strong>
-        <span>{shortenWalletAddress(walletAddress)}</span>
-      </div>
-    </div>
-  );
-}
-
-function RoomPlayersStrip({ players = [], scoreboard = [], playerId }) {
-  const scoreLookup = new Map(scoreboard.map((entry) => [entry.playerId, entry]));
-
-  return (
-    <div className="room-players-strip" aria-label="Players in room">
-      {players.map((player, index) => {
-        const scoreEntry = scoreLookup.get(player.id);
-        const isCurrentPlayer = player.id === playerId;
-        return (
-          <article key={player.id} className={`room-player-card ${isCurrentPlayer ? "room-player-card--self" : ""}`}>
-            <PlayerIdentity walletAddress={player.walletAddress} />
-            <div className="room-player-card__meta">
-              <span>{scoreEntry?.score || 0} pts</span>
-              <small>{scoreEntry?.wordsFound || 0} words</small>
-            </div>
-            {isCurrentPlayer ? <span className="self-pill">You</span> : null}
-            {index === 0 ? <span className="host-pill">Host</span> : null}
-            {player.joinPaid ? <span className="host-pill">Paid</span> : null}
-          </article>
-        );
-      })}
-    </div>
-  );
-}
-
-function ChatMessage({ entry, isOwnMessage }) {
-  if (entry.type === "system") {
-    return (
-      <div className="system-message">
-        <span className="system-message__icon">+</span>
-        <div>
-          <strong>[System]</strong> {entry.message}
-        </div>
-        <small>{formatEventTime(entry.createdAt)}</small>
-      </div>
-    );
-  }
-
-  const accepted = entry.status === "accepted";
-  const rejectionLabel =
-    entry.reason === "Already used"
-      ? "Duplicate"
-      : entry.reason === "Invalid word"
-        ? "Not a valid word"
-        : entry.reason || "Rejected";
-
-  return (
-    <article className={`chat-bubble ${isOwnMessage ? "chat-bubble--self" : ""} ${accepted ? "chat-bubble--accepted" : "chat-bubble--rejected"}`}>
-      <PlayerIdentity walletAddress={entry.walletAddress} emphasis />
-      <div className="chat-bubble__main">
-        <span className={`chat-bubble__word ${accepted ? "" : "chat-bubble__word--muted"}`}>
-          {entry.word || "(empty)"}
-        </span>
-        <div className="chat-bubble__meta">
-          <span className={`chat-bubble__points ${accepted ? "" : "chat-bubble__points--muted"}`}>
-            {accepted ? `+${entry.score} pts` : entry.reason === "Already used" ? "Already used" : "0 pts"}
-          </span>
-          <span className={`validation-badge ${accepted ? "validation-badge--ok" : "validation-badge--bad"}`}>
-            {accepted ? "✓" : "✕"}
-          </span>
-        </div>
-      </div>
-      {!accepted ? <p className="chat-bubble__reason">{rejectionLabel}</p> : null}
-      <small className="chat-bubble__time">{formatEventTime(entry.createdAt)}</small>
-    </article>
-  );
-}
-
-function Icon({ name }) {
-  const common = {
-    fill: "none",
-    stroke: "currentColor",
-    strokeLinecap: "round",
-    strokeLinejoin: "round",
-    strokeWidth: "1.8",
-    viewBox: "0 0 24 24",
-  };
-
-  const paths = {
-    home: (
-      <>
-        <path d="M4 10.5 12 4l8 6.5" />
-        <path d="M6.5 9.5V20h11V9.5" />
-      </>
-    ),
-    profile: (
-      <>
-        <circle cx="12" cy="8" r="3.2" />
-        <path d="M6 19c1.2-3 3.4-4.5 6-4.5s4.8 1.5 6 4.5" />
-      </>
-    ),
-    leaderboard: (
-      <>
-        <path d="M6 19V10" />
-        <path d="M12 19V6" />
-        <path d="M18 19v-8" />
-      </>
-    ),
-    settings: (
-      <>
-        <circle cx="12" cy="12" r="3.2" />
-        <path d="m19 12 1.5-.7-.8-2-1.7.1a6.8 6.8 0 0 0-1.1-1.2l.2-1.7-2-1-1 1.4a6.5 6.5 0 0 0-1.6 0l-1-1.4-2 1 .2 1.7c-.4.3-.8.7-1.1 1.2l-1.7-.1-.8 2L5 12l-.7 1.4.8 2 1.7-.1c.3.5.7.9 1.1 1.2l-.2 1.7 2 1 1-1.4c.5.1 1.1.1 1.6 0l1 1.4 2-1-.2-1.7c.4-.3.8-.7 1.1-1.2l1.7.1.8-2z" />
-      </>
-    ),
-    wallet: (
-      <>
-        <path d="M4.5 8.5h13a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2h-13a2 2 0 0 1-2-2v-6a2 2 0 0 1 2-2Z" />
-        <path d="M6 8V7a2 2 0 0 1 2-2h9" />
-        <circle cx="16.5" cy="13.5" r="0.8" fill="currentColor" stroke="none" />
-      </>
-    ),
-    chat: (
-      <>
-        <path d="M5 18.5 4 21l3.1-1.8H18a2 2 0 0 0 2-2V7.8a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8.4a2 2 0 0 0 1 1.7Z" />
-      </>
-    ),
-  };
-
-  return <svg aria-hidden="true" {...common}>{paths[name] || paths.home}</svg>;
-}
-
-function AppBottomNav({ screen, onNavigate, walletAddress, onWalletAction }) {
-  const items = [
-    { id: "home", label: "Home", icon: "home" },
-    { id: "leaderboard", label: "Leaderboard", icon: "leaderboard" },
-    { id: "profile", label: "Profile", icon: "profile" },
-  ];
-
-  return (
-    <nav className="bottom-nav" aria-label="Primary">
-      {items.map((item) => (
-        <button
-          key={item.id}
-          type="button"
-          className={`bottom-nav__item ${screen === item.id ? "bottom-nav__item--active" : ""}`}
-          onClick={() => onNavigate(item.id)}
-        >
-          <Icon name={item.icon} />
-          <span>{item.label}</span>
-        </button>
-      ))}
-
-      <button type="button" className="bottom-nav__item" onClick={onWalletAction}>
-        <Icon name="wallet" />
-        <span>{walletAddress ? shortenWalletAddress(walletAddress) : "Wallet"}</span>
-      </button>
-    </nav>
-  );
-}
-
-function LeaderboardScreen({ room, onQuickMatch, onBack }) {
-  const [entries, setEntries] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-
-  useEffect(() => {
-    let active = true;
-
-    async function loadLeaderboard() {
-      try {
-        setLoading(true);
-        setError("");
-
-        const response = await fetch(`${API_BASE_URL}/leaderboard`);
-        const data = await response.json();
-
-        if (!response.ok) {
-          throw new Error(data.error || "Unable to load leaderboard.");
-        }
-
-        if (!active) return;
-        setEntries(data.entries || []);
-      } catch (leaderboardError) {
-        if (!active) return;
-
-        if (room?.scoreboard?.length) {
-          setEntries(
-            room.scoreboard.map((entry, index) => ({
-              rank: index + 1,
-              walletAddress: entry.walletAddress,
-              score: entry.score,
-              wordsFound: entry.wordsFound,
-              gamesPlayed: 1,
-              wins: index === 0 && entry.score > 0 ? 1 : 0,
-            })),
-          );
-          setError("Showing the current room leaderboard while the server feed catches up.");
-        } else {
-          setEntries([]);
-          setError(leaderboardError.message || "Unable to load leaderboard.");
-        }
-      } finally {
-        if (active) {
-          setLoading(false);
-        }
-      }
-    }
-
-    loadLeaderboard();
-    return () => {
-      active = false;
-    };
-  }, [room]);
-
-  return (
-    <main className="page-shell">
-      <section className="play-shell">
-        <div className="play-header">
-          <button type="button" className="ghost-button" onClick={onBack}>Back</button>
-          <p className="eyebrow">Community Leaderboard</p>
-        </div>
-
-        <section className="profile-shell">
-          <article className="panel profile-panel profile-panel--hero">
-            <div>
-              <h1 className="profile-title">Leaderboard</h1>
-              <p className="profile-subtitle">See who is shaping the cleanest runs and sharpest word streaks.</p>
-            </div>
-            <button type="button" onClick={onQuickMatch}>Join Game</button>
-          </article>
-
-          <article className="panel profile-panel">
-            <div className="room-panel__header">
-              <div>
-                <h3>Top Players</h3>
-                <p>Live ranking from current and recent arena sessions.</p>
-              </div>
-            </div>
-            {error ? <div className="notice-strip notice-strip--neutral">{error}</div> : null}
-            {loading ? (
-              <div className="empty-card">Loading leaderboard...</div>
-            ) : entries.length ? (
-              <div className="leaderboard-table">
-                {entries.map((entry, index) => (
-                  <div key={`${entry.walletAddress}-${entry.rank || index}`} className={`leaderboard-table__row ${index === 0 ? "leaderboard-table__row--top" : ""}`}>
-                    <div className="leaderboard-table__rank">#{entry.rank || index + 1}</div>
-                    <PlayerIdentity walletAddress={entry.walletAddress} emphasis />
-                    <div className="leaderboard-table__stats">
-                      <strong>{entry.score} pts</strong>
-                      <span>{entry.wordsFound} words • {entry.wins || 0} wins</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="empty-card">No player results yet. Finish a live room and this board will update.</div>
-            )}
-          </article>
-        </section>
-      </section>
-    </main>
-  );
-}
-
-function ProfileScreen({ walletAddress, onConnectWallet, onBack }) {
-  const connected = isWalletAddress(walletAddress);
-  const alias = connected ? getPlayerAlias(walletAddress) : "Guest Player";
-  const achievements = ["First Win", "Clean Streak", "Sharp Eye", "Fast Fingers", "Word Artist", "Night Owl"];
-
-  return (
-    <main className="page-shell">
-      <section className="play-shell">
-        <div className="play-header">
-          <button type="button" className="ghost-button" onClick={onBack}>Back</button>
-          <p className="eyebrow">Profile</p>
-        </div>
-
-        <section className="profile-shell">
-          <article className="panel profile-panel profile-panel--hero">
-            <div className="profile-head">
-              <span className="profile-avatar" style={getAvatarStyle(walletAddress || "guest-wallet")}>
-                {(connected ? walletAddress.slice(2, 4) : "WP").toUpperCase()}
-              </span>
-              <div>
-                <h1 className="profile-title">{alias}</h1>
-                <p className="profile-subtitle">{connected ? shortenWalletAddress(walletAddress) : "Connect a wallet to personalise your profile."}</p>
-                <span className="rank-badge">Word Artist • Level 7</span>
-              </div>
-            </div>
-            {!connected ? <button type="button" onClick={onConnectWallet}>Connect Wallet</button> : null}
-          </article>
-
-          <article className="panel profile-panel">
-            <h3>Stats</h3>
-            <div className="profile-stats-grid">
-              <MetricCard label="Wins" value="18" hint="Lifetime arena wins" />
-              <MetricCard label="Streak" value="4" hint="Current win streak" />
-              <MetricCard label="Level" value="7" hint="Progression level" />
-              <MetricCard label="Earnings" value="$24.60" hint="Total rewards earned" />
-            </div>
-          </article>
-
-          <article className="panel profile-panel">
-            <div className="room-panel__header">
-              <div>
-                <h3>Achievements</h3>
-                <p>Soft milestones that unlock as you keep playing.</p>
-              </div>
-            </div>
-            <div className="achievement-grid">
-              {achievements.map((item, index) => (
-                <div key={item} className={`achievement-chip ${index > 3 ? "achievement-chip--locked" : ""}`}>
-                  <span>{index > 3 ? "◌" : "✦"}</span>
-                  <strong>{item}</strong>
-                </div>
-              ))}
-            </div>
-          </article>
-        </section>
-      </section>
-    </main>
-  );
-}
-
-function SettingsScreen({ settings, onToggle, onBack }) {
-  return (
-    <main className="page-shell">
-      <section className="play-shell">
-        <div className="play-header">
-          <button type="button" className="ghost-button" onClick={onBack}>Back</button>
-          <p className="eyebrow">Settings</p>
-        </div>
-
-        <section className="profile-shell">
-          <article className="panel profile-panel">
-            <h3>Sound & Haptics</h3>
-            <div className="settings-list">
-              <button type="button" className="settings-row" onClick={() => onToggle("sound")}>
-                <span>Sound effects</span>
-                <strong>{settings.sound ? "On" : "Off"}</strong>
-              </button>
-              <button type="button" className="settings-row" onClick={() => onToggle("haptics")}>
-                <span>Haptic feedback</span>
-                <strong>{settings.haptics ? "On" : "Off"}</strong>
-              </button>
-            </div>
-          </article>
-
-          <article className="panel profile-panel">
-            <h3>Display</h3>
-            <div className="settings-list">
-              <button type="button" className="settings-row" onClick={() => onToggle("highContrast")}>
-                <span>High contrast mode</span>
-                <strong>{settings.highContrast ? "Enabled" : "Disabled"}</strong>
-              </button>
-              <button type="button" className="settings-row" onClick={() => onToggle("largeText")}>
-                <span>Larger text</span>
-                <strong>{settings.largeText ? "Enabled" : "Disabled"}</strong>
-              </button>
-            </div>
-          </article>
-
-          <article className="panel profile-panel">
-            <h3>Privacy</h3>
-            <div className="settings-list">
-              <button type="button" className="settings-row" onClick={() => onToggle("showEarnings")}>
-                <span>Show earnings publicly</span>
-                <strong>{settings.showEarnings ? "Shown" : "Hidden"}</strong>
-              </button>
-              <button type="button" className="settings-row" onClick={() => onToggle("showRank")}>
-                <span>Show rank publicly</span>
-                <strong>{settings.showRank ? "Shown" : "Hidden"}</strong>
-              </button>
-            </div>
-          </article>
-        </section>
-      </section>
-    </main>
-  );
 }
 
 function HomeScreen({
@@ -613,6 +170,7 @@ function HomeScreen({
   onQuickMatch,
   onOpenLeaderboard,
   onOpenProfile,
+  onOpenSettings,
   walletAddress,
   walletStatus,
   walletReady,
@@ -622,6 +180,8 @@ function HomeScreen({
   onDisconnectWallet,
   walletHint,
   roomError,
+  darkMode,
+  onToggleTheme,
 }) {
   const joinLabel = !walletAddress
     ? "Connect Wallet to Join"
@@ -711,7 +271,13 @@ function HomeScreen({
         </div>
 
         <div className="hero-card">
-          <p className="hero-card__label">Sample round</p>
+          <div className="hero-card__top">
+            <p className="hero-card__label">Sample round</p>
+            <button type="button" className="theme-toggle theme-toggle--card" onClick={onToggleTheme} aria-label={`Switch to ${darkMode ? "light" : "dark"} mode`}>
+              <span className={`theme-toggle__option ${darkMode ? "theme-toggle__option--active" : ""}`}>Dark</span>
+              <span className={`theme-toggle__option ${!darkMode ? "theme-toggle__option--active" : ""}`}>Light</span>
+            </button>
+          </div>
           <h2>BLOCKCHAIN</h2>
           <div className="letter-rack">
             {"BLOCKCHAIN".split("").map((letter, index) => (
@@ -734,7 +300,11 @@ function HomeScreen({
               <button type="button" onClick={onConnectWallet}>
                 Connect Wallet
               </button>
-            ) : null}
+            ) : (
+              <button type="button" className="button-secondary" onClick={onOpenSettings}>
+                Display Settings
+              </button>
+            )}
           </div>
         </div>
       </section>
@@ -1694,6 +1264,7 @@ export default function App() {
   const [settings, setSettings] = useState({
     sound: true,
     haptics: true,
+    darkMode: true,
     highContrast: false,
     largeText: false,
     showEarnings: true,
@@ -2158,6 +1729,7 @@ export default function App() {
       onQuickMatch={handleHomeJoin}
       onOpenLeaderboard={() => setScreen("leaderboard")}
       onOpenProfile={() => setScreen("profile")}
+      onOpenSettings={() => setScreen("settings")}
       walletAddress={walletAddress}
       walletStatus={walletStatus}
       walletReady={walletReady}
@@ -2167,6 +1739,8 @@ export default function App() {
       onDisconnectWallet={disconnectWallet}
       walletHint={walletHint}
       roomError={roomError}
+      darkMode={settings.darkMode}
+      onToggleTheme={() => toggleSetting("darkMode")}
     />
   );
 
@@ -2213,6 +1787,7 @@ export default function App() {
   } else if (screen === "leaderboard") {
     content = (
       <LeaderboardScreen
+        apiBaseUrl={API_BASE_URL}
         room={room}
         onQuickMatch={handleQuickMatch}
         onBack={backHome}
@@ -2229,16 +1804,20 @@ export default function App() {
   }
 
   return (
-    <>
-      <div className={`${settings.largeText ? "app-text-scale" : ""} ${settings.highContrast ? "app-high-contrast" : ""}`.trim()}>
-        {content}
-      </div>
+    <div
+      className={[
+        settings.darkMode ? "app-dark-mode" : "app-light-mode",
+        settings.largeText ? "app-text-scale" : "",
+        settings.highContrast ? "app-high-contrast" : "",
+      ].filter(Boolean).join(" ")}
+    >
+      {content}
       <AppBottomNav
         screen={screen}
         onNavigate={setScreen}
         walletAddress={walletAddress}
         onWalletAction={walletAddress ? disconnectWallet : connectWallet}
       />
-    </>
+    </div>
   );
 }

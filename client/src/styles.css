@@ -189,6 +189,13 @@ button:disabled {
   padding: 2.2rem;
 }
 
+.hero-card__top {
+  align-items: flex-start;
+  display: flex;
+  gap: 1rem;
+  justify-content: space-between;
+}
+
 .eyebrow,
 .play-label,
 .hero-card__label {
@@ -236,13 +243,72 @@ button:disabled {
 .wallet-panel {
   display: grid;
   gap: 0.8rem;
-  margin-top: 1.15rem;
+  margin-top: 2.2rem;
   max-width: 520px;
 }
 
 .wallet-panel__copy {
   display: grid;
   gap: 0.35rem;
+}
+
+.appearance-row {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.8rem;
+  justify-content: space-between;
+  margin-top: 0.35rem;
+}
+
+.theme-toggle--card {
+  align-self: flex-start;
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(130, 152, 235, 0.18);
+  margin-left: auto;
+}
+
+.appearance-row__label {
+  color: var(--gray-300, #a0a8b8);
+  font-size: 0.84rem;
+  font-weight: 600;
+}
+
+.theme-toggle {
+  align-items: center;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(130, 152, 235, 0.18);
+  border-radius: 999px;
+  box-shadow: none;
+  color: var(--text-high, #f8fbff);
+  display: inline-flex;
+  gap: 0.3rem;
+  min-height: 44px;
+  padding: 0.3rem;
+}
+
+.theme-toggle:hover {
+  box-shadow: none;
+  transform: none;
+}
+
+.theme-toggle__option {
+  border-radius: 999px;
+  color: inherit;
+  font-family: var(--font-display);
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  min-width: 74px;
+  padding: 0.55rem 0.8rem;
+  text-align: center;
+  text-transform: uppercase;
+  transition: background 180ms ease, color 180ms ease, box-shadow 180ms ease;
+}
+
+.theme-toggle__option--active {
+  background: rgba(99, 244, 202, 0.16);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  color: #f8fbff;
 }
 
 .wallet-state-strip {
@@ -2466,6 +2532,16 @@ button:hover {
     padding-bottom: 8.5rem;
   }
 
+  .hero-card__top {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .theme-toggle--card {
+    margin-left: 0;
+    width: fit-content;
+  }
+
   .chat-bubble {
     max-width: 100%;
     padding: 0.85rem;
@@ -2789,4 +2865,226 @@ button:disabled,
 
 .achievement-chip--locked strong {
   color: #c7d2e6;
+}
+
+/* Theme mode overrides */
+.app-dark-mode {
+  color: var(--text-high);
+}
+
+.app-light-mode {
+  color: #1f2937;
+}
+
+.app-light-mode .hero-copy,
+.app-light-mode .hero-card,
+.app-light-mode .panel,
+.app-light-mode .play-hero,
+.app-light-mode .results-sheet,
+.app-light-mode .room-topbar,
+.app-light-mode .room-live-header,
+.app-light-mode .room-panel,
+.app-light-mode .compact-board,
+.app-light-mode .lobby-readiness-card,
+.app-light-mode .player-row,
+.app-light-mode .room-player-card,
+.app-light-mode .leaderboard-table__row,
+.app-light-mode .claim-card,
+.app-light-mode .tx-row,
+.app-light-mode .featured-stats__item,
+.app-light-mode .achievement-chip,
+.app-light-mode .settings-row,
+.app-light-mode .metric-card,
+.app-light-mode .rules-card,
+.app-light-mode .wallet-status,
+.app-light-mode .wallet-chip,
+.app-light-mode .feature-pill,
+.app-light-mode .score-badge,
+.app-light-mode .empty-card,
+.app-light-mode .word-chip,
+.app-light-mode .system-message,
+.app-light-mode .submit-panel--sticky {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.94), rgba(243, 246, 251, 0.96));
+  border-color: rgba(122, 159, 181, 0.18);
+  box-shadow:
+    0 12px 28px rgba(15, 23, 42, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.9);
+}
+
+.app-light-mode .hero-copy h1,
+.app-light-mode .play-hero h1,
+.app-light-mode .panel h3,
+.app-light-mode .rules-card h4,
+.app-light-mode .results-sheet h2,
+.app-light-mode .room-topbar h1,
+.app-light-mode .profile-title,
+.app-light-mode .hero-card h2,
+.app-light-mode .claim-card__amount,
+.app-light-mode .compact-board__top strong,
+.app-light-mode .wallet-panel__copy strong,
+.app-light-mode .metric-card strong,
+.app-light-mode .score-badge strong,
+.app-light-mode .player-row strong,
+.app-light-mode .tx-row strong,
+.app-light-mode .room-live-header__meta strong,
+.app-light-mode .room-live-header__score strong,
+.app-light-mode .claim-meta-chip strong,
+.app-light-mode .leaderboard-table__stats strong,
+.app-light-mode .lobby-readiness-card strong,
+.app-light-mode .featured-stats__item strong,
+.app-light-mode .player-identity__copy strong,
+.app-light-mode .achievement-chip strong {
+  color: #182235;
+  text-shadow: none;
+}
+
+.app-light-mode .lede,
+.app-light-mode .panel p,
+.app-light-mode .panel li,
+.app-light-mode .results-sheet p,
+.app-light-mode .room-panel__header p,
+.app-light-mode .profile-subtitle,
+.app-light-mode .claim-card__copy,
+.app-light-mode .tx-row p,
+.app-light-mode .metric-card p,
+.app-light-mode .leaderboard-table__stats span,
+.app-light-mode .system-message small,
+.app-light-mode .typing-indicator,
+.app-light-mode .player-row p,
+.app-light-mode .wallet-panel__copy label,
+.app-light-mode .field-hint,
+.app-light-mode .wallet-status,
+.app-light-mode .hero-card__grid,
+.app-light-mode .hero-card__grid span,
+.app-light-mode .room-player-card__meta,
+.app-light-mode .chat-bubble__reason,
+.app-light-mode .chat-bubble__time,
+.app-light-mode .player-identity__copy span,
+.app-light-mode .room-live-header__meta span,
+.app-light-mode .leaderboard-points small {
+  color: #5b677d;
+}
+
+.app-light-mode .room-topbar,
+.app-light-mode .room-live-header,
+.app-light-mode .bottom-nav {
+  background: linear-gradient(180deg, rgba(248, 250, 253, 0.96), rgba(239, 244, 249, 0.98));
+  border-color: rgba(122, 159, 181, 0.18);
+  box-shadow: 0 16px 32px rgba(15, 23, 42, 0.12);
+}
+
+.app-light-mode .room-topbar__stats span,
+.app-light-mode .wallet-chip,
+.app-light-mode .feature-pill,
+.app-light-mode .claim-meta-chip,
+.app-light-mode .validation-badge,
+.app-light-mode .system-message__icon,
+.app-light-mode .hero-card__grid span,
+.app-light-mode .word-preview,
+.app-light-mode .submit-panel input {
+  background: rgba(122, 159, 181, 0.08);
+  border-color: rgba(122, 159, 181, 0.18);
+  color: #213047;
+}
+
+.app-light-mode .chat-bubble {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(244, 247, 252, 0.98));
+  border-color: rgba(122, 159, 181, 0.18);
+}
+
+.app-light-mode .chat-bubble--self {
+  background: linear-gradient(180deg, rgba(232, 248, 241, 0.98), rgba(220, 242, 234, 0.98));
+}
+
+.app-light-mode .chat-bubble--rejected {
+  background: linear-gradient(180deg, rgba(253, 240, 238, 0.98), rgba(250, 231, 228, 0.98));
+}
+
+.app-light-mode .chat-bubble__word,
+.app-light-mode .word-preview,
+.app-light-mode .letter-tile,
+.app-light-mode .letter-tile--compact {
+  color: #172033;
+}
+
+.app-light-mode .letter-tile {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(233, 239, 247, 0.98));
+  border-color: rgba(122, 159, 181, 0.2);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.95),
+    0 8px 18px rgba(15, 23, 42, 0.08);
+}
+
+.app-light-mode .letter-tile--selected {
+  background: linear-gradient(180deg, rgba(189, 241, 224, 0.98), rgba(157, 223, 200, 0.98));
+  border-color: rgba(99, 244, 202, 0.42);
+}
+
+.app-light-mode .bottom-nav__item {
+  color: #52617d;
+}
+
+.app-light-mode .bottom-nav__item--active {
+  background: rgba(99, 244, 202, 0.14);
+  color: #182235;
+}
+
+.app-light-mode .status-pill--idle {
+  color: #6b7280;
+}
+
+/* Broader bottom navigation */
+.bottom-nav {
+  gap: 0.7rem;
+  max-width: 1040px;
+  padding: 0.55rem;
+  width: min(calc(100% - 28px), 1040px);
+}
+
+.bottom-nav__item {
+  padding: 0.75rem 0.8rem;
+}
+
+.bottom-nav__item span {
+  font-size: 0.74rem;
+  letter-spacing: 0.1em;
+}
+
+@media (max-width: 760px) {
+  .bottom-nav {
+    gap: 0.35rem;
+    width: calc(100% - 18px);
+  }
+}
+
+.app-light-mode .appearance-row__label {
+  color: #5b677d;
+}
+
+.app-light-mode .theme-toggle {
+  background: rgba(122, 159, 181, 0.08);
+  border-color: rgba(122, 159, 181, 0.18);
+  color: #213047;
+}
+
+.app-light-mode .theme-toggle__option--active {
+  background: rgba(99, 244, 202, 0.14);
+  color: #182235;
+}
+
+.app-light-mode .theme-toggle--card {
+  background: rgba(255, 255, 255, 0.88);
+}
+
+.app-light-mode .button-accent-blue {
+  background: linear-gradient(135deg, rgba(122, 159, 181, 0.16), rgba(99, 244, 202, 0.14));
+  border: 1px solid rgba(122, 159, 181, 0.24);
+  box-shadow: 0 10px 22px rgba(122, 159, 181, 0.14);
+  color: #163047;
+}
+
+.app-light-mode .button-accent-blue:hover {
+  box-shadow:
+    0 14px 28px rgba(122, 159, 181, 0.18),
+    0 0 12px rgba(122, 159, 181, 0.12);
 }
