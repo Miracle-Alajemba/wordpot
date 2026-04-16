@@ -3,6 +3,11 @@ export function shortenWalletAddress(value) {
   return `${value.slice(0, 6)}...${value.slice(-4)}`;
 }
 
+export function shortenHash(value) {
+  if (!value) return "--";
+  return `${value.slice(0, 10)}...${value.slice(-6)}`;
+}
+
 export function isWalletAddress(value) {
   return /^0x[a-fA-F0-9]{40}$/.test(String(value || "").trim());
 }
