@@ -15,25 +15,16 @@ import {
   SettingsScreen,
 } from "./components/screens/meta-screens.jsx";
 import {
+  API_BASE_URL,
+  CELO_MAINNET_CHAIN_ID,
+  GAME_RULES,
+  ROOM_SESSION_STORAGE_KEY,
+  WALLET_STORAGE_KEY,
+} from "./config/app-config.js";
+import {
   isWalletAddress,
   shortenWalletAddress,
 } from "./utils/ui-helpers.js";
-
-const API_BASE_URL =
-  import.meta.env.VITE_API_BASE_URL || "http://localhost:4000/api";
-const WALLET_STORAGE_KEY = "wordpot_connected_wallet";
-const ROOM_SESSION_STORAGE_KEY = "wordpot_room_session";
-const CELO_MAINNET_CHAIN_ID = 42220;
-
-
-const GAME_RULES = [
-  "Words must be at least 3 letters long",
-  "Use each letter only as many times as it appears",
-  "Every claimed word scores only once",
-  "Longer words earn bigger points",
-  "90% of the pot is shared by score",
-  "Practice mode is free while we build multiplayer",
-];
 
 function getInjectedProvider() {
   if (typeof window === "undefined") return null;
