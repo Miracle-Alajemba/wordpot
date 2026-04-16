@@ -604,6 +604,7 @@ export default function App() {
 
   let content = (
     <HomeScreen
+      gameRules={GAME_RULES}
       onStartPractice={() => setScreen("practice")}
       onQuickMatch={handleHomeJoin}
       onOpenLeaderboard={() => setScreen("leaderboard")}
