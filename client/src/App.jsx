@@ -18,112 +18,21 @@ import {
   API_BASE_URL,
   CELO_MAINNET_CHAIN_ID,
   GAME_RULES,
-  ROOM_SESSION_STORAGE_KEY,
-  WALLET_STORAGE_KEY,
 } from "./config/app-config.js";
+import { useWalletSession } from "./hooks/use-wallet-session.js";
 import {
   isWalletAddress,
   shortenWalletAddress,
 } from "./utils/ui-helpers.js";
+import {
+  clearRoomSession,
+  readRoomSession,
+  saveRoomSession,
+} from "./utils/room-session.js";
 
-function getInjectedProvider() {
-  if (typeof window === "undefined") return null;
-  return window.ethereum || null;
-}
-
-function parseChainId(value) {
-  if (!value) return null;
-  if (typeof value === "number") return value;
-  try {
-    return Number(BigInt(value));
-  } catch {
-    return Number(value) || null;
-  }
-}
-
-function toHexChainId(chainId) {
-  return `0x${Number(chainId).toString(16)}`;
-}
-
-function saveRoomSession(session) {
-  if (typeof window === "undefined") return;
-  window.localStorage.setItem(ROOM_SESSION_STORAGE_KEY, JSON.stringify(session));
-}
-
-function readRoomSession() {
-  if (typeof window === "undefined") return null;
-
-  try {
-    const raw = window.localStorage.getItem(ROOM_SESSION_STORAGE_KEY);
-    if (!raw) return null;
-
-    const parsed = JSON.parse(raw);
-    if (!parsed?.roomId || !parsed?.playerId || !parsed?.walletAddress) {
-      return null;
-    }
-
-    return parsed;
-  } catch {
-    return null;
-  }
-}
-
-function clearRoomSession() {
-  if (typeof window === "undefined") return;
-  window.localStorage.removeItem(ROOM_SESSION_STORAGE_KEY);
-}
-
-async function ensureCeloMainnet(provider, chainId = CELO_MAINNET_CHAIN_ID) {
-  const targetChainId = toHexChainId(chainId);
-  const currentChainId = await provider.request({ method: "eth_chainId" });
-
-  if (String(currentChainId).toLowerCase() === targetChainId.toLowerCase()) {
-    return;
-  }
-
-  try {
-    await provider.request({
-      method: "wallet_switchEthereumChain",
-      params: [{ chainId: targetChainId }],
-    });
-  } catch (error) {
-    if (error?.code !== 4902) {
-      throw error;
-    }
-
-    await provider.request({
-      method: "wallet_addEthereumChain",
-      params: [{
-        chainId: targetChainId,
-        chainName: "Celo Mainnet",
-        nativeCurrency: { name: "CELO", symbol: "CELO", decimals: 18 },
-        rpcUrls: ["https://forno.celo.org"],
-        blockExplorerUrls: ["https://celoscan.io"],
-      }],
-    });
-  }
-}
-
-function getWalletProviderName(provider) {
-  if (!provider) return "No wallet";
-  if (provider.isMiniPay) return "MiniPay";
-  if (provider.isMetaMask) return "MetaMask";
-  return "Injected wallet";
-}
-
-function getNetworkLabel(chainId) {
-  const normalized = parseChainId(chainId);
-  if (!normalized) return "Unknown network";
-  if (normalized === CELO_MAINNET_CHAIN_ID) return "Celo Mainnet";
-  if (normalized === 11142220) return "Celo Sepolia";
-  return `Chain ${normalized}`;
-}
 
 export default function App() {
   const [screen, setScreen] = useState("home");
-  const [walletAddress, setWalletAddress] = useState("");
-  const [walletStatus, setWalletStatus] = useState("");
-  const [walletChainId, setWalletChainId] = useState(null);
   const [room, setRoom] = useState(null);
   const [playerId, setPlayerId] = useState("");
   const [roomError, setRoomError] = useState("");
@@ -140,73 +49,30 @@ export default function App() {
     showEarnings: true,
     showRank: true,
   });
+  const {
+    walletAddress,
+    walletStatus,
+    walletChainId,
+    walletProviderName,
+    walletNetworkLabel,
+    walletReady,
+    connectWallet,
+    disconnectWallet,
+    ensureCeloMainnet,
+    parseChainId,
+    getInjectedProvider,
+    setWalletStatus,
+  } = useWalletSession();
 
   const walletHint = useMemo(() => {
     if (!walletAddress.trim()) return "";
     const valid = isWalletAddress(walletAddress.trim());
     return valid
-      ? parseChainId(walletChainId) === CELO_MAINNET_CHAIN_ID
+      ? walletReady
         ? `Room identity will show as ${shortenWalletAddress(walletAddress.trim())} and your wallet is ready for Celo mainnet play.`
         : `Room identity will show as ${shortenWalletAddress(walletAddress.trim())}. Switch to Celo Mainnet before paying to join a live room.`
       : "Connected account is not a valid EVM wallet address.";
-  }, [walletAddress, walletChainId]);
-  const walletProviderName = useMemo(
-    () => getWalletProviderName(getInjectedProvider()),
-    [],
-  );
-  const walletNetworkLabel = useMemo(
-    () => getNetworkLabel(walletChainId),
-    [walletChainId],
-  );
-  const walletReady = Boolean(walletAddress) && parseChainId(walletChainId) === CELO_MAINNET_CHAIN_ID;
-
-  useEffect(() => {
-    const storedWallet =
-      typeof window !== "undefined"
-        ? window.localStorage.getItem(WALLET_STORAGE_KEY) || ""
-        : "";
-
-    if (isWalletAddress(storedWallet)) {
-      setWalletAddress(storedWallet);
-      setWalletStatus("Using previously connected wallet.");
-    }
-
-    const provider = getInjectedProvider();
-    provider?.request?.({ method: "eth_chainId" })
-      .then((chainId) => setWalletChainId(parseChainId(chainId)))
-      .catch(() => {});
-
-    if (!provider?.on) return undefined;
-
-    function handleAccountsChanged(accounts) {
-      const nextWallet = accounts?.[0] || "";
-      if (isWalletAddress(nextWallet)) {
-        setWalletAddress(nextWallet);
-        setWalletStatus("Wallet changed.");
-        window.localStorage.setItem(WALLET_STORAGE_KEY, nextWallet);
-      } else {
-        setWalletAddress("");
-        setWalletStatus("Wallet disconnected.");
-        window.localStorage.removeItem(WALLET_STORAGE_KEY);
-      }
-    }
-
-    function handleChainChanged(chainId) {
-      const normalized = parseChainId(chainId);
-      setWalletChainId(normalized);
-      setWalletStatus(normalized === CELO_MAINNET_CHAIN_ID ? "Wallet ready on Celo Mainnet." : `Connected on ${getNetworkLabel(normalized)}.`);
-    }
-
-    provider.on("accountsChanged", handleAccountsChanged);
-    provider.on("chainChanged", handleChainChanged);
-
-    return () => {
-      if (provider.removeListener) {
-        provider.removeListener("accountsChanged", handleAccountsChanged);
-        provider.removeListener("chainChanged", handleChainChanged);
-      }
-    };
-  }, []);
+  }, [walletAddress, walletReady]);
 
   useEffect(() => {
     if (!isWalletAddress(walletAddress)) return undefined;
@@ -265,38 +131,6 @@ export default function App() {
     };
   }, [walletAddress, room?.id, playerId]);
 
-  async function connectWallet() {
-    const provider = getInjectedProvider();
-
-    if (!provider?.request) {
-      setWalletStatus("No injected wallet found. Open WordPot inside MiniPay or a wallet browser.");
-      return;
-    }
-
-    try {
-      setWalletStatus("Requesting wallet connection...");
-      const accounts = await provider.request({
-        method: "eth_requestAccounts",
-      });
-      const nextWallet = accounts?.[0] || "";
-
-      if (!isWalletAddress(nextWallet)) {
-        throw new Error("Connected account is not a valid wallet address.");
-      }
-
-      setWalletStatus("Wallet connected. Preparing Celo Mainnet...");
-      await ensureCeloMainnet(provider, CELO_MAINNET_CHAIN_ID);
-      const chainId = await provider.request({ method: "eth_chainId" });
-
-      setWalletAddress(nextWallet);
-      setWalletChainId(parseChainId(chainId));
-      setWalletStatus(`Ready on Celo Mainnet as ${shortenWalletAddress(nextWallet)}`);
-      window.localStorage.setItem(WALLET_STORAGE_KEY, nextWallet);
-    } catch (error) {
-      setWalletStatus(error.message || "Unable to connect wallet.");
-    }
-  }
-
   async function handleHomeJoin() {
     setRoomError("");
 
@@ -311,15 +145,6 @@ export default function App() {
     }
 
     await handleQuickMatch();
-  }
-
-  function disconnectWallet() {
-    setWalletAddress("");
-    setWalletChainId(null);
-    setWalletStatus("Wallet disconnected locally.");
-    if (typeof window !== "undefined") {
-      window.localStorage.removeItem(WALLET_STORAGE_KEY);
-    }
   }
 
   async function handleQuickMatch() {
