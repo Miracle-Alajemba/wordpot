@@ -1,34 +1,27 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import {
-  ChatMessage,
-} from "./components/ui/game-ui.jsx";
-import { AppBottomNav } from "./components/ui/navigation.jsx";
+import { AppBottomNav, ChatMessage } from "./components/ui/index.js";
 import {
   HomeScreen,
+  LeaderboardScreen,
   LobbyScreen,
   MatchRoomScreen,
-} from "./components/screens/game-screens.jsx";
-import { PracticeScreen } from "./components/screens/practice-screen.jsx";
-import {
-  LeaderboardScreen,
+  PracticeScreen,
   ProfileScreen,
   SettingsScreen,
-} from "./components/screens/meta-screens.jsx";
+} from "./components/screens/index.js";
 import {
   API_BASE_URL,
   CELO_MAINNET_CHAIN_ID,
   GAME_RULES,
-} from "./config/app-config.js";
-import { useWalletSession } from "./hooks/use-wallet-session.js";
-import {
-  isWalletAddress,
-  shortenWalletAddress,
-} from "./utils/ui-helpers.js";
+} from "./config/index.js";
+import { useWalletSession } from "./hooks/index.js";
 import {
   clearRoomSession,
+  isWalletAddress,
   readRoomSession,
   saveRoomSession,
-} from "./utils/room-session.js";
+  shortenWalletAddress,
+} from "./utils/index.js";
 
 
 export default function App() {
