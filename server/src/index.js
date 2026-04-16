@@ -12,7 +12,8 @@ const MIN_PLAYERS = 2;
 const MAX_PLAYERS = 5;
 const ROUND_SECONDS = 60;
 const TREASURY_WALLET = process.env.TREASURY_WALLET || "0x0000000000000000000000000000000000000000";
-const WORDPOT_CONTRACT_ADDRESS = process.env.WORDPOT_CONTRACT_ADDRESS || "";
+const LEXMASH_CONTRACT_ADDRESS =
+  process.env.LEXMASH_CONTRACT_ADDRESS || process.env.WORDPOT_CONTRACT_ADDRESS || "";
 const CELO_CHAIN_ID = Number(process.env.CELO_CHAIN_ID || 42220);
 const JOIN_PAYMENT_WEI = process.env.JOIN_PAYMENT_WEI || "1000000000000000";
 const JOIN_PAYMENT_DISPLAY = process.env.JOIN_PAYMENT_DISPLAY || "0.001 CELO";
@@ -158,10 +159,10 @@ function getRoomSummary(room) {
     onchain: {
       chainId: CELO_CHAIN_ID,
       treasuryWallet: TREASURY_WALLET,
-      contractAddress: WORDPOT_CONTRACT_ADDRESS,
+      contractAddress: LEXMASH_CONTRACT_ADDRESS,
       joinPaymentWei: JOIN_PAYMENT_WEI,
       joinPaymentDisplay: JOIN_PAYMENT_DISPLAY,
-      payoutMode: isWalletAddress(WORDPOT_CONTRACT_ADDRESS) ? "contract_claim" : "treasury_beta",
+      payoutMode: isWalletAddress(LEXMASH_CONTRACT_ADDRESS) ? "contract_claim" : "treasury_beta",
       joinTransactions: room.joinTransactions || [],
       claimTransactions: room.claimTransactions || [],
       paidPlayersCount: getPaidPlayerIds(room).size,
@@ -255,14 +256,14 @@ function getValidatedPlayerOrError(room, playerId, walletAddress, res) {
 app.get("/api/health", (_req, res) => {
   res.json({
     status: "ok",
-    service: "wordpot-server",
+    service: "lexmash-server",
     timestamp: new Date().toISOString(),
   });
 });
 
 app.get("/api/meta", (_req, res) => {
   res.json({
-    name: "WordPot",
+    name: "LexMash",
     entryFee: ENTRY_FEE,
     roundDurationSeconds: 60,
     minPlayers: MIN_PLAYERS,
@@ -271,10 +272,10 @@ app.get("/api/meta", (_req, res) => {
     onchain: {
       chainId: CELO_CHAIN_ID,
       treasuryWallet: TREASURY_WALLET,
-      contractAddress: WORDPOT_CONTRACT_ADDRESS,
+      contractAddress: LEXMASH_CONTRACT_ADDRESS,
       joinPaymentWei: JOIN_PAYMENT_WEI,
       joinPaymentDisplay: JOIN_PAYMENT_DISPLAY,
-      payoutMode: isWalletAddress(WORDPOT_CONTRACT_ADDRESS) ? "contract_claim" : "treasury_beta",
+      payoutMode: isWalletAddress(LEXMASH_CONTRACT_ADDRESS) ? "contract_claim" : "treasury_beta",
     },
   });
 });
@@ -550,5 +551,5 @@ function shortenAddress(value) {
 }
 
 app.listen(port, () => {
-  console.log(`WordPot server listening on http://localhost:${port}`);
+  console.log(`LexMash server listening on http://localhost:${port}`);
 });
