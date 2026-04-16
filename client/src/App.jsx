@@ -46,6 +46,8 @@ export default function App() {
     walletAddress,
     walletStatus,
     walletChainId,
+    hasInjectedProvider,
+    isMiniPay,
     walletProviderName,
     walletNetworkLabel,
     walletReady,
@@ -66,6 +68,29 @@ export default function App() {
         : `Room identity will show as ${shortenWalletAddress(walletAddress.trim())}. Switch to Celo Mainnet before paying to join a live room.`
       : "Connected account is not a valid EVM wallet address.";
   }, [walletAddress, walletReady]);
+  const walletConnectLabel = useMemo(() => {
+    if (walletAddress) {
+      return walletReady ? "Reconnect Wallet" : "Switch to Celo";
+    }
+
+    if (isMiniPay) return "Connect MiniPay";
+    return "Connect Wallet";
+  }, [isMiniPay, walletAddress, walletReady]);
+  const walletEnvironmentHint = useMemo(() => {
+    if (isMiniPay) {
+      return "MiniPay is available in this session, so room payments can stay fully inside the wallet flow.";
+    }
+
+    if (hasInjectedProvider) {
+      return "Another wallet is available here. The app still works, but MiniPay gives the cleanest join-and-pay experience.";
+    }
+
+    return "Open WordPot inside MiniPay to test the real Celo wallet flow from connection to room payment.";
+  }, [hasInjectedProvider, isMiniPay]);
+  const paymentProviderLabel = useMemo(() => {
+    if (isMiniPay) return "Pay with MiniPay";
+    return "Pay";
+  }, [isMiniPay]);
 
   useEffect(() => {
     if (!isWalletAddress(walletAddress)) return undefined;
@@ -257,7 +282,11 @@ export default function App() {
     try {
       setPaymentBusy(true);
       setRoomError("");
-      setRoomMessage("Confirm the entry payment in your wallet...");
+      setRoomMessage(
+        isMiniPay
+          ? "MiniPay will ask you to confirm the room entry payment."
+          : "Confirm the entry payment in your wallet...",
+      );
 
       await ensureCeloMainnet(provider, room?.onchain?.chainId || CELO_MAINNET_CHAIN_ID);
 
@@ -290,7 +319,11 @@ export default function App() {
       }
 
       setRoom(recordData.room);
-      setRoomMessage("Entry confirmed. Your seat is now locked in.");
+      setRoomMessage(
+        isMiniPay
+          ? "MiniPay payment confirmed. Your seat is now locked in."
+          : "Entry confirmed. Your seat is now locked in.",
+      );
     } catch (error) {
       setRoomError(error.message || "Unable to complete the onchain join payment.");
     } finally {
@@ -424,6 +457,10 @@ export default function App() {
       walletReady={walletReady}
       walletProviderName={walletProviderName}
       walletNetworkLabel={walletNetworkLabel}
+      walletConnectLabel={walletConnectLabel}
+      walletEnvironmentHint={walletEnvironmentHint}
+      isMiniPay={isMiniPay}
+      hasInjectedProvider={hasInjectedProvider}
       onConnectWallet={connectWallet}
       onDisconnectWallet={disconnectWallet}
       walletHint={walletHint}
@@ -453,6 +490,7 @@ export default function App() {
         onPayEntryFee={payEntryFeeOnchain}
         paymentBusy={paymentBusy}
         onBack={backHome}
+        paymentProviderLabel={paymentProviderLabel}
       />
     );
   } else if (screen === "match-room") {

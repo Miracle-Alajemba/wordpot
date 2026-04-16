@@ -48,6 +48,10 @@ export function HomeScreen({
   walletReady,
   walletProviderName,
   walletNetworkLabel,
+  walletConnectLabel,
+  walletEnvironmentHint,
+  isMiniPay,
+  hasInjectedProvider,
   onConnectWallet,
   onDisconnectWallet,
   walletHint,
@@ -56,7 +60,7 @@ export function HomeScreen({
   onToggleTheme,
 }) {
   const joinLabel = !walletAddress
-    ? "Connect Wallet to Join"
+    ? walletConnectLabel || "Connect Wallet to Join"
     : walletReady
       ? "Join Game"
       : "Switch to Celo to Join";
@@ -92,6 +96,14 @@ export function HomeScreen({
             </div>
           ) : null}
 
+          <div className={`notice-strip ${isMiniPay ? "notice-strip--success" : "notice-strip--neutral"}`}>
+            {hasInjectedProvider
+              ? isMiniPay
+                ? "MiniPay detected. Wallet connect, room entry, and live join payments can happen in one flow."
+                : walletEnvironmentHint || "A wallet provider is available. For the smoothest onchain room flow, use MiniPay on Celo Mainnet."
+              : "No wallet provider found yet. Open WordPot inside MiniPay for the cleanest join-and-pay flow."}
+          </div>
+
           <div className="wallet-panel">
             <div className="wallet-panel__copy">
               <label>Wallet sign in</label>
@@ -114,7 +126,7 @@ export function HomeScreen({
             </div>
             <div className="wallet-panel__actions">
               <button type="button" onClick={onConnectWallet}>
-                {walletAddress ? (walletReady ? "Reconnect Wallet" : "Switch to Celo") : "Connect Wallet"}
+                {walletAddress ? (walletReady ? "Reconnect Wallet" : "Switch to Celo") : walletConnectLabel || "Connect Wallet"}
               </button>
               {walletAddress ? (
                 <button
@@ -248,6 +260,7 @@ export function LobbyScreen({
   onPayEntryFee,
   paymentBusy,
   onBack,
+  paymentProviderLabel,
 }) {
   const syncMeta = getSyncStatusMeta(syncStatus);
   const isHost = room?.hostPlayerId === playerId;
@@ -369,7 +382,7 @@ export function LobbyScreen({
                 onClick={onPayEntryFee}
                 disabled={paymentBusy || hasPaid}
               >
-                {paymentBusy ? "Processing..." : hasPaid ? "Entry Paid" : `Pay ${joinPayment}`}
+                {paymentBusy ? "Processing..." : hasPaid ? "Entry Paid" : `${paymentProviderLabel || "Pay"} ${joinPayment}`}
               </button>
               <button
                 type="button"
@@ -629,18 +642,11 @@ export function MatchRoomScreen({
             </section>
 
             <form className="submit-panel submit-panel--sticky" onSubmit={handleSubmit}>
-              <input
-                type="text"
-                value={selectedWord}
-                onChange={(event) => {
-                  setDraftWord(event.target.value);
-                  setSelectedIndexes([]);
-                }}
-                placeholder="Tap letters or type your word"
-                autoComplete="off"
-                spellCheck="false"
-                disabled={timeLeft === 0}
-              />
+              <div className="submit-panel__locked" aria-live="polite">
+                <span className="submit-panel__locked-label">Live room input</span>
+                <strong>{selectedWord ? selectedWord.toUpperCase() : "Tap letters to build your word"}</strong>
+                <small>Typing is disabled in multiplayer rooms to keep word entry fair for everyone.</small>
+              </div>
               <button type="button" className="button-secondary" onClick={clearSelection}>
                 Clear
               </button>

@@ -74,10 +74,13 @@ export function useWalletSession() {
   const [walletAddress, setWalletAddress] = useState("");
   const [walletStatus, setWalletStatus] = useState("");
   const [walletChainId, setWalletChainId] = useState(null);
+  const provider = useMemo(() => getInjectedProvider(), []);
+  const isMiniPay = Boolean(provider?.isMiniPay);
+  const hasInjectedProvider = Boolean(provider?.request);
 
   const walletProviderName = useMemo(
-    () => getWalletProviderName(getInjectedProvider()),
-    [],
+    () => getWalletProviderName(provider),
+    [provider],
   );
   const walletNetworkLabel = useMemo(
     () => getNetworkLabel(walletChainId),
@@ -96,9 +99,22 @@ export function useWalletSession() {
       setWalletStatus("Using previously connected wallet.");
     }
 
-    const provider = getInjectedProvider();
     provider?.request?.({ method: "eth_chainId" })
       .then((chainId) => setWalletChainId(parseChainId(chainId)))
+      .catch(() => {});
+
+    provider?.request?.({ method: "eth_accounts" })
+      .then((accounts) => {
+        const nextWallet = accounts?.[0] || "";
+        if (!isWalletAddress(nextWallet)) return;
+        setWalletAddress(nextWallet);
+        window.localStorage.setItem(WALLET_STORAGE_KEY, nextWallet);
+        setWalletStatus(
+          provider?.isMiniPay
+            ? `MiniPay is available as ${shortenWalletAddress(nextWallet)}.`
+            : "Using previously connected wallet.",
+        );
+      })
       .catch(() => {});
 
     if (!provider?.on) return undefined;
@@ -142,7 +158,7 @@ export function useWalletSession() {
     }
 
     try {
-      setWalletStatus("Requesting wallet connection...");
+      setWalletStatus(provider.isMiniPay ? "Requesting MiniPay connection..." : "Requesting wallet connection...");
       const accounts = await provider.request({
         method: "eth_requestAccounts",
       });
@@ -152,13 +168,17 @@ export function useWalletSession() {
         throw new Error("Connected account is not a valid wallet address.");
       }
 
-      setWalletStatus("Wallet connected. Preparing Celo Mainnet...");
+      setWalletStatus(provider.isMiniPay ? "MiniPay connected. Preparing Celo Mainnet..." : "Wallet connected. Preparing Celo Mainnet...");
       await ensureCeloMainnet(provider, CELO_MAINNET_CHAIN_ID);
       const chainId = await provider.request({ method: "eth_chainId" });
 
       setWalletAddress(nextWallet);
       setWalletChainId(parseChainId(chainId));
-      setWalletStatus(`Ready on Celo Mainnet as ${shortenWalletAddress(nextWallet)}`);
+      setWalletStatus(
+        provider.isMiniPay
+          ? `MiniPay ready on Celo Mainnet as ${shortenWalletAddress(nextWallet)}`
+          : `Ready on Celo Mainnet as ${shortenWalletAddress(nextWallet)}`,
+      );
       window.localStorage.setItem(WALLET_STORAGE_KEY, nextWallet);
     } catch (error) {
       setWalletStatus(error.message || "Unable to connect wallet.");
@@ -178,6 +198,8 @@ export function useWalletSession() {
     walletAddress,
     walletStatus,
     walletChainId,
+    hasInjectedProvider,
+    isMiniPay,
     walletProviderName,
     walletNetworkLabel,
     walletReady,

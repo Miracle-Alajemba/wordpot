@@ -738,6 +738,37 @@ button:disabled {
   cursor: default;
 }
 
+.submit-panel__locked {
+  background: rgba(255, 255, 255, 0.8);
+  border: 1px solid rgba(122, 159, 181, 0.22);
+  border-radius: 22px;
+  display: grid;
+  gap: 0.22rem;
+  min-height: 74px;
+  padding: 0.9rem 1.05rem;
+}
+
+.submit-panel__locked-label {
+  color: #8a919b;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.submit-panel__locked strong {
+  color: var(--charcoal);
+  font-family: var(--font-display);
+  font-size: 1rem;
+  letter-spacing: 0.08em;
+}
+
+.submit-panel__locked small {
+  color: var(--muted);
+  font-size: 0.78rem;
+  line-height: 1.45;
+}
+
 .notice-strip {
   background: linear-gradient(180deg, rgba(255, 184, 92, 0.16), rgba(255, 143, 66, 0.12));
   border: 1px solid rgba(255, 179, 95, 0.3);
@@ -1942,6 +1973,12 @@ button:hover {
   justify-items: center;
   min-height: 60px;
   padding: 0.65rem 0.5rem;
+  position: relative;
+  transition:
+    background-color 180ms ease,
+    color 180ms ease,
+    box-shadow 180ms ease,
+    transform 180ms ease;
 }
 
 .bottom-nav__item svg {
@@ -1957,6 +1994,46 @@ button:hover {
 .bottom-nav__item--active {
   background: rgba(168, 197, 168, 0.2);
   color: var(--charcoal);
+}
+
+.app-dark-mode .bottom-nav__item:hover,
+.app-dark-mode .bottom-nav__item:focus-visible {
+  background:
+    linear-gradient(180deg, rgba(18, 28, 53, 0.96), rgba(11, 18, 36, 0.98));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    inset 0 0 0 1px rgba(76, 201, 240, 0.16),
+    0 0 0 1px rgba(99, 244, 202, 0.08);
+  transform: translateY(-1px);
+}
+
+.app-dark-mode .bottom-nav__item:hover::after,
+.app-dark-mode .bottom-nav__item:focus-visible::after {
+  content: "";
+  position: absolute;
+  inset: auto 18% 8px;
+  height: 2px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, rgba(76, 201, 240, 0), rgba(76, 201, 240, 0.95), rgba(99, 244, 202, 0));
+  opacity: 0.95;
+}
+
+.app-dark-mode .bottom-nav__item:hover,
+.app-dark-mode .bottom-nav__item:focus-visible,
+.app-dark-mode .bottom-nav__item:hover svg,
+.app-dark-mode .bottom-nav__item:focus-visible svg {
+  color: #f8fbff;
+}
+
+.app-dark-mode .bottom-nav__item--active:hover,
+.app-dark-mode .bottom-nav__item--active:focus-visible {
+  background:
+    linear-gradient(180deg, rgba(27, 43, 67, 0.98), rgba(16, 27, 48, 0.98));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.1),
+    inset 0 0 0 1px rgba(99, 244, 202, 0.22),
+    0 0 0 1px rgba(99, 244, 202, 0.12);
+  color: #ffffff;
 }
 
 .page-shell {
@@ -2299,6 +2376,23 @@ button:hover {
 .submit-panel input:focus {
   border-color: rgba(99, 244, 202, 0.38);
   box-shadow: 0 0 0 4px rgba(99, 244, 202, 0.09);
+}
+
+.submit-panel__locked {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(130, 152, 235, 0.16);
+}
+
+.submit-panel__locked-label {
+  color: var(--text-muted-2);
+}
+
+.submit-panel__locked strong {
+  color: var(--text-high);
+}
+
+.submit-panel__locked small {
+  color: var(--text-muted);
 }
 
 .chat-bubble {
@@ -2981,7 +3075,8 @@ button:disabled,
 .app-light-mode .system-message__icon,
 .app-light-mode .hero-card__grid span,
 .app-light-mode .word-preview,
-.app-light-mode .submit-panel input {
+.app-light-mode .submit-panel input,
+.app-light-mode .submit-panel__locked {
   background: rgba(122, 159, 181, 0.08);
   border-color: rgba(122, 159, 181, 0.18);
   color: #213047;
