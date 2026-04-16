@@ -37,7 +37,7 @@ function buildWordFromSelection(sourceWord, selectedIndexes) {
 }
 
 export function HomeScreen({
-  gameRules,
+  gameRules = [],
   onStartPractice,
   onQuickMatch,
   onOpenLeaderboard,
@@ -196,9 +196,13 @@ export function HomeScreen({
         <article className="panel">
           <h3>Game Rules</h3>
           <ul>
-            {gameRules.map((rule) => (
-              <li key={rule}>{rule}</li>
-            ))}
+            {gameRules.length ? (
+              gameRules.map((rule) => (
+                <li key={rule}>{rule}</li>
+              ))
+            ) : (
+              <li>Rules are loading for this round.</li>
+            )}
           </ul>
         </article>
 
