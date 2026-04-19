@@ -415,15 +415,15 @@ export default function App() {
     }
   }
 
-  // function backHome() {
-  //   clearRoomSession();
-  //   setRoom(null);
-  //   setPlayerId("");
-  //   setScreen("home");
-  //   setRoomMessage("");
-  //   setRoomError("");
-  //   setRoomSyncStatus("idle");
-  // }
+  function backHome() {
+    clearRoomSession();
+    setRoom(null);
+    setPlayerId("");
+    setScreen("home");
+    setRoomMessage("");
+    setRoomError("");
+    setRoomSyncStatus("idle");
+  }
 
   function toggleSetting(key) {
     setSettings((current) => ({
