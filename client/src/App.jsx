@@ -56,6 +56,8 @@ export default function App() {
     ensureCeloMainnet,
     parseChainId,
     getInjectedProvider,
+    getPublicClient,
+    getWalletClient,
     setWalletStatus,
   } = useWalletSession();
 
@@ -289,15 +291,30 @@ export default function App() {
       );
 
       await ensureCeloMainnet(provider, room?.onchain?.chainId || CELO_MAINNET_CHAIN_ID);
+      const targetChainId = room?.onchain?.chainId || CELO_MAINNET_CHAIN_ID;
+      const walletClient = getWalletClient(targetChainId);
+      const publicClient = getPublicClient(targetChainId);
 
-      const txHash = await provider.request({
-        method: "eth_sendTransaction",
-        params: [{
-          from: walletAddress.trim(),
+      let txHash = "";
+      if (walletClient && publicClient) {
+        const [account] = await walletClient.getAddresses();
+        txHash = await walletClient.sendTransaction({
+          account,
+          chain: walletClient.chain,
           to: treasuryWallet,
-          value: `0x${BigInt(joinPaymentWei).toString(16)}`,
-        }],
-      });
+          value: BigInt(joinPaymentWei),
+        });
+        await publicClient.waitForTransactionReceipt({ hash: txHash });
+      } else {
+        txHash = await provider.request({
+          method: "eth_sendTransaction",
+          params: [{
+            from: walletAddress.trim(),
+            to: treasuryWallet,
+            value: `0x${BigInt(joinPaymentWei).toString(16)}`,
+          }],
+        });
+      }
 
       const recordResponse = await fetch(`${API_BASE_URL}/rooms/${room.id}/join-tx`, {
         method: "POST",

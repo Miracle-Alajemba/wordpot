@@ -3,12 +3,12 @@ import {
   CELO_MAINNET_CHAIN_ID,
   WALLET_STORAGE_KEY,
 } from "../config/app-config.js";
+import {
+  createCeloPublicClient,
+  createInjectedWalletClient,
+  getInjectedWalletProvider,
+} from "../utils/minipay.js";
 import { isWalletAddress, shortenWalletAddress } from "../utils/ui-helpers.js";
-
-function getInjectedProvider() {
-  if (typeof window === "undefined") return null;
-  return window.ethereum || null;
-}
 
 function parseChainId(value) {
   if (!value) return null;
@@ -74,7 +74,7 @@ export function useWalletSession() {
   const [walletAddress, setWalletAddress] = useState("");
   const [walletStatus, setWalletStatus] = useState("");
   const [walletChainId, setWalletChainId] = useState(null);
-  const provider = useMemo(() => getInjectedProvider(), []);
+  const provider = useMemo(() => getInjectedWalletProvider(), []);
   const isMiniPay = Boolean(provider?.isMiniPay);
   const hasInjectedProvider = Boolean(provider?.request);
 
@@ -162,7 +162,9 @@ export function useWalletSession() {
       const accounts = await provider.request({
         method: "eth_requestAccounts",
       });
-      const nextWallet = accounts?.[0] || "";
+      const walletClient = createInjectedWalletClient(CELO_MAINNET_CHAIN_ID);
+      const clientAddresses = walletClient ? await walletClient.getAddresses() : [];
+      const nextWallet = clientAddresses?.[0] || accounts?.[0] || "";
 
       if (!isWalletAddress(nextWallet)) {
         throw new Error("Connected account is not a valid wallet address.");
@@ -207,7 +209,9 @@ export function useWalletSession() {
     disconnectWallet,
     ensureCeloMainnet,
     parseChainId,
-    getInjectedProvider,
+    getInjectedProvider: getInjectedWalletProvider,
+    getWalletClient: createInjectedWalletClient,
+    getPublicClient: createCeloPublicClient,
     setWalletStatus,
   };
 }

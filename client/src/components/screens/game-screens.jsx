@@ -59,7 +59,11 @@ export function HomeScreen({
   darkMode,
   onToggleTheme,
 }) {
-  const joinLabel = !walletAddress
+  const joinLabel = isMiniPay && hasInjectedProvider
+    ? walletReady
+      ? "Join Game"
+      : "Open Quick Match"
+    : !walletAddress
     ? walletConnectLabel || "Connect Wallet to Join"
     : walletReady
       ? "Join Game"
@@ -180,7 +184,7 @@ export function HomeScreen({
             <button type="button" className="button-secondary" onClick={onOpenProfile}>
               View Profile
             </button>
-            {!walletAddress ? (
+            {!walletAddress && !isMiniPay ? (
               <button type="button" onClick={onConnectWallet}>
                 Connect Wallet
               </button>
