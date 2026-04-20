@@ -150,7 +150,7 @@ export function useWalletSession() {
   }, []);
 
   async function connectWallet() {
-    const provider = getInjectedProvider();
+    const provider = getInjectedWalletProvider();
 
     if (!provider?.request) {
       setWalletStatus("No injected wallet found. Open WordPot inside MiniPay or a wallet browser.");
