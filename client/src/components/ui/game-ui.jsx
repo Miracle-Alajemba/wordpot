@@ -82,8 +82,9 @@ export function ChatMessage({ entry, isOwnMessage }) {
     return (
       <div className="system-message">
         <span className="system-message__icon">+</span>
-        <div>
-          <strong>[System]</strong> {entry.message}
+        <div className="system-message__body">
+          <strong>[System]</strong>
+          <span>{entry.message}</span>
         </div>
         <small>{formatEventTime(entry.createdAt)}</small>
       </div>

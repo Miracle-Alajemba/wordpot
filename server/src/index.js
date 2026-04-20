@@ -384,7 +384,7 @@ app.post("/api/rooms/quick-match", async (req, res) => {
   };
 
   room.players.push(player);
-  pushSystemEvent(room, `${player.walletAddress} joined the game`);
+  pushSystemEvent(room, `${shortenAddress(player.walletAddress)} joined the game`);
 
   return res.status(201).json({
     room: getRoomSummary(room),
