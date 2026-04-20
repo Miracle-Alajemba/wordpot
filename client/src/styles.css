@@ -1185,11 +1185,23 @@ button:disabled {
 }
 
 .system-message__body strong {
+  color: var(--text-high);
   display: block;
+  font-size: 0.82rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
 .system-message__body span {
+  color: #f5f8ff;
   display: block;
+  font-weight: 700;
+}
+
+.system-message small {
+  color: #d7e5ff;
+  font-size: 0.74rem;
+  font-weight: 600;
 }
 
 .system-message__icon {
