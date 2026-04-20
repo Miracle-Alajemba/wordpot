@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { zeroAddress } from "viem";
 import { AppBottomNav, ChatMessage } from "./components/ui/index.js";
 import {
   HomeScreen,
@@ -23,6 +24,15 @@ import {
   shortenWalletAddress,
 } from "./utils/index.js";
 
+const WORDPOT_ARENA_ABI = [
+  {
+    inputs: [{ internalType: "uint256", name: "roomId", type: "uint256" }],
+    name: "joinRoom",
+    outputs: [],
+    stateMutability: "payable",
+    type: "function",
+  },
+];
 
 export default function App() {
   const [screen, setScreen] = useState("home");
@@ -273,10 +283,24 @@ export default function App() {
     }
 
     const treasuryWallet = room?.onchain?.treasuryWallet;
+    const contractAddress = room?.onchain?.contractAddress;
+    const contractRoomId = room?.onchain?.contractRoomId;
+    const joinMode = room?.onchain?.joinMode || "treasury_beta";
     const joinPaymentWei = room?.onchain?.joinPaymentWei;
     const joinPaymentDisplay = room?.onchain?.joinPaymentDisplay || "0.001 CELO";
 
-    if (!isWalletAddress(treasuryWallet) || !joinPaymentWei) {
+    if (
+      joinMode === "contract_join" &&
+      (!isWalletAddress(contractAddress) || contractAddress === zeroAddress || !contractRoomId)
+    ) {
+      setRoomError("Contract join is not fully configured yet for this room.");
+      return;
+    }
+
+    if (
+      joinMode !== "contract_join" &&
+      (!isWalletAddress(treasuryWallet) || treasuryWallet === zeroAddress || !joinPaymentWei)
+    ) {
       setRoomError("Onchain join is not configured yet. Add the treasury wallet in the server env.");
       return;
     }
@@ -298,14 +322,31 @@ export default function App() {
       let txHash = "";
       if (walletClient && publicClient) {
         const [account] = await walletClient.getAddresses();
-        txHash = await walletClient.sendTransaction({
-          account,
-          chain: walletClient.chain,
-          to: treasuryWallet,
-          value: BigInt(joinPaymentWei),
-        });
+        if (joinMode === "contract_join") {
+          txHash = await walletClient.writeContract({
+            account,
+            chain: walletClient.chain,
+            address: contractAddress,
+            abi: WORDPOT_ARENA_ABI,
+            functionName: "joinRoom",
+            args: [BigInt(contractRoomId)],
+            value: BigInt(joinPaymentWei),
+          });
+        } else {
+          txHash = await walletClient.sendTransaction({
+            account,
+            chain: walletClient.chain,
+            to: treasuryWallet,
+            value: BigInt(joinPaymentWei),
+          });
+        }
         await publicClient.waitForTransactionReceipt({ hash: txHash });
       } else {
+        if (joinMode === "contract_join") {
+          setRoomError("Contract join requires the MiniPay-compatible wallet client path.");
+          return;
+        }
+
         txHash = await provider.request({
           method: "eth_sendTransaction",
           params: [{
@@ -326,7 +367,7 @@ export default function App() {
           walletAddress: walletAddress.trim(),
           txHash,
           amount: joinPaymentDisplay,
-          mode: room?.onchain?.payoutMode || "treasury_beta",
+          mode: joinMode,
         }),
       });
       const recordData = await recordResponse.json();
@@ -338,8 +379,12 @@ export default function App() {
       setRoom(recordData.room);
       setRoomMessage(
         isMiniPay
-          ? "MiniPay payment confirmed. Your seat is now locked in."
-          : "Entry confirmed. Your seat is now locked in.",
+          ? joinMode === "contract_join"
+            ? "MiniPay contract join confirmed. Your seat is now locked in."
+            : "MiniPay payment confirmed. Your seat is now locked in."
+          : joinMode === "contract_join"
+            ? "Contract join confirmed. Your seat is now locked in."
+            : "Entry confirmed. Your seat is now locked in.",
       );
     } catch (error) {
       setRoomError(error.message || "Unable to complete the onchain join payment.");

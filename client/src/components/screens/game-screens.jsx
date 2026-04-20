@@ -271,6 +271,7 @@ export function LobbyScreen({
   const paidPlayersCount = room?.onchain?.paidPlayersCount || 0;
   const totalPlayers = room?.players?.length || 0;
   const allPaid = totalPlayers > 0 && paidPlayersCount === totalPlayers;
+  const joinMode = room?.onchain?.joinMode || "treasury_beta";
   const canStart =
     room?.status === "waiting" && room?.players?.length >= 2 && isHost && allPaid;
   const joinPayment = room?.onchain?.joinPaymentDisplay || "0.001 CELO";
@@ -356,6 +357,12 @@ export function LobbyScreen({
                 <span>Players in Room</span>
                 <strong>{room?.players?.length || 0}/{room?.maxPlayers || 5}</strong>
               </div>
+            </div>
+
+            <div className="notice-strip notice-strip--neutral">
+              {joinMode === "contract_join"
+                ? `Contract room ${room?.onchain?.contractRoomId ?? "--"} is live on WordPotArena. Players join this room onchain before the match starts.`
+                : "Treasury beta mode is active for this room while contract-backed joins are still being prepared."}
             </div>
 
             <div className="notice-strip notice-strip--neutral">

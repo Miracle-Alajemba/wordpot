@@ -2,6 +2,7 @@ import cors from "cors";
 import dotenv from "dotenv";
 import express from "express";
 import { canBuildFromSource, getDynamicRound } from "./rounds.js";
+import { createWordPotContractService } from "./wordpot-contract.js";
 
 dotenv.config();
 
@@ -14,10 +15,17 @@ const ROUND_SECONDS = 60;
 const TREASURY_WALLET = process.env.TREASURY_WALLET || "0x0000000000000000000000000000000000000000";
 const WORDPOT_CONTRACT_ADDRESS =
   process.env.WORDPOT_CONTRACT_ADDRESS || process.env.LEXMASH_CONTRACT_ADDRESS || "";
+const CONTRACT_OPERATOR_PRIVATE_KEY = process.env.CONTRACT_OPERATOR_PRIVATE_KEY || "";
+const CELO_MAINNET_RPC_URL = process.env.CELO_MAINNET_RPC_URL || "https://forno.celo.org";
 const CELO_CHAIN_ID = Number(process.env.CELO_CHAIN_ID || 42220);
 const JOIN_PAYMENT_WEI = process.env.JOIN_PAYMENT_WEI || "1000000000000000";
 const JOIN_PAYMENT_DISPLAY = process.env.JOIN_PAYMENT_DISPLAY || "0.001 CELO";
 const rooms = new Map();
+const wordPotContract = createWordPotContractService({
+  contractAddress: WORDPOT_CONTRACT_ADDRESS,
+  operatorPrivateKey: CONTRACT_OPERATOR_PRIVATE_KEY,
+  rpcUrl: CELO_MAINNET_RPC_URL,
+});
 
 app.use(cors());
 app.use(express.json());
@@ -160,8 +168,16 @@ function getRoomSummary(room) {
       chainId: CELO_CHAIN_ID,
       treasuryWallet: TREASURY_WALLET,
       contractAddress: WORDPOT_CONTRACT_ADDRESS,
+      contractRoomId: room.contractRoomId || null,
+      contractRoomCreateTx: room.contractRoomCreateTx || null,
+      contractReady: wordPotContract.enabled,
+      contractOperatorAddress: wordPotContract.enabled ? wordPotContract.account : null,
       joinPaymentWei: JOIN_PAYMENT_WEI,
       joinPaymentDisplay: JOIN_PAYMENT_DISPLAY,
+      joinMode:
+        isWalletAddress(WORDPOT_CONTRACT_ADDRESS) && wordPotContract.enabled && room.contractRoomId
+          ? "contract_join"
+          : "treasury_beta",
       payoutMode: isWalletAddress(WORDPOT_CONTRACT_ADDRESS) ? "contract_claim" : "treasury_beta",
       joinTransactions: room.joinTransactions || [],
       claimTransactions: room.claimTransactions || [],
@@ -273,8 +289,14 @@ app.get("/api/meta", (_req, res) => {
       chainId: CELO_CHAIN_ID,
       treasuryWallet: TREASURY_WALLET,
       contractAddress: WORDPOT_CONTRACT_ADDRESS,
+      contractReady: wordPotContract.enabled,
+      contractOperatorAddress: wordPotContract.enabled ? wordPotContract.account : null,
       joinPaymentWei: JOIN_PAYMENT_WEI,
       joinPaymentDisplay: JOIN_PAYMENT_DISPLAY,
+      joinMode:
+        isWalletAddress(WORDPOT_CONTRACT_ADDRESS) && wordPotContract.enabled
+          ? "contract_join"
+          : "treasury_beta",
       payoutMode: isWalletAddress(WORDPOT_CONTRACT_ADDRESS) ? "contract_claim" : "treasury_beta",
     },
   });
@@ -298,7 +320,7 @@ app.get("/api/rounds/practice", async (_req, res) => {
   }
 });
 
-app.post("/api/rooms/quick-match", (req, res) => {
+app.post("/api/rooms/quick-match", async (req, res) => {
   const walletAddress = String(req.body?.walletAddress || "").trim();
 
   if (!isWalletAddress(walletAddress)) {
@@ -323,7 +345,27 @@ app.post("/api/rooms/quick-match", (req, res) => {
       events: [],
       joinTransactions: [],
       claimTransactions: [],
+      contractRoomId: null,
+      contractRoomCreateTx: null,
     };
+
+    if (wordPotContract.enabled && isWalletAddress(WORDPOT_CONTRACT_ADDRESS)) {
+      try {
+        const contractRoom = await wordPotContract.createRoom(JOIN_PAYMENT_WEI);
+        room.contractRoomId = contractRoom?.roomId ?? null;
+        room.contractRoomCreateTx = contractRoom?.hash ?? null;
+        pushSystemEvent(
+          room,
+          room.contractRoomId
+            ? `Onchain room ${room.contractRoomId} opened on WordPotArena`
+            : "Onchain room creation submitted",
+        );
+      } catch (error) {
+        console.error("Unable to create onchain room", error);
+        pushSystemEvent(room, "Onchain room creation failed, so the room stayed in treasury beta mode.");
+      }
+    }
+
     rooms.set(room.id, room);
   }
 
