@@ -369,12 +369,16 @@ app.post("/api/rooms/quick-match", async (req, res) => {
     rooms.set(room.id, room);
   }
 
-  const alreadyJoined = room.players.some(
+  const existingPlayer = room.players.find(
     (player) => player.walletAddress.toLowerCase() === walletAddress.toLowerCase(),
   );
 
-  if (alreadyJoined) {
-    return res.status(409).json({ error: "This wallet is already in the room." });
+  if (existingPlayer) {
+    return res.status(200).json({
+      room: getRoomSummary(room),
+      playerId: existingPlayer.id,
+      restored: true,
+    });
   }
 
   const player = {
