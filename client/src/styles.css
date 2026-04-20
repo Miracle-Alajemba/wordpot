@@ -1296,9 +1296,10 @@ button:disabled {
 
 .lobby-summary-grid {
   display: grid;
-  gap: 0.8rem;
+  gap: 1rem;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  margin-bottom: 1rem;
+  margin-bottom: 1.25rem;
+  margin-top: 1.1rem;
 }
 
 .lobby-stat-card {
@@ -1306,19 +1307,22 @@ button:disabled {
   border: 1px solid var(--line-soft);
   border-radius: 18px;
   display: grid;
-  gap: 0.35rem;
-  padding: 0.95rem;
+  gap: 0.45rem;
+  min-height: 104px;
+  padding: 1.15rem 1.05rem;
 }
 
 .lobby-stat-card span {
   color: var(--muted);
   font-size: 0.8rem;
+  line-height: 1.35;
   text-transform: uppercase;
 }
 
 .lobby-stat-card strong {
   color: var(--charcoal);
   font-size: 1rem;
+  line-height: 1.35;
 }
 
 .word-chip {
