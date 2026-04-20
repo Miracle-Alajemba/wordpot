@@ -775,7 +775,12 @@ button:disabled {
   border-radius: 18px;
   color: #ffddab;
   font-weight: 700;
+  margin-top: 0.9rem;
   padding: 0.95rem 1rem;
+}
+
+.notice-strip + .notice-strip {
+  margin-top: 0.7rem;
 }
 
 .notice-strip--neutral {
@@ -2580,6 +2585,7 @@ button:hover {
 }
 
 .room-players-strip {
+  margin-top: 1rem;
   padding-bottom: 0.9rem;
 }
 
