@@ -268,24 +268,37 @@ export function LobbyScreen({
 }) {
   const syncMeta = getSyncStatusMeta(syncStatus);
   const isHost = room?.hostPlayerId === playerId;
+  const minPlayers = room?.minPlayers || 2;
   const paidPlayersCount = room?.onchain?.paidPlayersCount || 0;
   const totalPlayers = room?.players?.length || 0;
   const allPaid = totalPlayers > 0 && paidPlayersCount === totalPlayers;
+  const enoughPlayers = totalPlayers >= minPlayers;
+  const roomReadyToStart = enoughPlayers && allPaid;
   const joinMode = room?.onchain?.joinMode || "treasury_beta";
   const canStart =
-    room?.status === "waiting" && room?.players?.length >= 2 && isHost && allPaid;
+    room?.status === "waiting" && enoughPlayers && isHost && allPaid;
   const joinPayment = room?.onchain?.joinPaymentDisplay || "0.001 CELO";
   const hasPaid = (room?.onchain?.joinTransactions || []).some((entry) => entry.playerId === playerId);
   const unpaidPlayers = (room?.players || []).filter((entry) => !entry.joinPaid);
   const unpaidCount = unpaidPlayers.length;
   const joinedCount = room?.players?.length || 0;
-  const lobbyTitle = hasPaid
-    ? allPaid
+  const lobbyTitle = !hasPaid
+    ? "Complete your entry to confirm your seat in this round."
+    : roomReadyToStart
       ? isHost
         ? "Everyone is ready. You can start the round now."
         : "Everyone is ready. Waiting for the host to begin."
-      : "Your entry is confirmed. Waiting for the rest of the room."
-    : "Complete your entry to confirm your seat in this round.";
+      : allPaid
+        ? `Your entry is confirmed. Waiting for ${Math.max(minPlayers - totalPlayers, 0)} more player${Math.max(minPlayers - totalPlayers, 0) === 1 ? "" : "s"} to unlock the round.`
+        : "Your entry is confirmed. Waiting for the rest of the room.";
+  const readinessCount = enoughPlayers
+    ? `${paidPlayersCount}/${totalPlayers || 0}`
+    : `${joinedCount}/${minPlayers}`;
+  const readinessCaption = roomReadyToStart
+    ? "Minimum players reached and every joined player has confirmed entry."
+    : enoughPlayers
+      ? "Joined players who have completed entry payment."
+      : `Need ${Math.max(minPlayers - joinedCount, 0)} more player${Math.max(minPlayers - joinedCount, 0) === 1 ? "" : "s"} to unlock the round.`;
 
   return (
     <main className="page-shell">
@@ -325,14 +338,20 @@ export function LobbyScreen({
               <TimerTone seconds={0} />
             </div>
 
-            <div className={`lobby-readiness-card ${allPaid ? "lobby-readiness-card--ready" : ""}`}>
+            <div className={`lobby-readiness-card ${roomReadyToStart ? "lobby-readiness-card--ready" : ""}`}>
               <div>
                 <span className="lobby-readiness-card__label">Round status</span>
-                <strong>{allPaid ? "Ready to start" : "Waiting for player confirmations"}</strong>
+                <strong>
+                  {roomReadyToStart
+                    ? "Ready to start"
+                    : enoughPlayers
+                      ? "Waiting for player confirmations"
+                      : "Waiting for more players"}
+                </strong>
               </div>
               <div className="lobby-readiness-card__progress">
-                <div className="lobby-readiness-card__count">{paidPlayersCount}/{totalPlayers || 0}</div>
-                <small>{allPaid ? "All joined players have confirmed entry." : "Joined players who have completed entry payment."}</small>
+                <div className="lobby-readiness-card__count">{readinessCount}</div>
+                <small>{readinessCaption}</small>
               </div>
             </div>
 
@@ -357,6 +376,10 @@ export function LobbyScreen({
                 <span>Players in Room</span>
                 <strong>{room?.players?.length || 0}/{room?.maxPlayers || 5}</strong>
               </div>
+              <div className="lobby-stat-card">
+                <span>Start Rule</span>
+                <strong>{minPlayers} paid players minimum</strong>
+              </div>
             </div>
 
             <div className="notice-strip notice-strip--neutral">
@@ -371,13 +394,13 @@ export function LobbyScreen({
                 : `Pay ${joinPayment} to confirm your seat. The round starts once every joined player has paid.`}
             </div>
 
-            {!allPaid ? (
+            {!roomReadyToStart ? (
               <div className="notice-strip notice-strip--neutral">
-                {unpaidCount
+                {!enoughPlayers
+                  ? `At least ${minPlayers} players are needed before the round can begin. ${Math.max(minPlayers - joinedCount, 0)} more player${Math.max(minPlayers - joinedCount, 0) === 1 ? "" : "s"} needed.`
+                  : unpaidCount
                   ? `Waiting for ${unpaidCount} player${unpaidCount > 1 ? "s" : ""} to confirm entry: ${unpaidPlayers.map((entry) => getPlayerAlias(entry.walletAddress)).join(", ")}.`
-                  : joinedCount < (room?.minPlayers || 2)
-                    ? `At least ${room?.minPlayers || 2} players are needed before the round can begin.`
-                    : "All joined players must confirm entry before the host can start the round."}
+                  : "All joined players must confirm entry before the host can start the round."}
               </div>
             ) : null}
 
@@ -401,7 +424,13 @@ export function LobbyScreen({
                 onClick={onStart}
                 disabled={!canStart}
               >
-                {isHost ? (allPaid ? "Start Arena" : "Waiting for payments") : "Waiting for host"}
+                {isHost
+                  ? roomReadyToStart
+                    ? "Start Arena"
+                    : enoughPlayers
+                      ? "Waiting for payments"
+                      : "Waiting for more players"
+                  : "Waiting for host"}
               </button>
             </div>
           </article>

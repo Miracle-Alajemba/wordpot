@@ -2998,10 +2998,10 @@ button:disabled,
 .app-light-mode .word-chip,
 .app-light-mode .system-message,
 .app-light-mode .submit-panel--sticky {
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.94), rgba(243, 246, 251, 0.96));
-  border-color: rgba(122, 159, 181, 0.18);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(234, 240, 248, 0.98));
+  border-color: rgba(122, 159, 181, 0.24);
   box-shadow:
-    0 12px 28px rgba(15, 23, 42, 0.08),
+    0 14px 30px rgba(15, 23, 42, 0.1),
     inset 0 1px 0 rgba(255, 255, 255, 0.9);
 }
 
@@ -3056,7 +3056,7 @@ button:disabled,
 .app-light-mode .player-identity__copy span,
 .app-light-mode .room-live-header__meta span,
 .app-light-mode .leaderboard-points small {
-  color: #5b677d;
+  color: #4b5871;
 }
 
 .app-light-mode .room-topbar,
@@ -3065,6 +3065,64 @@ button:disabled,
   background: linear-gradient(180deg, rgba(248, 250, 253, 0.96), rgba(239, 244, 249, 0.98));
   border-color: rgba(122, 159, 181, 0.18);
   box-shadow: 0 16px 32px rgba(15, 23, 42, 0.12);
+}
+
+.app-light-mode .lobby-readiness-card {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.99), rgba(229, 238, 247, 0.98));
+  border-color: rgba(122, 159, 181, 0.28);
+}
+
+.app-light-mode .lobby-readiness-card--ready {
+  background: linear-gradient(180deg, rgba(229, 248, 241, 0.98), rgba(212, 240, 229, 0.98));
+  border-color: rgba(99, 244, 202, 0.32);
+}
+
+.app-light-mode .lobby-readiness-card__label,
+.app-light-mode .lobby-stat-card span {
+  color: #627089;
+}
+
+.app-light-mode .lobby-readiness-card__count {
+  color: #1d7d69;
+}
+
+.app-light-mode .lobby-readiness-card__progress small {
+  color: #55627a;
+}
+
+.app-light-mode .lobby-stat-card {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.99), rgba(237, 242, 249, 0.98));
+  border-color: rgba(122, 159, 181, 0.24);
+}
+
+.app-light-mode .notice-strip--neutral {
+  background: linear-gradient(180deg, rgba(255, 241, 221, 0.98), rgba(255, 232, 207, 0.98));
+  border-color: rgba(234, 168, 78, 0.34);
+  color: #81531d;
+}
+
+.app-light-mode .notice-strip--success {
+  background: linear-gradient(180deg, rgba(230, 249, 242, 0.98), rgba(211, 241, 228, 0.98));
+  border-color: rgba(99, 244, 202, 0.28);
+  color: #1f6f5f;
+}
+
+.app-light-mode .notice-strip--error {
+  background: linear-gradient(180deg, rgba(255, 239, 239, 0.98), rgba(250, 223, 229, 0.98));
+  border-color: rgba(225, 110, 133, 0.28);
+  color: #8d2b42;
+}
+
+.app-light-mode .chat-feed--lobby {
+  background: linear-gradient(180deg, rgba(245, 248, 252, 0.9), rgba(235, 241, 248, 0.94));
+  border-color: rgba(122, 159, 181, 0.18);
+}
+
+.app-light-mode .player-row--self {
+  border-color: rgba(99, 244, 202, 0.28);
+  box-shadow:
+    0 16px 34px rgba(15, 23, 42, 0.1),
+    inset 0 0 0 1px rgba(99, 244, 202, 0.08);
 }
 
 .app-light-mode .room-topbar__stats span,
