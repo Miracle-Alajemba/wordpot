@@ -4,6 +4,29 @@ WordPot is a MiniPay-first multiplayer word game where players join a live room,
 make words from a shared source word, and compete for a score-based share of the
 reward pool.
 
+## Live App
+
+- App: https://wordpot.vercel.app/
+- Celo Mainnet Contract: `0x764b3f8761CEB44e6FFA6480484b706C3c3A8284`
+- Explorer: https://celoscan.io/address/0x764b3f8761CEB44e6FFA6480484b706C3c3A8284
+
+## Stack
+
+- `client/`: React + Vite + viem
+- `server/`: Node.js + Express
+- `contracts/`: Solidity + Hardhat
+- `network`: Celo Mainnet
+
+## MiniPay Direction
+
+WordPot is being built as a MiniPay-ready social game on Celo. The product
+direction is focused on:
+
+- MiniPay wallet connection and wallet-based player identity
+- real onchain room entry activity on Celo Mainnet
+- mobile-first multiplayer play for live room creation and repeat usage
+- a simple game loop that can bring real users and real transactions onchain
+
 ## What Is Live Now
 
 - Practice arena
