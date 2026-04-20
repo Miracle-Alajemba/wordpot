@@ -838,6 +838,15 @@ button:disabled {
   margin-bottom: 0;
 }
 
+.room-panel--feed .room-panel__header h3 {
+  color: #f5f8ff;
+  text-shadow: 0 0 18px rgba(99, 244, 202, 0.12);
+}
+
+.room-panel--feed .room-panel__header p {
+  color: #c9d5ef;
+}
+
 .compact-board {
   background: rgba(255, 255, 255, 0.72);
   border: 1px solid var(--line-soft);
@@ -3091,6 +3100,15 @@ button:disabled,
   background: linear-gradient(180deg, rgba(248, 250, 253, 0.96), rgba(239, 244, 249, 0.98));
   border-color: rgba(122, 159, 181, 0.18);
   box-shadow: 0 16px 32px rgba(15, 23, 42, 0.12);
+}
+
+.app-light-mode .room-panel--feed .room-panel__header h3 {
+  color: #182235;
+  text-shadow: none;
+}
+
+.app-light-mode .room-panel--feed .room-panel__header p {
+  color: #56647c;
 }
 
 .app-light-mode .lobby-readiness-card {

@@ -329,7 +329,7 @@ export function LobbyScreen({
         {error ? <div className="notice-strip notice-strip--error">{error}</div> : null}
 
         <section className="chat-room-layout">
-          <article className="panel room-panel">
+          <article className="panel room-panel room-panel--feed">
             <div className="room-panel__header">
               <div>
                 <h3>Match Lobby</h3>
