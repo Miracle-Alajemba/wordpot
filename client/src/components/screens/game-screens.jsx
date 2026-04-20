@@ -289,7 +289,7 @@ export function LobbyScreen({
         ? "Everyone is ready. You can start the round now."
         : "Everyone is ready. Waiting for the host to begin."
       : allPaid
-        ? `Your entry is confirmed. Waiting for ${Math.max(minPlayers - totalPlayers, 0)} more player${Math.max(minPlayers - totalPlayers, 0) === 1 ? "" : "s"} to unlock the round.`
+        ? `Your entry is confirmed. Need ${Math.max(minPlayers - totalPlayers, 0)} more player${Math.max(minPlayers - totalPlayers, 0) === 1 ? "" : "s"} to start. The room can still fill up to ${room?.maxPlayers || 5} players.`
         : "Your entry is confirmed. Waiting for the rest of the room.";
   const readinessCount = enoughPlayers
     ? `${paidPlayersCount}/${totalPlayers || 0}`
@@ -298,7 +298,7 @@ export function LobbyScreen({
     ? "Minimum players reached and every joined player has confirmed entry."
     : enoughPlayers
       ? "Joined players who have completed entry payment."
-      : `Need ${Math.max(minPlayers - joinedCount, 0)} more player${Math.max(minPlayers - joinedCount, 0) === 1 ? "" : "s"} to unlock the round.`;
+      : `Need ${Math.max(minPlayers - joinedCount, 0)} more player${Math.max(minPlayers - joinedCount, 0) === 1 ? "" : "s"} to start. The room can still fill up to ${room?.maxPlayers || 5} players.`;
 
   return (
     <main className="page-shell">
@@ -397,7 +397,7 @@ export function LobbyScreen({
             {!roomReadyToStart ? (
               <div className="notice-strip notice-strip--neutral">
                 {!enoughPlayers
-                  ? `At least ${minPlayers} players are needed before the round can begin. ${Math.max(minPlayers - joinedCount, 0)} more player${Math.max(minPlayers - joinedCount, 0) === 1 ? "" : "s"} needed.`
+                  ? `At least ${minPlayers} players are needed before the round can begin. Need ${Math.max(minPlayers - joinedCount, 0)} more player${Math.max(minPlayers - joinedCount, 0) === 1 ? "" : "s"} to start. Players can still join until the room reaches ${room?.maxPlayers || 5}.`
                   : unpaidCount
                   ? `Waiting for ${unpaidCount} player${unpaidCount > 1 ? "s" : ""} to confirm entry: ${unpaidPlayers.map((entry) => getPlayerAlias(entry.walletAddress)).join(", ")}.`
                   : "All joined players must confirm entry before the host can start the round."}
