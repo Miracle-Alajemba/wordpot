@@ -124,12 +124,12 @@ export function HomeScreen({
                 {walletAddress ? shortenWalletAddress(walletAddress) : "No wallet connected"}
               </strong>
               <div className="wallet-state-strip">
-                <span className="wallet-chip">{walletProviderName}</span>
-                <span className={`wallet-chip ${walletReady ? "wallet-chip--ok" : "wallet-chip--soft"}`}>
-                  {walletNetworkLabel}
-                </span>
                 <span className={`wallet-chip ${walletReady ? "wallet-chip--ok" : "wallet-chip--warn"}`}>
-                  {walletReady ? "Ready to play" : walletAddress ? "Needs setup" : "Not connected"}
+                  {walletAddress
+                    ? walletReady
+                      ? "Wallet connected • Ready to play"
+                      : "Wallet connected • Setup needed"
+                    : "No wallet connected"}
                 </span>
               </div>
               <p className="field-hint">
