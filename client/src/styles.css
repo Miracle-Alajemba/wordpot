@@ -2685,6 +2685,25 @@ button:hover {
   .hero-copy__top {
     align-items: stretch;
     flex-direction: column;
+    gap: 0.45rem;
+  }
+
+  .hero-theme-toggle {
+    align-self: flex-end;
+    margin-left: 0;
+    transform: none;
+  }
+
+  .theme-toggle {
+    min-height: 34px;
+    padding: 0.18rem;
+  }
+
+  .theme-toggle__option {
+    font-size: 0.58rem;
+    letter-spacing: 0.04em;
+    min-width: 54px;
+    padding: 0.38rem 0.58rem;
   }
 
   .chat-bubble {
