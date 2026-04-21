@@ -240,6 +240,19 @@ button:disabled {
   margin-top: 1.5rem;
 }
 
+.hero-copy__top {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  justify-content: space-between;
+}
+
+.hero-theme-button {
+  min-height: 44px;
+  white-space: nowrap;
+}
+
 .wallet-panel {
   display: grid;
   gap: 0.8rem;
@@ -259,13 +272,6 @@ button:disabled {
   gap: 0.8rem;
   justify-content: space-between;
   margin-top: 0.35rem;
-}
-
-.theme-toggle--card {
-  align-self: flex-start;
-  background: rgba(255, 255, 255, 0.05);
-  border-color: rgba(130, 152, 235, 0.18);
-  margin-left: auto;
 }
 
 .appearance-row__label {
@@ -2675,14 +2681,9 @@ button:hover {
     padding-bottom: 8.5rem;
   }
 
-  .hero-card__top {
+  .hero-copy__top {
     align-items: stretch;
     flex-direction: column;
-  }
-
-  .theme-toggle--card {
-    margin-left: 0;
-    width: fit-content;
   }
 
   .chat-bubble {
@@ -3319,8 +3320,33 @@ button:disabled,
   color: #182235;
 }
 
-.app-light-mode .theme-toggle--card {
+.app-light-mode button {
+  background: linear-gradient(135deg, #dce9dc 0%, #c9ddc9 100%);
+  border: 1px solid rgba(126, 166, 126, 0.24);
+  box-shadow: 0 10px 20px rgba(126, 166, 126, 0.12);
+  color: #163047;
+}
+
+.app-light-mode button:hover {
+  background: linear-gradient(135deg, #e7f0e7 0%, #d8e8d8 100%);
+  box-shadow: 0 14px 24px rgba(126, 166, 126, 0.14);
+  transform: translateY(-1px);
+}
+
+.app-light-mode .button-secondary,
+.app-light-mode .ghost-button {
   background: rgba(255, 255, 255, 0.88);
+  border: 1px solid rgba(122, 159, 181, 0.18);
+  box-shadow: 0 8px 16px rgba(122, 159, 181, 0.08);
+  color: #213047;
+}
+
+.app-light-mode .button-secondary:hover,
+.app-light-mode .ghost-button:hover {
+  background: rgba(248, 251, 255, 0.96);
+  border-color: rgba(122, 159, 181, 0.24);
+  box-shadow: 0 12px 20px rgba(122, 159, 181, 0.12);
+  color: #182235;
 }
 
 .app-light-mode .button-accent-blue {
@@ -3331,7 +3357,6 @@ button:disabled,
 }
 
 .app-light-mode .button-accent-blue:hover {
-  box-shadow:
-    0 14px 28px rgba(122, 159, 181, 0.18),
-    0 0 12px rgba(122, 159, 181, 0.12);
+  background: linear-gradient(135deg, rgba(134, 171, 194, 0.18), rgba(120, 227, 201, 0.16));
+  box-shadow: 0 14px 24px rgba(122, 159, 181, 0.14);
 }

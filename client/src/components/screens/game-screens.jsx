@@ -73,7 +73,17 @@ export function HomeScreen({
     <main className="page-shell">
       <section className="hero">
         <div className="hero-copy">
-          <p className="eyebrow">MiniPay Word Game</p>
+          <div className="hero-copy__top">
+            <p className="eyebrow">MiniPay Word Game</p>
+            <button
+              type="button"
+              className="button-secondary hero-theme-button"
+              onClick={onToggleTheme}
+              aria-label={`Switch to ${darkMode ? "light" : "dark"} mode`}
+            >
+              {darkMode ? "Light Mode" : "Dark Mode"}
+            </button>
+          </div>
           <h1>WordPot</h1>
           <p className="lede">
             A fast multiplayer word challenge where players build words from a
@@ -161,10 +171,6 @@ export function HomeScreen({
         <div className="hero-card">
           <div className="hero-card__top">
             <p className="hero-card__label">Sample round</p>
-            <button type="button" className="theme-toggle theme-toggle--card" onClick={onToggleTheme} aria-label={`Switch to ${darkMode ? "light" : "dark"} mode`}>
-              <span className={`theme-toggle__option ${darkMode ? "theme-toggle__option--active" : ""}`}>Dark</span>
-              <span className={`theme-toggle__option ${!darkMode ? "theme-toggle__option--active" : ""}`}>Light</span>
-            </button>
           </div>
           <h2>BLOCKCHAIN</h2>
           <div className="letter-rack">
