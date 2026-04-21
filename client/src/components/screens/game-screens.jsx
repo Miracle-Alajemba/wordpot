@@ -111,13 +111,11 @@ export function HomeScreen({
             </div>
           ) : null}
 
-          <div className={`notice-strip ${isMiniPay ? "notice-strip--success" : "notice-strip--neutral"}`}>
-            {hasInjectedProvider
-              ? isMiniPay
-                ? "MiniPay detected. Wallet connect, room entry, and live join payments can happen in one flow."
-                : walletEnvironmentHint || "A wallet provider is available. For the smoothest onchain room flow, use MiniPay on Celo Mainnet."
-              : "No wallet provider found yet. Open WordPot inside MiniPay for the cleanest join-and-pay flow."}
-          </div>
+          {!hasInjectedProvider ? (
+            <div className="notice-strip notice-strip--neutral">
+              Open WordPot inside MiniPay for the cleanest join-and-pay flow.
+            </div>
+          ) : null}
 
           <div className="wallet-panel">
             <div className="wallet-panel__copy">
