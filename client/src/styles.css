@@ -2035,6 +2035,8 @@ button:hover {
 .bottom-nav__item span {
   font-size: 0.72rem;
   font-weight: 700;
+  line-height: 1.1;
+  text-align: center;
 }
 
 .bottom-nav__item--active {
@@ -3263,6 +3265,42 @@ button:disabled,
   .bottom-nav {
     gap: 0.35rem;
     width: calc(100% - 18px);
+  }
+
+  .bottom-nav__item {
+    min-height: 56px;
+    padding: 0.65rem 0.35rem;
+  }
+
+  .bottom-nav__item span {
+    font-size: 0.64rem;
+    letter-spacing: 0.06em;
+  }
+}
+
+@media (max-width: 480px) {
+  .bottom-nav {
+    border-radius: 20px;
+    bottom: 10px;
+    gap: 0.2rem;
+    padding: 0.38rem;
+    width: calc(100% - 14px);
+  }
+
+  .bottom-nav__item {
+    border-radius: 16px;
+    min-height: 52px;
+    padding: 0.55rem 0.2rem;
+  }
+
+  .bottom-nav__item svg {
+    height: 18px;
+    width: 18px;
+  }
+
+  .bottom-nav__item span {
+    font-size: 0.58rem;
+    letter-spacing: 0.04em;
   }
 }
 

@@ -48,6 +48,10 @@ export function AppBottomNav({ screen, onNavigate, walletAddress, onWalletAction
     { id: "leaderboard", label: "Leaderboard", icon: "leaderboard" },
     { id: "profile", label: "Profile", icon: "profile" },
   ];
+  const walletLabel = walletAddress ? "Wallet" : "Wallet";
+  const walletAriaLabel = walletAddress
+    ? `Connected wallet ${shortenWalletAddress(walletAddress)}`
+    : "Open wallet actions";
 
   return (
     <nav className="bottom-nav" aria-label="Primary">
@@ -63,9 +67,15 @@ export function AppBottomNav({ screen, onNavigate, walletAddress, onWalletAction
         </button>
       ))}
 
-      <button type="button" className="bottom-nav__item" onClick={onWalletAction}>
+      <button
+        type="button"
+        className="bottom-nav__item bottom-nav__item--wallet"
+        onClick={onWalletAction}
+        aria-label={walletAriaLabel}
+        title={walletAddress ? shortenWalletAddress(walletAddress) : "Wallet"}
+      >
         <Icon name="wallet" />
-        <span>{walletAddress ? shortenWalletAddress(walletAddress) : "Wallet"}</span>
+        <span>{walletLabel}</span>
       </button>
     </nav>
   );
