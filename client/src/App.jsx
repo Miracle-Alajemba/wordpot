@@ -32,6 +32,13 @@ const WORDPOT_ARENA_ABI = [
     stateMutability: "payable",
     type: "function",
   },
+  {
+    inputs: [{ internalType: "uint256", name: "roomId", type: "uint256" }],
+    name: "claimReward",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
 ];
 
 export default function App() {
@@ -481,31 +488,79 @@ export default function App() {
       return;
     }
 
+    const contractAddress = room?.onchain?.contractAddress;
+    const contractRoomId = room?.onchain?.contractRoomId;
+
+    if (!isWalletAddress(contractAddress) || contractAddress === zeroAddress || !contractRoomId) {
+      setRoomError("Contract configuration incomplete. Please wait for the operator to settle the room.");
+      return;
+    }
+
+    const provider = getInjectedProvider();
+    if (!provider?.request) {
+      setRoomError("Open WordPot inside MiniPay or a wallet browser to claim your reward.");
+      return;
+    }
+
     setClaimBusy(true);
     try {
       setRoomError("");
-      setRoomMessage("Submitting claim...");
+      setRoomMessage(
+        isMiniPay
+          ? "MiniPay will ask you to confirm the reward claim transaction."
+          : "Confirm the reward claim in your wallet...",
+      );
 
-      // Submit the claim to the server
-      const response = await fetch(`${API_BASE_URL}/rooms/${room.id}/claim-tx`, {
+      await ensureCeloMainnet(provider, room?.onchain?.chainId || CELO_MAINNET_CHAIN_ID);
+      const targetChainId = room?.onchain?.chainId || CELO_MAINNET_CHAIN_ID;
+      const walletClient = getWalletClient(targetChainId);
+      const publicClient = getPublicClient(targetChainId);
+
+      let txHash = "";
+      if (walletClient && publicClient) {
+        const [account] = await walletClient.getAddresses();
+        
+        // Call the smart contract's claimReward function
+        txHash = await walletClient.writeContract({
+          account,
+          chain: walletClient.chain,
+          address: contractAddress,
+          abi: WORDPOT_ARENA_ABI,
+          functionName: "claimReward",
+          args: [BigInt(contractRoomId)],
+        });
+
+        // Wait for the transaction to be confirmed on the blockchain
+        await publicClient.waitForTransactionReceipt({ hash: txHash });
+      } else {
+        setRoomError("Wallet client not available. Please use MiniPay or MetaMask.");
+        return;
+      }
+
+      // Record the claim transaction on the server
+      const recordResponse = await fetch(`${API_BASE_URL}/rooms/${room.id}/claim-tx`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           playerId,
           walletAddress: myPlayer.walletAddress,
-          txHash: `0x${"0".repeat(64)}`, // Placeholder tx hash
+          txHash,
           amount: String(myPayout.amount),
         }),
       });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || "Failed to submit claim.");
+      const recordData = await recordResponse.json();
+
+      if (!recordResponse.ok) {
+        throw new Error(recordData.error || "Failed to record the claim transaction.");
       }
 
-      const data = await response.json();
-      setRoom(data.room);
-      setRoomMessage(`Claim recorded! You will receive ${myPayout.amount} cUSD.`);
+      setRoom(recordData.room);
+      setRoomMessage(
+        isMiniPay
+          ? `MiniPay claim confirmed! You will receive ${myPayout.amount} cUSD. TX: ${txHash.slice(0, 10)}...`
+          : `Claim confirmed! You will receive ${myPayout.amount} cUSD. TX: ${txHash.slice(0, 10)}...`,
+      );
     } catch (error) {
       setRoomError(error.message || "Unable to claim reward.");
     } finally {
