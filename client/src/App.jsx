@@ -94,7 +94,7 @@ export default function App() {
     }
 
     if (hasInjectedProvider) {
-      return "Wallet detected. Connect and switch to Celo Mainnet to continue.";
+      return "";
     }
 
     return "Open WordPot inside MiniPay to test the real Celo wallet flow from connection to room payment.";
