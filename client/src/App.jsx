@@ -94,7 +94,7 @@ export default function App() {
     }
 
     if (hasInjectedProvider) {
-      return "Another wallet is available here. The app still works, but MiniPay gives the cleanest join-and-pay experience.";
+      return "Wallet detected. Connect and switch to Celo Mainnet to continue.";
     }
 
     return "Open WordPot inside MiniPay to test the real Celo wallet flow from connection to room payment.";
