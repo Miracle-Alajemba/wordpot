@@ -248,9 +248,8 @@ button:disabled {
   justify-content: space-between;
 }
 
-.hero-theme-button {
-  min-height: 44px;
-  white-space: nowrap;
+.hero-theme-toggle {
+  margin-left: auto;
 }
 
 .wallet-panel {
