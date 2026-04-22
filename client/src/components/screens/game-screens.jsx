@@ -438,17 +438,28 @@ export function LobbyScreen({
                       : "Waiting for more players"
                   : "Waiting for host"}
               </button>
-              {isHost && (
+            </div>
+            {isHost && (
+              <div style={{ marginTop: "1rem", display: "flex", gap: "0.5rem" }}>
                 <button
                   type="button"
                   className="button-secondary"
                   onClick={onCancel}
-                  style={{ color: "#ff4444" }}
+                  style={{
+                    backgroundColor: "#dd3333",
+                    color: "white",
+                    padding: "0.75rem 1.5rem",
+                    borderRadius: "0.25rem",
+                    border: "none",
+                    fontSize: "1rem",
+                    cursor: "pointer",
+                    fontWeight: "500",
+                  }}
                 >
-                  Cancel & Refund
+                  🚨 Cancel & Refund All
                 </button>
-              )}
-            </div>
+              </div>
+            )}
           </article>
 
           <article className="panel room-panel">
@@ -638,6 +649,20 @@ export function MatchRoomScreen({
               <div className="word-preview">
                 {selectedWord ? selectedWord.toUpperCase().split("").join(" - ") : "S-E-A"}
               </div>
+
+              <form className="submit-panel submit-panel--inline" onSubmit={handleSubmit}>
+                <div className="submit-panel__locked" aria-live="polite">
+                  <span className="submit-panel__locked-label">Live room input</span>
+                  <strong>{selectedWord ? selectedWord.toUpperCase() : "Tap letters to build your word"}</strong>
+                  <small>Typing is disabled in multiplayer rooms to keep word entry fair for everyone.</small>
+                </div>
+                <button type="button" className="button-secondary" onClick={clearSelection}>
+                  Clear
+                </button>
+                <button type="submit" disabled={timeLeft === 0 || !selectedWord}>
+                  Submit Word
+                </button>
+              </form>
             </div>
 
             <RoomPlayersStrip players={room?.players} scoreboard={room?.scoreboard} playerId={playerId} />
@@ -697,19 +722,6 @@ export function MatchRoomScreen({
               </article>
             </section>
 
-            <form className="submit-panel submit-panel--sticky" onSubmit={handleSubmit}>
-              <div className="submit-panel__locked" aria-live="polite">
-                <span className="submit-panel__locked-label">Live room input</span>
-                <strong>{selectedWord ? selectedWord.toUpperCase() : "Tap letters to build your word"}</strong>
-                <small>Typing is disabled in multiplayer rooms to keep word entry fair for everyone.</small>
-              </div>
-              <button type="button" className="button-secondary" onClick={clearSelection}>
-                Clear
-              </button>
-              <button type="submit" disabled={timeLeft === 0 || !selectedWord}>
-                Submit Word
-              </button>
-            </form>
           </>
         ) : null}
 

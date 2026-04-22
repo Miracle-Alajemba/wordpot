@@ -710,6 +710,10 @@ app.post("/api/rooms/:roomId/cancel", async (req, res) => {
     "Room cancelled by host. All players will be refunded.",
   );
 
+  // Collect all players who paid and need refunds
+  const paidPlayerIds = getPaidPlayerIds(room);
+  const refundedPlayers = [];
+
   // Call smart contract to refund all players if contract is ready
   if (
     wordPotContract.enabled &&
@@ -723,9 +727,36 @@ app.post("/api/rooms/:roomId/cancel", async (req, res) => {
         playerAddresses,
       );
       room.contractCancelTx = `Contract refund initiated for ${playerAddresses.length} players`;
+      refundedPlayers.push(...playerAddresses);
     } catch (error) {
       console.error("Contract cancel failed:", error.message);
       room.contractCancelError = error.message;
+    }
+  } else {
+    // If contract not available, record treasury refunds
+    // Store refund records for each player who paid
+    if (!room.refundTransactions) {
+      room.refundTransactions = [];
+    }
+
+    for (const paidPlayerId of paidPlayerIds) {
+      const paidPlayer = room.players.find((p) => p.id === paidPlayerId);
+      if (
+        paidPlayer &&
+        !room.refundTransactions.some((r) => r.playerId === paidPlayerId)
+      ) {
+        room.refundTransactions.push({
+          playerId: paidPlayerId,
+          walletAddress: paidPlayer.walletAddress,
+          amount: room.onchain?.joinPaymentDisplay || "0.001 CELO",
+          createdAt: new Date().toISOString(),
+        });
+        refundedPlayers.push(paidPlayer.walletAddress);
+        pushSystemEvent(
+          room,
+          `${shortenAddress(paidPlayer.walletAddress)} queued for treasury refund`,
+        );
+      }
     }
   }
 

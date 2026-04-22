@@ -712,6 +712,10 @@ button:disabled {
   grid-template-columns: 1fr auto auto;
 }
 
+.submit-panel--inline {
+  margin-top: 0.9rem;
+}
+
 .submit-panel--sticky {
   align-items: center;
   background: rgba(250, 250, 248, 0.94);
@@ -2416,6 +2420,10 @@ button:hover {
 
 .submit-panel--sticky {
   background: linear-gradient(180deg, rgba(12, 17, 31, 0.94), rgba(9, 13, 24, 0.98));
+}
+
+.submit-panel--inline .submit-panel__locked {
+  min-height: 0;
 }
 
 .submit-panel input {

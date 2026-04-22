@@ -464,11 +464,6 @@ export default function App() {
     } catch (error) {
       setRoomError(error.message || "Unable to cancel this room.");
     }
-      setRoomSyncStatus("live");
-      setScreen("match-room");
-    } catch (error) {
-      setRoomError(error.message || "Unable to start room.");
-    }
   }
 
   async function submitRoomWord(word) {
