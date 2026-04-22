@@ -649,25 +649,26 @@ export function MatchRoomScreen({
               <div className="word-preview">
                 {selectedWord ? selectedWord.toUpperCase().split("").join(" - ") : "S-E-A"}
               </div>
+            </div>
 
-              <form className="submit-panel submit-panel--inline" onSubmit={handleSubmit}>
-                <div className="submit-panel__locked" aria-live="polite">
-                  <span className="submit-panel__locked-label">Live room input</span>
-                  <strong>{selectedWord ? selectedWord.toUpperCase() : "Tap letters to build your word"}</strong>
-                  <small>Typing is disabled in multiplayer rooms to keep word entry fair for everyone.</small>
-                </div>
+            <form className="submit-panel submit-panel--prominent" onSubmit={handleSubmit}>
+              <div className="submit-panel__locked" aria-live="polite">
+                <span className="submit-panel__locked-label">Your Word</span>
+                <strong>{selectedWord ? selectedWord.toUpperCase() : "Tap letters above to build"}</strong>
+              </div>
+              <div className="submit-panel__actions">
                 <button type="button" className="button-secondary" onClick={clearSelection}>
                   Clear
                 </button>
-                <button type="submit" disabled={timeLeft === 0 || !selectedWord}>
-                  Submit Word
+                <button type="submit" disabled={timeLeft === 0 || !selectedWord} style={{ flex: 1, padding: "0.875rem 1.5rem", fontSize: "1rem", fontWeight: "600" }}>
+                  ✓ Submit Word
                 </button>
-              </form>
-            </div>
+              </div>
+            </form>
 
             <RoomPlayersStrip players={room?.players} scoreboard={room?.scoreboard} playerId={playerId} />
 
-            <section className="chat-room-layout">
+            <section className="chat-room-layout" style={{ marginBottom: "6rem" }}>
               <article className="panel panel-chat panel-chat--primary">
                 <div className="room-panel__header">
                   <div>
