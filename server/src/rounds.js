@@ -1,6 +1,13 @@
+import fs from "fs";
+
 const DATAMUSE_API_URL = "https://api.datamuse.com/words";
 const MIN_VALID_WORDS = 10;
 const CACHE_TTL_MS = 10 * 60 * 1000;
+const DICTIONARY_CANDIDATE_PATHS = [
+  process.env.WORDPOT_DICTIONARY_PATH,
+  "/usr/share/dict/words",
+  "/usr/share/dict/american-english",
+].filter(Boolean);
 
 const SOURCE_WORD_POOL = [
   "BLOCKCHAIN",
@@ -17,24 +24,40 @@ const SOURCE_WORD_POOL = [
   "FOUNDATION",
 ];
 
-const WORD_BANK = [
-  "ant","art","atom","back","bach","bail","ball","bank","base","beam","boat","bolt","bond",
-  "block","black","brain","brand","care","cart","cat","chain","chalk","chat","chin","city",
-  "clan","clock","clot","coal","coat","coin","comic","common","count","county","crane",
-  "crate","create","cut","dance","dream","earn","east","eastern","educate","enter","equal",
-  "fair","field","form","frame","found","game","gate","grain","grant","hail","hall","halt",
-  "hat","hint","house","icon","into","kick","land","lane","language","learn","line","link",
-  "loan","lock","long","loom","main","mail","mare","market","mate","mean","meat","mint",
-  "mission","mono","moon","mount","mouth","move","name","near","night","note","omit","pace",
-  "path","platform","plant","point","pool","port","rate","react","real","reason","remain",
-  "rent","rice","road","scar","score","steam","stare","stable","story","stone","teach",
-  "team","term","thank","thin","tone","tonic","touch","tour","trace","train","treat","trend",
-  "trim","unit","unity","unto","value","vault","vote","word","world",
-];
-
 let lastSourceWord = "";
 let cachedRounds = [];
 let cacheExpiresAt = 0;
+let dictionaryWords = [];
+const derivedWordsCache = new Map();
+
+function loadDictionary() {
+  if (dictionaryWords.length) return dictionaryWords;
+
+  try {
+    const dictionaryPath = DICTIONARY_CANDIDATE_PATHS.find((candidate) =>
+      fs.existsSync(candidate),
+    );
+    if (!dictionaryPath) {
+      throw new Error("No dictionary file was found on the server.");
+    }
+
+    const raw = fs.readFileSync(dictionaryPath, "utf8");
+    dictionaryWords = uniqueWords(
+      raw
+        .split(/\r?\n/)
+        .map((word) => String(word || "").trim().toLowerCase())
+        .filter((word) => /^[a-z]+$/.test(word))
+        .filter((word) => word.length >= 3 && word.length <= 12),
+    ).sort();
+  } catch (error) {
+    console.error(
+      `Unable to load WordPot dictionary: ${error.message}`,
+    );
+    dictionaryWords = [];
+  }
+
+  return dictionaryWords;
+}
 
 export function buildLetterCounts(word) {
   return word.split("").reduce((counts, letter) => {
@@ -57,17 +80,26 @@ function uniqueWords(words) {
 }
 
 export function deriveValidWords(sourceWord) {
-  return uniqueWords(
-    WORD_BANK.filter(
+  const normalizedSource = String(sourceWord || "").trim().toLowerCase();
+  if (!normalizedSource) return [];
+
+  if (derivedWordsCache.has(normalizedSource)) {
+    return derivedWordsCache.get(normalizedSource);
+  }
+
+  const validWords = uniqueWords(
+    loadDictionary().filter(
       (word) =>
-        word.length >= 3 &&
-        word.length <= sourceWord.length &&
-        canBuildFromSource(word, sourceWord),
+        word.length <= normalizedSource.length &&
+        canBuildFromSource(word, normalizedSource),
     ),
   ).sort((a, b) => {
     if (b.length !== a.length) return b.length - a.length;
     return a.localeCompare(b);
   });
+
+  derivedWordsCache.set(normalizedSource, validWords);
+  return validWords;
 }
 
 function makeRound(sourceWord) {
