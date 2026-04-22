@@ -90,7 +90,8 @@ export function createWordPotContractService(options) {
       let roomId = null;
 
       for (const log of receipt.logs) {
-        if (log.address.toLowerCase() !== contractAddress.toLowerCase()) continue;
+        if (log.address.toLowerCase() !== contractAddress.toLowerCase())
+          continue;
 
         try {
           const decoded = decodeEventLog({
@@ -112,6 +113,14 @@ export function createWordPotContractService(options) {
         hash,
         roomId,
       };
+    },
+    async cancelRoom(contractRoomId, playerAddresses) {
+      const hash = await contract.write.cancelRoom([
+        BigInt(contractRoomId),
+        playerAddresses.map((addr) => String(addr || "").trim()),
+      ]);
+      await publicClient.waitForTransactionReceipt({ hash });
+      return { hash };
     },
   };
 }

@@ -12,11 +12,16 @@ const ENTRY_FEE = "0.1 cUSD";
 const MIN_PLAYERS = 2;
 const MAX_PLAYERS = 5;
 const ROUND_SECONDS = 60;
-const TREASURY_WALLET = process.env.TREASURY_WALLET || "0x0000000000000000000000000000000000000000";
+const TREASURY_WALLET =
+  process.env.TREASURY_WALLET || "0x0000000000000000000000000000000000000000";
 const WORDPOT_CONTRACT_ADDRESS =
-  process.env.WORDPOT_CONTRACT_ADDRESS || process.env.LEXMASH_CONTRACT_ADDRESS || "";
-const CONTRACT_OPERATOR_PRIVATE_KEY = process.env.CONTRACT_OPERATOR_PRIVATE_KEY || "";
-const CELO_MAINNET_RPC_URL = process.env.CELO_MAINNET_RPC_URL || "https://forno.celo.org";
+  process.env.WORDPOT_CONTRACT_ADDRESS ||
+  process.env.LEXMASH_CONTRACT_ADDRESS ||
+  "";
+const CONTRACT_OPERATOR_PRIVATE_KEY =
+  process.env.CONTRACT_OPERATOR_PRIVATE_KEY || "";
+const CELO_MAINNET_RPC_URL =
+  process.env.CELO_MAINNET_RPC_URL || "https://forno.celo.org";
 const CELO_CHAIN_ID = Number(process.env.CELO_CHAIN_ID || 42220);
 const JOIN_PAYMENT_WEI = process.env.JOIN_PAYMENT_WEI || "1000000000000000";
 const JOIN_PAYMENT_DISPLAY = process.env.JOIN_PAYMENT_DISPLAY || "0.001 CELO";
@@ -39,7 +44,9 @@ function getRewardPool(playerCount) {
 }
 
 function normalizeWord(value) {
-  return String(value || "").trim().toLowerCase();
+  return String(value || "")
+    .trim()
+    .toLowerCase();
 }
 
 function getWordScore(word) {
@@ -75,7 +82,9 @@ function getScoreboard(room) {
         playerId: player.id,
         walletAddress: player.walletAddress,
         score,
-        wordsFound: room.submissions.filter((entry) => entry.playerId === player.id).length,
+        wordsFound: room.submissions.filter(
+          (entry) => entry.playerId === player.id,
+        ).length,
       };
     })
     .sort((a, b) => b.score - a.score);
@@ -90,7 +99,9 @@ function hasPlayerPaid(room, playerId) {
 }
 
 function hasPlayerClaimRecord(room, playerId) {
-  return (room.claimTransactions || []).some((entry) => entry.playerId === playerId);
+  return (room.claimTransactions || []).some(
+    (entry) => entry.playerId === playerId,
+  );
 }
 
 function settleRoom(room) {
@@ -104,6 +115,24 @@ function settleRoom(room) {
     message: "Game over! Results are ready.",
     createdAt: new Date().toISOString(),
   });
+}
+
+function checkRoomTimeout(room) {
+  // Auto-cancel rooms waiting longer than 5 minutes with insufficient players
+  if (room.status !== "waiting") return;
+  if (!room.createdAt) return;
+
+  const MIN_PLAYERS = 2;
+  const WAIT_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes
+  const createdTime = new Date(room.createdAt).getTime();
+  const elapsedTime = Date.now() - createdTime;
+
+  // If 5 minutes have passed and we don't have minimum players, auto-cancel
+  if (elapsedTime > WAIT_TIMEOUT_MS && room.players.length < MIN_PLAYERS) {
+    return true; // Should be cancelled
+  }
+
+  return false;
 }
 
 function getPayouts(room) {
@@ -171,14 +200,20 @@ function getRoomSummary(room) {
       contractRoomId: room.contractRoomId || null,
       contractRoomCreateTx: room.contractRoomCreateTx || null,
       contractReady: wordPotContract.enabled,
-      contractOperatorAddress: wordPotContract.enabled ? wordPotContract.account : null,
+      contractOperatorAddress: wordPotContract.enabled
+        ? wordPotContract.account
+        : null,
       joinPaymentWei: JOIN_PAYMENT_WEI,
       joinPaymentDisplay: JOIN_PAYMENT_DISPLAY,
       joinMode:
-        isWalletAddress(WORDPOT_CONTRACT_ADDRESS) && wordPotContract.enabled && room.contractRoomId
+        isWalletAddress(WORDPOT_CONTRACT_ADDRESS) &&
+        wordPotContract.enabled &&
+        room.contractRoomId
           ? "contract_join"
           : "treasury_beta",
-      payoutMode: isWalletAddress(WORDPOT_CONTRACT_ADDRESS) ? "contract_claim" : "treasury_beta",
+      payoutMode: isWalletAddress(WORDPOT_CONTRACT_ADDRESS)
+        ? "contract_claim"
+        : "treasury_beta",
       joinTransactions: room.joinTransactions || [],
       claimTransactions: room.claimTransactions || [],
       paidPlayersCount: getPaidPlayerIds(room).size,
@@ -212,7 +247,10 @@ function getCommunityLeaderboard() {
       current.wordsFound += entry.wordsFound;
       current.gamesPlayed += 1;
 
-      if (scoreboard[0]?.walletAddress === entry.walletAddress && entry.score > 0) {
+      if (
+        scoreboard[0]?.walletAddress === entry.walletAddress &&
+        entry.score > 0
+      ) {
         current.wins += 1;
       }
 
@@ -290,14 +328,18 @@ app.get("/api/meta", (_req, res) => {
       treasuryWallet: TREASURY_WALLET,
       contractAddress: WORDPOT_CONTRACT_ADDRESS,
       contractReady: wordPotContract.enabled,
-      contractOperatorAddress: wordPotContract.enabled ? wordPotContract.account : null,
+      contractOperatorAddress: wordPotContract.enabled
+        ? wordPotContract.account
+        : null,
       joinPaymentWei: JOIN_PAYMENT_WEI,
       joinPaymentDisplay: JOIN_PAYMENT_DISPLAY,
       joinMode:
         isWalletAddress(WORDPOT_CONTRACT_ADDRESS) && wordPotContract.enabled
           ? "contract_join"
           : "treasury_beta",
-      payoutMode: isWalletAddress(WORDPOT_CONTRACT_ADDRESS) ? "contract_claim" : "treasury_beta",
+      payoutMode: isWalletAddress(WORDPOT_CONTRACT_ADDRESS)
+        ? "contract_claim"
+        : "treasury_beta",
     },
   });
 });
@@ -324,7 +366,9 @@ app.post("/api/rooms/quick-match", async (req, res) => {
   const walletAddress = String(req.body?.walletAddress || "").trim();
 
   if (!isWalletAddress(walletAddress)) {
-    return res.status(400).json({ error: "A valid wallet address is required." });
+    return res
+      .status(400)
+      .json({ error: "A valid wallet address is required." });
   }
 
   let room = getWaitingRoom();
@@ -362,7 +406,10 @@ app.post("/api/rooms/quick-match", async (req, res) => {
         );
       } catch (error) {
         console.error("Unable to create onchain room", error);
-        pushSystemEvent(room, "Onchain room creation failed, so the room stayed in treasury beta mode.");
+        pushSystemEvent(
+          room,
+          "Onchain room creation failed, so the room stayed in treasury beta mode.",
+        );
       }
     }
 
@@ -370,7 +417,8 @@ app.post("/api/rooms/quick-match", async (req, res) => {
   }
 
   const existingPlayer = room.players.find(
-    (player) => player.walletAddress.toLowerCase() === walletAddress.toLowerCase(),
+    (player) =>
+      player.walletAddress.toLowerCase() === walletAddress.toLowerCase(),
   );
 
   if (existingPlayer) {
@@ -388,7 +436,10 @@ app.post("/api/rooms/quick-match", async (req, res) => {
   };
 
   room.players.push(player);
-  pushSystemEvent(room, `${shortenAddress(player.walletAddress)} joined the game`);
+  pushSystemEvent(
+    room,
+    `${shortenAddress(player.walletAddress)} joined the game`,
+  );
 
   return res.status(201).json({
     room: getRoomSummary(room),
@@ -417,7 +468,9 @@ app.post("/api/rooms/:roomId/start", async (req, res) => {
   }
 
   if (room.hostPlayerId !== player.id) {
-    return res.status(403).json({ error: "Only the host can start this room." });
+    return res
+      .status(403)
+      .json({ error: "Only the host can start this room." });
   }
 
   if (room.players.length < MIN_PLAYERS) {
@@ -426,7 +479,9 @@ app.post("/api/rooms/:roomId/start", async (req, res) => {
     });
   }
 
-  const unpaidPlayers = room.players.filter((entry) => !hasPlayerPaid(room, entry.id));
+  const unpaidPlayers = room.players.filter(
+    (entry) => !hasPlayerPaid(room, entry.id),
+  );
   if (unpaidPlayers.length) {
     return res.status(400).json({
       error: `All players must complete the onchain join payment before the room starts. ${unpaidPlayers.length} unpaid.`,
@@ -490,20 +545,30 @@ app.post("/api/rooms/:roomId/submit", (req, res) => {
     return res.status(400).json({ error: "Words must be at least 3 letters." });
   }
 
-  const alreadyClaimed = room.submissions.some((entry) => entry.word === rawWord);
+  const alreadyClaimed = room.submissions.some(
+    (entry) => entry.word === rawWord,
+  );
   if (alreadyClaimed) {
     logEvent({ status: "rejected", word: rawWord, reason: "Already used" });
     return res.status(409).json({ error: "Already used by another player." });
   }
 
   if (!canBuildFromSource(rawWord, room.sourceWord)) {
-    logEvent({ status: "rejected", word: rawWord, reason: "Outside source word" });
-    return res.status(400).json({ error: "That word cannot be formed from the source word." });
+    logEvent({
+      status: "rejected",
+      word: rawWord,
+      reason: "Outside source word",
+    });
+    return res
+      .status(400)
+      .json({ error: "That word cannot be formed from the source word." });
   }
 
   if (!room.validWords.includes(rawWord)) {
     logEvent({ status: "rejected", word: rawWord, reason: "Invalid word" });
-    return res.status(400).json({ error: "That word is not valid for this round." });
+    return res
+      .status(400)
+      .json({ error: "That word is not valid for this round." });
   }
 
   const submission = {
@@ -536,10 +601,14 @@ app.post("/api/rooms/:roomId/join-tx", (req, res) => {
   if (!player) return;
 
   if (!isTxHash(txHash)) {
-    return res.status(400).json({ error: "A valid transaction hash is required." });
+    return res
+      .status(400)
+      .json({ error: "A valid transaction hash is required." });
   }
 
-  const duplicate = room.joinTransactions.some((entry) => entry.txHash.toLowerCase() === txHash.toLowerCase());
+  const duplicate = room.joinTransactions.some(
+    (entry) => entry.txHash.toLowerCase() === txHash.toLowerCase(),
+  );
   if (!duplicate) {
     room.joinTransactions.push({
       playerId,
@@ -549,7 +618,10 @@ app.post("/api/rooms/:roomId/join-tx", (req, res) => {
       mode,
       createdAt: new Date().toISOString(),
     });
-    pushSystemEvent(room, `${shortenAddress(player.walletAddress)} funded the room onchain`);
+    pushSystemEvent(
+      room,
+      `${shortenAddress(player.walletAddress)} funded the room onchain`,
+    );
   }
 
   return res.status(201).json({ room: getRoomSummary(room) });
@@ -569,14 +641,20 @@ app.post("/api/rooms/:roomId/claim-tx", (req, res) => {
   settleRoom(room);
 
   if (room.status !== "finished") {
-    return res.status(400).json({ error: "Rewards can only be claimed after the room ends." });
+    return res
+      .status(400)
+      .json({ error: "Rewards can only be claimed after the room ends." });
   }
 
   if (!isTxHash(txHash)) {
-    return res.status(400).json({ error: "A valid transaction hash is required." });
+    return res
+      .status(400)
+      .json({ error: "A valid transaction hash is required." });
   }
 
-  const duplicate = room.claimTransactions.some((entry) => entry.txHash.toLowerCase() === txHash.toLowerCase());
+  const duplicate = room.claimTransactions.some(
+    (entry) => entry.txHash.toLowerCase() === txHash.toLowerCase(),
+  );
   if (!duplicate) {
     room.claimTransactions.push({
       playerId,
@@ -585,10 +663,73 @@ app.post("/api/rooms/:roomId/claim-tx", (req, res) => {
       amount,
       createdAt: new Date().toISOString(),
     });
-    pushSystemEvent(room, `${shortenAddress(player.walletAddress)} claimed a reward onchain`);
+    pushSystemEvent(
+      room,
+      `${shortenAddress(player.walletAddress)} claimed a reward onchain`,
+    );
   }
 
   return res.status(201).json({ room: getRoomSummary(room) });
+});
+
+app.post("/api/rooms/:roomId/cancel", async (req, res) => {
+  const room = getRoomOr404(req.params.roomId, res);
+  if (!room) return;
+
+  const playerId = String(req.body?.playerId || "").trim();
+  const walletAddress = String(req.body?.walletAddress || "").trim();
+  const player = getValidatedPlayerOrError(room, playerId, walletAddress, res);
+  if (!player) return;
+
+  // Only host can cancel
+  if (room.hostPlayerId !== player.id) {
+    return res
+      .status(403)
+      .json({ error: "Only the host can cancel this room." });
+  }
+
+  // Can only cancel while waiting or before game ends
+  if (room.status !== "waiting" && room.status !== "active") {
+    return res
+      .status(400)
+      .json({ error: "This room cannot be cancelled in its current state." });
+  }
+
+  // Already cancelled
+  if (room.cancelledAt) {
+    return res
+      .status(400)
+      .json({ error: "This room has already been cancelled." });
+  }
+
+  // Mark room as cancelled
+  room.status = "cancelled";
+  room.cancelledAt = new Date().toISOString();
+  pushSystemEvent(
+    room,
+    "Room cancelled by host. All players will be refunded.",
+  );
+
+  // Call smart contract to refund all players if contract is ready
+  if (
+    wordPotContract.enabled &&
+    isWalletAddress(room.onchain?.contractAddress) &&
+    room.onchain?.contractRoomId
+  ) {
+    try {
+      const playerAddresses = room.players.map((p) => p.walletAddress);
+      await wordPotContract.cancelRoom(
+        room.onchain.contractRoomId,
+        playerAddresses,
+      );
+      room.contractCancelTx = `Contract refund initiated for ${playerAddresses.length} players`;
+    } catch (error) {
+      console.error("Contract cancel failed:", error.message);
+      room.contractCancelError = error.message;
+    }
+  }
+
+  return res.status(200).json({ room: getRoomSummary(room) });
 });
 
 function shortenAddress(value) {

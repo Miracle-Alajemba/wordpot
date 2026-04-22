@@ -266,6 +266,7 @@ export function LobbyScreen({
   syncStatus,
   onRefresh,
   onStart,
+  onCancel,
   onPayEntryFee,
   paymentBusy,
   onBack,
@@ -437,6 +438,16 @@ export function LobbyScreen({
                       : "Waiting for more players"
                   : "Waiting for host"}
               </button>
+              {isHost && (
+                <button
+                  type="button"
+                  className="button-secondary"
+                  onClick={onCancel}
+                  style={{ color: "#ff4444" }}
+                >
+                  Cancel & Refund
+                </button>
+              )}
             </div>
           </article>
 

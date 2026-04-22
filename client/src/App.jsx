@@ -428,6 +428,42 @@ export default function App() {
       });
       setRoomMessage("");
       setRoomError("");
+    } catch (error) {
+      setRoomError(error.message || "Unable to start this room.");
+    }
+  }
+
+  async function cancelRoom() {
+    if (!room?.id || !playerId) return;
+
+    if (!window.confirm("Are you sure you want to cancel this room? All players will be refunded.")) {
+      return;
+    }
+
+    try {
+      setRoomError("");
+      setRoomMessage("Cancelling room and processing refunds...");
+
+      const response = await fetch(`${API_BASE_URL}/rooms/${room.id}/cancel`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          playerId,
+          walletAddress: walletAddress.trim(),
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Unable to cancel this room.");
+      }
+
+      setRoom(data.room);
+      setRoomMessage("Room cancelled successfully. All players have been refunded.");
+    } catch (error) {
+      setRoomError(error.message || "Unable to cancel this room.");
+    }
       setRoomSyncStatus("live");
       setScreen("match-room");
     } catch (error) {
@@ -640,6 +676,7 @@ export default function App() {
         syncStatus={roomSyncStatus}
         onRefresh={refreshRoom}
         onStart={startRoom}
+        onCancel={cancelRoom}
         onPayEntryFee={payEntryFeeOnchain}
         paymentBusy={paymentBusy}
         onBack={backHome}
