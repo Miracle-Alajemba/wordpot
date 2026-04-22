@@ -30,6 +30,12 @@ let cacheExpiresAt = 0;
 let dictionaryWords = [];
 const derivedWordsCache = new Map();
 
+function shuffle(items) {
+  return items
+    .slice()
+    .sort(() => Math.random() - 0.5);
+}
+
 function loadDictionary() {
   if (dictionaryWords.length) return dictionaryWords;
 
@@ -102,6 +108,12 @@ export function deriveValidWords(sourceWord) {
   return validWords;
 }
 
+function isDictionaryWord(word) {
+  const normalized = String(word || "").trim().toLowerCase();
+  if (!normalized) return false;
+  return loadDictionary().includes(normalized);
+}
+
 function makeRound(sourceWord) {
   return {
     sourceWord,
@@ -114,6 +126,23 @@ function isPlayableRound(round) {
 }
 
 function getFallbackRounds() {
+  const dictionaryRounds = shuffle(
+    loadDictionary().filter(
+      (word) =>
+        word.length >= 8 &&
+        word.length <= 12 &&
+        new Set(word).size >= 5,
+    ),
+  )
+    .slice(0, 250)
+    .map((word) => word.toUpperCase())
+    .map(makeRound)
+    .filter(isPlayableRound);
+
+  if (dictionaryRounds.length) {
+    return dictionaryRounds;
+  }
+
   return SOURCE_WORD_POOL
     .map(makeRound)
     .filter(isPlayableRound);
@@ -148,6 +177,7 @@ async function fetchDatamuseCandidates() {
     .flat()
     .map((entry) => String(entry?.word || "").trim())
     .filter((word) => /^[a-z]+$/i.test(word))
+    .filter((word) => isDictionaryWord(word))
     .map((word) => word.toUpperCase());
 }
 
