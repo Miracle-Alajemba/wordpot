@@ -17,6 +17,10 @@ export function getCeloChain(chainId = 42220) {
 
 export function createInjectedWalletClient(chainId = 42220) {
   const provider = getInjectedWalletProvider();
+  return createWalletClientFromProvider(provider, chainId);
+}
+
+export function createWalletClientFromProvider(provider, chainId = 42220) {
   if (!provider) return null;
 
   return createWalletClient({
