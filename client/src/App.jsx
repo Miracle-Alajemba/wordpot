@@ -589,8 +589,8 @@ export default function App() {
       setRoom(recordData.room);
       setRoomMessage(
         isMiniPay
-          ? `MiniPay claim confirmed! You will receive ${myPayout.amount} cUSD. TX: ${txHash.slice(0, 10)}...`
-          : `Claim confirmed! You will receive ${myPayout.amount} cUSD. TX: ${txHash.slice(0, 10)}...`,
+          ? `MiniPay claim confirmed! You will receive ${myPayout.amount} CELO. TX: ${txHash.slice(0, 10)}...`
+          : `Claim confirmed! You will receive ${myPayout.amount} CELO. TX: ${txHash.slice(0, 10)}...`,
       );
     } catch (error) {
       setRoomError(error.message || "Unable to claim reward.");

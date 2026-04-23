@@ -8,7 +8,6 @@ dotenv.config();
 
 const app = express();
 const port = Number(process.env.PORT || 4000);
-const ENTRY_FEE = "0.1 cUSD";
 const MIN_PLAYERS = 2;
 const MAX_PLAYERS = 5;
 const ROUND_SECONDS = 60;
@@ -25,6 +24,7 @@ const CELO_MAINNET_RPC_URL =
 const CELO_CHAIN_ID = Number(process.env.CELO_CHAIN_ID || 42220);
 const JOIN_PAYMENT_WEI = process.env.JOIN_PAYMENT_WEI || "1000000000000000";
 const JOIN_PAYMENT_DISPLAY = process.env.JOIN_PAYMENT_DISPLAY || "0.001 CELO";
+const ENTRY_FEE = JOIN_PAYMENT_DISPLAY;
 const REQUIRE_ONCHAIN_ROOM = process.env.REQUIRE_ONCHAIN_ROOM !== "false";
 const rooms = new Map();
 const wordPotContract = createWordPotContractService({
@@ -41,7 +41,9 @@ function makeId(prefix) {
 }
 
 function getRewardPool(playerCount) {
-  return (playerCount * 0.1 * 0.9).toFixed(2);
+  return (
+    (playerCount * (Number(JOIN_PAYMENT_WEI) / 1_000_000_000_000_000_000)) * 0.9
+  ).toFixed(4);
 }
 
 function normalizeWord(value) {
@@ -175,7 +177,7 @@ function getRoomSummary(room) {
     roundDurationSeconds: ROUND_SECONDS,
     hostPlayerId: room.hostPlayerId,
     sourceWord: room.sourceWord || null,
-    rewardPool: `${getRewardPool(room.players.length)} cUSD`,
+    rewardPool: `${getRewardPool(room.players.length)} CELO`,
     createdAt: room.createdAt,
     startedAt: room.startedAt || null,
     endsAt: room.endsAt || null,

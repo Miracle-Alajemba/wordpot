@@ -160,7 +160,7 @@ export function HomeScreen({
 
           <div className="feature-strip">
             <div className="feature-pill">60 second rounds</div>
-            <div className="feature-pill">0.1 cUSD stake</div>
+            <div className="feature-pill">0.001 CELO entry</div>
             <div className="feature-pill">90% split by score</div>
             <div className="feature-pill">Live room chat</div>
             <div className="feature-pill">Free practice arena</div>
@@ -181,7 +181,7 @@ export function HomeScreen({
           </div>
           <div className="hero-card__grid">
             <span>Timer: 60s</span>
-            <span>Stake: 1.0 cUSD</span>
+            <span>Stake: 0.001 CELO</span>
             <span>Players: 2-5</span>
             <span>Pool: 90% shared by score</span>
           </div>
@@ -230,7 +230,7 @@ export function HomeScreen({
         <article className="panel panel-wide">
           <h3>Prize Logic</h3>
           <p>
-            Every room starts with a small cUSD stake from each player. WordPot
+            Every room starts with a small CELO entry from each player. WordPot
             keeps a 10% treasury fee, and the remaining 90% is shared using a
             simple formula: your score divided by total room score, multiplied by
             the reward pool.
@@ -322,7 +322,7 @@ export function LobbyScreen({
             <h1>{room?.id || "LOADING"}</h1>
           </div>
           <div className="room-topbar__stats">
-            <span>{room?.entryFee || "0.1 cUSD"}</span>
+            <span>{room?.entryFee || "0.001 CELO"}</span>
             <span>{room?.rewardPool || "--"}</span>
             <span>{room?.players?.length || 0}/{room?.maxPlayers || 5} players</span>
             <span className={syncMeta.className}>{syncMeta.label}</span>
@@ -364,7 +364,7 @@ export function LobbyScreen({
             <div className="lobby-summary-grid">
               <div className="lobby-stat-card">
                 <span>Entry Fee</span>
-                <strong>{room?.entryFee || "0.1 cUSD"}</strong>
+                <strong>{room?.entryFee || "0.001 CELO"}</strong>
               </div>
               <div className="lobby-stat-card">
                 <span>Prize Pool</span>
@@ -604,7 +604,7 @@ export function MatchRoomScreen({
           <div className="room-topbar__stats">
             <span>{room?.players?.length || 0}/{room?.maxPlayers || 5} players online</span>
             <span>{room?.rewardPool || "--"}</span>
-            <span>{room?.entryFee || "0.1 cUSD"}</span>
+            <span>{room?.entryFee || "0.001 CELO"}</span>
             <span className={syncMeta.className}>{syncMeta.label}</span>
           </div>
         </div>
@@ -770,7 +770,7 @@ export function MatchRoomScreen({
                 <div className="claim-card__top">
                   <div>
                     <span className="claim-card__label">Your reward</span>
-                    <strong className="claim-card__amount">{payoutAmount.toFixed(4)} cUSD</strong>
+                    <strong className="claim-card__amount">{payoutAmount.toFixed(4)} CELO</strong>
                   </div>
                   <span className={`claim-card__status ${claimRecorded ? "claim-card__status--success" : payoutAmount > 0 ? "claim-card__status--ready" : ""}`}>
                     {claimStatusTitle}
@@ -825,7 +825,7 @@ export function MatchRoomScreen({
                       <strong>{getPlayerAlias(entry.walletAddress)}</strong>
                       <p>{shortenWalletAddress(entry.walletAddress)}</p>
                     </div>
-                    <span className="self-pill">{entry.amount} cUSD</span>
+                    <span className="self-pill">{entry.amount} CELO</span>
                   </div>
                 ))}
               </div>
