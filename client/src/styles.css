@@ -2195,6 +2195,18 @@ button:hover {
   box-shadow: 0 10px 20px rgba(4, 9, 18, 0.14);
 }
 
+.button-submit-soft {
+  background: linear-gradient(180deg, rgba(184, 209, 193, 0.98), rgba(162, 190, 173, 0.98)) !important;
+  border: 1px solid rgba(168, 197, 168, 0.26) !important;
+  box-shadow: 0 10px 20px rgba(14, 24, 32, 0.14) !important;
+  color: #122031 !important;
+}
+
+.button-submit-soft:hover {
+  background: linear-gradient(180deg, rgba(195, 218, 204, 0.99), rgba(171, 198, 182, 0.99)) !important;
+  box-shadow: 0 14px 24px rgba(14, 24, 32, 0.18) !important;
+}
+
 .hero-copy,
 .hero-card,
 .panel,
@@ -3427,4 +3439,16 @@ button:disabled,
 .app-light-mode .submit-panel .button-secondary:hover {
   background: linear-gradient(180deg, rgba(248, 250, 253, 0.99), rgba(238, 243, 249, 0.99));
   box-shadow: 0 8px 16px rgba(122, 159, 181, 0.08);
+}
+
+.app-light-mode .button-submit-soft {
+  background: linear-gradient(180deg, rgba(221, 235, 223, 0.99), rgba(204, 223, 207, 0.99)) !important;
+  border: 1px solid rgba(126, 166, 126, 0.18) !important;
+  box-shadow: 0 8px 16px rgba(126, 166, 126, 0.08) !important;
+  color: #213447 !important;
+}
+
+.app-light-mode .button-submit-soft:hover {
+  background: linear-gradient(180deg, rgba(230, 241, 231, 0.99), rgba(213, 229, 215, 0.99)) !important;
+  box-shadow: 0 10px 18px rgba(126, 166, 126, 0.1) !important;
 }

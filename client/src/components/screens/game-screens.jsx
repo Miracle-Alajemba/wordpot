@@ -660,7 +660,12 @@ export function MatchRoomScreen({
                 <button type="button" className="button-secondary" onClick={clearSelection}>
                   Clear
                 </button>
-                <button type="submit" disabled={timeLeft === 0 || !selectedWord} style={{ flex: 1, padding: "0.875rem 1.5rem", fontSize: "1rem", fontWeight: "600" }}>
+                <button
+                  type="submit"
+                  className="button-submit-soft"
+                  disabled={timeLeft === 0 || !selectedWord}
+                  style={{ flex: 1, padding: "0.875rem 1.5rem", fontSize: "1rem", fontWeight: "600" }}
+                >
                   ✓ Submit Word
                 </button>
               </div>
@@ -743,6 +748,7 @@ export function MatchRoomScreen({
               </div>
               <div className="chat-feed chat-feed--live">
                 {feed.map((entry, index) => (
+                  
                   <ChatMessage
                     key={`${entry.createdAt}-${index}`}
                     entry={entry}
