@@ -25,6 +25,7 @@ const CELO_MAINNET_RPC_URL =
 const CELO_CHAIN_ID = Number(process.env.CELO_CHAIN_ID || 42220);
 const JOIN_PAYMENT_WEI = process.env.JOIN_PAYMENT_WEI || "1000000000000000";
 const JOIN_PAYMENT_DISPLAY = process.env.JOIN_PAYMENT_DISPLAY || "0.001 CELO";
+const REQUIRE_ONCHAIN_ROOM = process.env.REQUIRE_ONCHAIN_ROOM !== "false";
 const rooms = new Map();
 const wordPotContract = createWordPotContractService({
   contractAddress: WORDPOT_CONTRACT_ADDRESS,
@@ -199,6 +200,8 @@ function getRoomSummary(room) {
       contractAddress: WORDPOT_CONTRACT_ADDRESS,
       contractRoomId: room.contractRoomId || null,
       contractRoomCreateTx: room.contractRoomCreateTx || null,
+      contractCancelTx: room.contractCancelTx || null,
+      contractCancelError: room.contractCancelError || null,
       contractReady: wordPotContract.enabled,
       contractOperatorAddress: wordPotContract.enabled
         ? wordPotContract.account
@@ -210,14 +213,19 @@ function getRoomSummary(room) {
         wordPotContract.enabled &&
         room.contractRoomId
           ? "contract_join"
-          : "treasury_beta",
-      payoutMode: isWalletAddress(WORDPOT_CONTRACT_ADDRESS)
+          : "contract_unavailable",
+      payoutMode:
+        isWalletAddress(WORDPOT_CONTRACT_ADDRESS) &&
+        wordPotContract.enabled &&
+        room.contractRoomId
         ? "contract_claim"
-        : "treasury_beta",
+        : "contract_unavailable",
       joinTransactions: room.joinTransactions || [],
       claimTransactions: room.claimTransactions || [],
+      refundTransactions: room.refundTransactions || [],
       paidPlayersCount: getPaidPlayerIds(room).size,
     },
+    cancelledAt: room.cancelledAt || null,
   };
 }
 
@@ -336,10 +344,11 @@ app.get("/api/meta", (_req, res) => {
       joinMode:
         isWalletAddress(WORDPOT_CONTRACT_ADDRESS) && wordPotContract.enabled
           ? "contract_join"
-          : "treasury_beta",
-      payoutMode: isWalletAddress(WORDPOT_CONTRACT_ADDRESS)
+          : "contract_unavailable",
+      payoutMode:
+        isWalletAddress(WORDPOT_CONTRACT_ADDRESS) && wordPotContract.enabled
         ? "contract_claim"
-        : "treasury_beta",
+        : "contract_unavailable",
     },
   });
 });
@@ -374,6 +383,16 @@ app.post("/api/rooms/quick-match", async (req, res) => {
   let room = getWaitingRoom();
 
   if (!room) {
+    if (
+      REQUIRE_ONCHAIN_ROOM &&
+      (!isWalletAddress(WORDPOT_CONTRACT_ADDRESS) || !wordPotContract.enabled)
+    ) {
+      return res.status(503).json({
+        error:
+          "Live rooms are waiting for the WordPot contract operator to be configured. Restart the server with the contract key and try again.",
+      });
+    }
+
     const hostPlayerId = makeId("player");
     room = {
       id: makeId("room"),
@@ -398,6 +417,11 @@ app.post("/api/rooms/quick-match", async (req, res) => {
         const contractRoom = await wordPotContract.createRoom(JOIN_PAYMENT_WEI);
         room.contractRoomId = contractRoom?.roomId ?? null;
         room.contractRoomCreateTx = contractRoom?.hash ?? null;
+
+        if (!room.contractRoomId) {
+          throw new Error("Contract room was created without a room id.");
+        }
+
         pushSystemEvent(
           room,
           room.contractRoomId
@@ -406,11 +430,16 @@ app.post("/api/rooms/quick-match", async (req, res) => {
         );
       } catch (error) {
         console.error("Unable to create onchain room", error);
-        pushSystemEvent(
-          room,
-          "Onchain room creation failed, so the room stayed in treasury beta mode.",
-        );
+        return res.status(502).json({
+          error:
+            "Unable to open this room onchain right now. No player was charged. Please try again.",
+        });
       }
+    } else if (REQUIRE_ONCHAIN_ROOM) {
+      return res.status(503).json({
+        error:
+          "Live rooms are temporarily unavailable until the onchain room contract is ready.",
+      });
     }
 
     rooms.set(room.id, room);
@@ -596,7 +625,7 @@ app.post("/api/rooms/:roomId/join-tx", (req, res) => {
   const walletAddress = String(req.body?.walletAddress || "").trim();
   const txHash = String(req.body?.txHash || "").trim();
   const amount = String(req.body?.amount || JOIN_PAYMENT_DISPLAY).trim();
-  const mode = String(req.body?.mode || "treasury_beta").trim();
+  const mode = String(req.body?.mode || "contract_join").trim();
   const player = getValidatedPlayerOrError(room, playerId, walletAddress, res);
   if (!player) return;
 
@@ -714,50 +743,38 @@ app.post("/api/rooms/:roomId/cancel", async (req, res) => {
   const paidPlayerIds = getPaidPlayerIds(room);
   const refundedPlayers = [];
 
-  // Call smart contract to refund all players if contract is ready
   if (
-    wordPotContract.enabled &&
-    isWalletAddress(room.onchain?.contractAddress) &&
-    room.onchain?.contractRoomId
+    !wordPotContract.enabled ||
+    !isWalletAddress(WORDPOT_CONTRACT_ADDRESS) ||
+    !room.contractRoomId
   ) {
-    try {
-      const playerAddresses = room.players.map((p) => p.walletAddress);
-      await wordPotContract.cancelRoom(
-        room.onchain.contractRoomId,
-        playerAddresses,
-      );
-      room.contractCancelTx = `Contract refund initiated for ${playerAddresses.length} players`;
-      refundedPlayers.push(...playerAddresses);
-    } catch (error) {
-      console.error("Contract cancel failed:", error.message);
-      room.contractCancelError = error.message;
-    }
-  } else {
-    // If contract not available, record treasury refunds
-    // Store refund records for each player who paid
-    if (!room.refundTransactions) {
-      room.refundTransactions = [];
-    }
+    return res.status(503).json({
+      error:
+        "This room cannot refund onchain because the contract room is missing. Open a fresh room after the server is fully configured.",
+    });
+  }
 
-    for (const paidPlayerId of paidPlayerIds) {
-      const paidPlayer = room.players.find((p) => p.id === paidPlayerId);
-      if (
-        paidPlayer &&
-        !room.refundTransactions.some((r) => r.playerId === paidPlayerId)
-      ) {
-        room.refundTransactions.push({
-          playerId: paidPlayerId,
-          walletAddress: paidPlayer.walletAddress,
-          amount: room.onchain?.joinPaymentDisplay || "0.001 CELO",
-          createdAt: new Date().toISOString(),
-        });
-        refundedPlayers.push(paidPlayer.walletAddress);
-        pushSystemEvent(
-          room,
-          `${shortenAddress(paidPlayer.walletAddress)} queued for treasury refund`,
-        );
-      }
-    }
+  try {
+    const playerAddresses = room.players.map((p) => p.walletAddress);
+    const cancelResult = await wordPotContract.cancelRoom(
+      room.contractRoomId,
+      playerAddresses,
+    );
+    room.contractCancelTx = cancelResult?.hash ?? null;
+    room.contractCancelError = null;
+    refundedPlayers.push(...playerAddresses);
+    pushSystemEvent(
+      room,
+      `Onchain refund sent for ${playerAddresses.length} player${playerAddresses.length === 1 ? "" : "s"}.`,
+    );
+  } catch (error) {
+    console.error("Contract cancel failed:", error.message);
+    room.contractCancelError = error.message;
+    return res.status(502).json({
+      error:
+        error.message ||
+        "Onchain refund failed. No treasury fallback was used, so please retry.",
+    });
   }
 
   return res.status(200).json({ room: getRoomSummary(room) });
