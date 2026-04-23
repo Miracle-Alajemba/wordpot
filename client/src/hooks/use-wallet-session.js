@@ -3,12 +3,13 @@ import {
   useAppKit,
   useAppKitAccount,
   useAppKitProvider,
-  useDisconnect,
 } from "@reown/appkit/react";
 import {
   CELO_MAINNET_CHAIN_ID,
+  REOWN_PROJECT_ID,
   WALLET_STORAGE_KEY,
 } from "../config/app-config.js";
+import { useDisconnect } from "wagmi";
 import {
   createCeloPublicClient,
   createInjectedWalletClient,
@@ -91,7 +92,7 @@ export function useWalletSession() {
   const provider = injectedProvider?.request ? injectedProvider : appKitProvider || null;
   const isMiniPay = Boolean(injectedProvider?.isMiniPay);
   const hasInjectedProvider = Boolean(injectedProvider?.request);
-  const hasWalletConnect = Boolean(appKitProvider);
+  const hasWalletConnect = Boolean(REOWN_PROJECT_ID);
 
   const walletProviderName = useMemo(
     () => getWalletProviderName(provider),
@@ -177,21 +178,50 @@ export function useWalletSession() {
     appKitProvider
       ?.request?.({ method: "eth_chainId" })
       .then((chainId) => {
-        setWalletChainId(parseChainId(chainId));
-        setWalletStatus(`Wallet connected as ${shortenWalletAddress(appKitAddress)}.`);
+        const normalizedChainId = parseChainId(chainId);
+        setWalletChainId(normalizedChainId);
+        setWalletStatus(
+          normalizedChainId === CELO_MAINNET_CHAIN_ID
+            ? `Wallet ready on Celo Mainnet as ${shortenWalletAddress(appKitAddress)}.`
+            : `Wallet connected as ${shortenWalletAddress(appKitAddress)}. Switch to Celo Mainnet to continue.`,
+        );
       })
       .catch(() => {
         setWalletStatus(`Wallet connected as ${shortenWalletAddress(appKitAddress)}.`);
       });
   }, [appKitAddress, appKitConnected, appKitProvider]);
 
+  async function connectWithAppKitProvider() {
+    if (!appKitProvider?.request || !isWalletAddress(appKitAddress)) {
+      throw new Error("WalletConnect finished without a usable wallet session.");
+    }
+
+    setWalletStatus("Wallet connected. Preparing Celo Mainnet...");
+    await ensureCeloMainnet(appKitProvider, CELO_MAINNET_CHAIN_ID);
+    const chainId = await appKitProvider.request({ method: "eth_chainId" });
+    const normalizedChainId = parseChainId(chainId);
+
+    setWalletAddress(appKitAddress);
+    setWalletChainId(normalizedChainId);
+    setWalletStatus(`Ready on Celo Mainnet as ${shortenWalletAddress(appKitAddress)}`);
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem(WALLET_STORAGE_KEY, appKitAddress);
+    }
+  }
+
   async function connectWallet() {
     const provider = getInjectedWalletProvider();
 
     if (!provider?.request) {
       try {
+        if (appKitConnected && appKitProvider?.request && isWalletAddress(appKitAddress)) {
+          await connectWithAppKitProvider();
+          return;
+        }
+
         setWalletStatus("Opening wallet options...");
         await open({ view: "Connect" });
+        setWalletStatus("Choose a wallet to continue.");
       } catch (error) {
         setWalletStatus(error.message || "Unable to open wallet connection.");
       }
@@ -230,7 +260,7 @@ export function useWalletSession() {
 
   async function disconnectWallet() {
     try {
-      await disconnect({ namespace: "eip155" });
+      await disconnect();
     } catch {}
     setWalletAddress("");
     setWalletChainId(null);

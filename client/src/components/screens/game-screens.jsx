@@ -111,9 +111,9 @@ export function HomeScreen({
             </div>
           ) : null}
 
-          {!hasInjectedProvider ? (
+          {!hasInjectedProvider && !walletAddress ? (
             <div className="notice-strip notice-strip--neutral">
-              Open WordPot inside MiniPay for the cleanest join-and-pay flow.
+              Connect with MiniPay or any supported wallet to join live rooms.
             </div>
           ) : null}
 
