@@ -538,7 +538,31 @@ export default function App() {
       setRoomError("");
       setRoomMessage(
         isMiniPay
-          ? "MiniPay will ask you to confirm the reward claim transaction."
+          ? "MiniPay will finalize scores onchain, then ask you to confirm the reward claim."
+          : "Finalizing scores onchain before reward claim...",
+      );
+
+      const settleResponse = await fetch(`${API_BASE_URL}/rooms/${room.id}/settle`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          playerId,
+          walletAddress: myPlayer.walletAddress,
+        }),
+      });
+      const settleData = await settleResponse.json();
+
+      if (!settleResponse.ok) {
+        throw new Error(settleData.error || "Unable to settle this room onchain yet.");
+      }
+
+      if (settleData.room) {
+        setRoom(settleData.room);
+      }
+
+      setRoomMessage(
+        isMiniPay
+          ? "MiniPay will now ask you to confirm the reward claim transaction."
           : "Confirm the reward claim in your wallet...",
       );
 

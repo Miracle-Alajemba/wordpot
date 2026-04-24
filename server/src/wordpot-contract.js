@@ -122,5 +122,14 @@ export function createWordPotContractService(options) {
       await publicClient.waitForTransactionReceipt({ hash });
       return { hash };
     },
+    async settleRoom(contractRoomId, playerAddresses, playerScores) {
+      const hash = await contract.write.settleRoom([
+        BigInt(contractRoomId),
+        playerAddresses.map((addr) => String(addr || "").trim()),
+        playerScores.map((score) => BigInt(score)),
+      ]);
+      await publicClient.waitForTransactionReceipt({ hash });
+      return { hash };
+    },
   };
 }

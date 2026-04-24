@@ -202,6 +202,9 @@ function getRoomSummary(room) {
       contractAddress: WORDPOT_CONTRACT_ADDRESS,
       contractRoomId: room.contractRoomId || null,
       contractRoomCreateTx: room.contractRoomCreateTx || null,
+      contractSettleTx: room.contractSettleTx || null,
+      contractSettledAt: room.contractSettledAt || null,
+      contractSettleError: room.contractSettleError || null,
       contractCancelTx: room.contractCancelTx || null,
       contractCancelError: room.contractCancelError || null,
       contractReady: wordPotContract.enabled,
@@ -287,6 +290,18 @@ function getRoomOr404(roomId, res) {
     return null;
   }
   return room;
+}
+
+function buildSettlementPayload(room) {
+  const scoreboardMap = new Map(
+    getScoreboard(room).map((entry) => [entry.playerId, entry.score]),
+  );
+
+  return room.players.map((player) => ({
+    playerId: player.id,
+    walletAddress: player.walletAddress,
+    score: scoreboardMap.get(player.id) || 0,
+  }));
 }
 
 function getValidatedPlayerOrError(room, playerId, walletAddress, res) {
@@ -701,6 +716,60 @@ app.post("/api/rooms/:roomId/claim-tx", (req, res) => {
   }
 
   return res.status(201).json({ room: getRoomSummary(room) });
+});
+
+app.post("/api/rooms/:roomId/settle", async (req, res) => {
+  const room = getRoomOr404(req.params.roomId, res);
+  if (!room) return;
+
+  const playerId = String(req.body?.playerId || "").trim();
+  const walletAddress = String(req.body?.walletAddress || "").trim();
+  const player = getValidatedPlayerOrError(room, playerId, walletAddress, res);
+  if (!player) return;
+
+  settleRoom(room);
+
+  if (room.status !== "finished") {
+    return res.status(400).json({
+      error: "This room is not finished yet, so it cannot be settled onchain.",
+    });
+  }
+
+  if (room.contractSettledAt) {
+    return res.status(200).json({ room: getRoomSummary(room), settled: true });
+  }
+
+  if (
+    !wordPotContract.enabled ||
+    !isWalletAddress(WORDPOT_CONTRACT_ADDRESS) ||
+    !room.contractRoomId
+  ) {
+    return res.status(503).json({
+      error: "Onchain settlement is not available for this room yet.",
+    });
+  }
+
+  try {
+    const settlement = buildSettlementPayload(room);
+    const settleResult = await wordPotContract.settleRoom(
+      room.contractRoomId,
+      settlement.map((entry) => entry.walletAddress),
+      settlement.map((entry) => entry.score),
+    );
+
+    room.contractSettleTx = settleResult?.hash ?? null;
+    room.contractSettledAt = new Date().toISOString();
+    room.contractSettleError = null;
+    pushSystemEvent(room, "Final scores were settled onchain. Claims are now live.");
+
+    return res.status(200).json({ room: getRoomSummary(room), settled: true });
+  } catch (error) {
+    console.error("Contract settle failed:", error.message);
+    room.contractSettleError = error.message;
+    return res.status(502).json({
+      error: error.message || "Unable to settle the room onchain right now.",
+    });
+  }
 });
 
 app.post("/api/rooms/:roomId/cancel", async (req, res) => {
