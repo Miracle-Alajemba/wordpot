@@ -1,10 +1,15 @@
 import fs from "fs";
+import { fileURLToPath } from "url";
 
 const DATAMUSE_API_URL = "https://api.datamuse.com/words";
 const MIN_VALID_WORDS = 10;
 const CACHE_TTL_MS = 10 * 60 * 1000;
+const BUNDLED_DICTIONARY_PATH = fileURLToPath(
+  new URL("../english-words.txt", import.meta.url),
+);
 const DICTIONARY_CANDIDATE_PATHS = [
   process.env.WORDPOT_DICTIONARY_PATH,
+  BUNDLED_DICTIONARY_PATH,
   "/usr/share/dict/words",
   "/usr/share/dict/american-english",
 ].filter(Boolean);
