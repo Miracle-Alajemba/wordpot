@@ -24,6 +24,74 @@ const SOURCE_WORD_POOL = [
   "FOUNDATION",
 ];
 
+const EMERGENCY_ROUNDS = [
+  {
+    sourceWord: "CREATION",
+    validWords: [
+      "action",
+      "actor",
+      "cation",
+      "crate",
+      "react",
+      "trace",
+      "tone",
+      "note",
+      "rent",
+      "rate",
+      "tear",
+      "care",
+      "cart",
+      "coat",
+      "coin",
+      "near",
+      "rain",
+      "train",
+    ],
+  },
+  {
+    sourceWord: "LANGUAGE",
+    validWords: [
+      "angle",
+      "angel",
+      "glean",
+      "equal",
+      "league",
+      "lane",
+      "lean",
+      "glue",
+      "gale",
+      "gauge",
+      "angel",
+      "glee",
+      "glean",
+      "game",
+      "name",
+      "mean",
+    ],
+  },
+  {
+    sourceWord: "TREASURY",
+    validWords: [
+      "treasury",
+      "stare",
+      "tears",
+      "rates",
+      "years",
+      "year",
+      "star",
+      "stay",
+      "seat",
+      "rate",
+      "tear",
+      "rest",
+      "true",
+      "user",
+      "sure",
+      "tray",
+    ],
+  },
+];
+
 let lastSourceWord = "";
 let cachedRounds = [];
 let cacheExpiresAt = 0;
@@ -149,6 +217,13 @@ function getFallbackRounds() {
 }
 
 function pickFromRounds(rounds) {
+  if (!rounds.length) {
+    const emergencyRound =
+      EMERGENCY_ROUNDS[Math.floor(Math.random() * EMERGENCY_ROUNDS.length)];
+    lastSourceWord = emergencyRound.sourceWord;
+    return emergencyRound;
+  }
+
   const candidates = rounds.filter((round) => round.sourceWord !== lastSourceWord);
   const pool = candidates.length ? candidates : rounds;
   const nextRound = pool[Math.floor(Math.random() * pool.length)];
@@ -198,6 +273,9 @@ async function refillRoundCache() {
   }
 
   cachedRounds = getFallbackRounds();
+  if (!cachedRounds.length) {
+    cachedRounds = EMERGENCY_ROUNDS;
+  }
   cacheExpiresAt = Date.now() + CACHE_TTL_MS;
 }
 
