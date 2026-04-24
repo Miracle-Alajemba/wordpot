@@ -24,73 +24,7 @@ const SOURCE_WORD_POOL = [
   "FOUNDATION",
 ];
 
-const EMERGENCY_ROUNDS = [
-  {
-    sourceWord: "CREATION",
-    validWords: [
-      "action",
-      "actor",
-      "cation",
-      "crate",
-      "react",
-      "trace",
-      "tone",
-      "note",
-      "rent",
-      "rate",
-      "tear",
-      "care",
-      "cart",
-      "coat",
-      "coin",
-      "near",
-      "rain",
-      "train",
-    ],
-  },
-  {
-    sourceWord: "LANGUAGE",
-    validWords: [
-      "angle",
-      "angel",
-      "glean",
-      "equal",
-      "league",
-      "lane",
-      "lean",
-      "glue",
-      "gale",
-      "gauge",
-      "angel",
-      "glee",
-      "glean",
-      "game",
-      "name",
-      "mean",
-    ],
-  },
-  {
-    sourceWord: "TREASURY",
-    validWords: [
-      "treasury",
-      "stare",
-      "tears",
-      "rates",
-      "years",
-      "year",
-      "star",
-      "stay",
-      "seat",
-      "rate",
-      "tear",
-      "rest",
-      "true",
-      "user",
-      "sure",
-      "tray",
-    ],
-  },
-];
+const EMERGENCY_SOURCE_WORDS = ["CREATION", "LANGUAGE", "TREASURY", "REMITTANCE"];
 
 let lastSourceWord = "";
 let cachedRounds = [];
@@ -218,8 +152,11 @@ function getFallbackRounds() {
 
 function pickFromRounds(rounds) {
   if (!rounds.length) {
-    const emergencyRound =
-      EMERGENCY_ROUNDS[Math.floor(Math.random() * EMERGENCY_ROUNDS.length)];
+    const emergencyRound = makeRound(
+      EMERGENCY_SOURCE_WORDS[
+        Math.floor(Math.random() * EMERGENCY_SOURCE_WORDS.length)
+      ],
+    );
     lastSourceWord = emergencyRound.sourceWord;
     return emergencyRound;
   }
@@ -274,7 +211,7 @@ async function refillRoundCache() {
 
   cachedRounds = getFallbackRounds();
   if (!cachedRounds.length) {
-    cachedRounds = EMERGENCY_ROUNDS;
+    cachedRounds = EMERGENCY_SOURCE_WORDS.map(makeRound).filter(isPlayableRound);
   }
   cacheExpiresAt = Date.now() + CACHE_TTL_MS;
 }
