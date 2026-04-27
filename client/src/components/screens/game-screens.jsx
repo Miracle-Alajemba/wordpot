@@ -805,7 +805,7 @@ export function MatchRoomScreen({
                 </div>
               </div>
 
-              {/* <div className="player-list">
+              <div className="player-list">
                 {(room?.scoreboard || []).map((entry) => (
                   <div key={entry.playerId} className={`player-row ${entry.playerId === playerId ? "player-row--self" : ""}`}>
                     <div>
@@ -815,7 +815,7 @@ export function MatchRoomScreen({
                     <span className="self-pill">{entry.score} pts</span>
                   </div>
                 ))}
-              </div> */}
+              </div>
 
               <div className="results-subtitle">Reward Distribution</div>
               <div className="player-list">
