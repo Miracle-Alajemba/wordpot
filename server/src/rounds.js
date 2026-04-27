@@ -20,20 +20,20 @@ const DICTIONARY_CANDIDATE_PATHS = [
   "/usr/share/dict/american-english",
 ].filter(Boolean);
 
-// const SOURCE_WORD_POOL = [
-//   "BLOCKCHAIN",
-//   "REMITTANCE",
-//   "COMMUNITY",
-//   "STABLECOIN",
-//   "EDUCATION",
-//   "PLATFORM",
-//   "MIGRATION",
-//   "TREASURY",
-//   "CREATION",
-//   "LANGUAGE",
-//   "MOTIVATION",
-//   "FOUNDATION",
-// ];
+const SOURCE_WORD_POOL = [
+  "BLOCKCHAIN",
+  "REMITTANCE",
+  "COMMUNITY",
+  "STABLECOIN",
+  "EDUCATION",
+  "PLATFORM",
+  "MIGRATION",
+  "TREASURY",
+  "CREATION",
+  "LANGUAGE",
+  "MOTIVATION",
+  "FOUNDATION",
+];
 
 const EMERGENCY_SOURCE_WORDS = [
   "CREATION",
