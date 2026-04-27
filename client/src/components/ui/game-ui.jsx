@@ -6,6 +6,7 @@ import {
   shortenWalletAddress,
 } from "../../utils/ui-helpers.js";
 
+
 export function ScoreBadge({ label, value }) {
   return (
     <div className="score-badge">

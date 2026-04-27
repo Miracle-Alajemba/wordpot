@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { MetricCard, PlayerIdentity } from "../ui/game-ui.jsx";
+import { MetricCard, PlayerIdentity } from "../ui";
+
 import {
   getAvatarStyle,
   getPlayerAlias,
