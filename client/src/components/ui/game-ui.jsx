@@ -38,19 +38,19 @@ export function TimerTone({ seconds }) {
   );
 }
 
-export function PlayerIdentity({ walletAddress, emphasis = false }) {
-  return (
-    <div className="player-identity">
-      <span className={`player-avatar ${emphasis ? "player-avatar--large" : ""}`} style={getAvatarStyle(walletAddress)}>
-        {walletAddress?.slice(2, 4).toUpperCase() || "WP"}
-      </span>
-      <div className="player-identity__copy">
-        <strong>{getPlayerAlias(walletAddress)}</strong>
-        <span>{shortenWalletAddress(walletAddress)}</span>
-      </div>
-    </div>
-  );
-}
+// export function PlayerIdentity({ walletAddress, emphasis = false }) {
+//   return (
+//     <div className="player-identity">
+//       <span className={`player-avatar ${emphasis ? "player-avatar--large" : ""}`} style={getAvatarStyle(walletAddress)}>
+//         {walletAddress?.slice(2, 4).toUpperCase() || "WP"}
+//       </span>
+//       <div className="player-identity__copy">
+//         <strong>{getPlayerAlias(walletAddress)}</strong>
+//         <span>{shortenWalletAddress(walletAddress)}</span>
+//       </div>
+//     </div>
+//   );
+// }
 
 export function RoomPlayersStrip({ players = [], scoreboard = [], playerId }) {
   const scoreLookup = new Map(scoreboard.map((entry) => [entry.playerId, entry]));
