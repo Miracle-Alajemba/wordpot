@@ -1,5 +1,5 @@
 export const API_BASE_URL =
-  import.meta.env.VITE_API_BASE_URL || "http://localhost:4000/api";
+  import.meta.env.VITE_API_BASE_URL || "https://wordpot-api.onrender.com/api";
 export const REOWN_PROJECT_ID =
   import.meta.env.VITE_REOWN_PROJECT_ID || "cbfc2451e9f790961dec9b74d3545d51";
 export const APP_URL =
