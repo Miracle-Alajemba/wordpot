@@ -135,11 +135,11 @@ export function deriveValidWords(sourceWord) {
     return derivedWordsCache.get(normalizedSource);
   }
 
-  // const dictionary = loadDictionary();
-  // if (!dictionary.length) {
-  //   console.error("Cannot derive words: dictionary is empty");
-  //   return [];
-  // }
+  const dictionary = loadDictionary();
+  if (!dictionary.length) {
+    console.error("Cannot derive words: dictionary is empty");
+    return [];
+  }
 
   const validWords = uniqueWords(
     dictionary.filter(
