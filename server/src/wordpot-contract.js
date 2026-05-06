@@ -121,20 +121,20 @@ export function createWordPotContractService(options) {
         console.log(`Account: ${account.address}`);
         console.log(`RoomID: ${contractRoomId}`);
         console.log(`Players: ${playerAddresses.length}`);
-        
+
         const hash = await contract.write.cancelRoom([
           BigInt(contractRoomId),
           playerAddresses.map((addr) => String(addr || "").trim()),
         ]);
         console.log("Transaction hash:", hash);
-        
+
         const receipt = await publicClient.waitForTransactionReceipt({ hash });
         console.log("Transaction confirmed:", receipt?.transactionHash);
-        
+
         if (receipt?.status === "reverted") {
           throw new Error(`Transaction reverted: ${hash}`);
         }
-        
+
         return { hash };
       } catch (error) {
         console.error("cancelRoom error:", error.message);
