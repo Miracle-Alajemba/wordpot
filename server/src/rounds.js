@@ -5,6 +5,10 @@ const DATAMUSE_API_URL = "https://api.datamuse.com/words";
 const MIN_VALID_WORDS = 18;
 const MIN_THREE_LETTER_WORDS = 6;
 const MIN_FOUR_PLUS_LETTER_WORDS = 8;
+const MAX_VALID_WORDS = 36;
+const HARD_SOURCE_MIN_LENGTH = 7;
+const HARD_SOURCE_MAX_LENGTH = 9;
+const HARD_UNIQUE_LETTERS_MAX = 6;
 const CACHE_TTL_MS = 10 * 60 * 1000;
 const API_TIMEOUT_MS = 5000;
 const MAX_RETRIES = 2;
@@ -25,7 +29,7 @@ const SOURCE_WORD_POOL = [
   "REMITTANCE",
   "COMMUNITY",
   "STABLECOIN",
-  "EDUCATION",
+  "EDUCATION,
   "PLATFORM",
   "MIGRATION",
   "TREASURY",
@@ -190,6 +194,45 @@ function isPlayableRound(round) {
   );
 }
 
+function countUniqueLetters(word) {
+  return new Set(String(word || "").toLowerCase()).size;
+}
+
+function hasRepeatedLetters(word) {
+  return countUniqueLetters(word) < String(word || "").length;
+}
+
+function isHardPlayableRound(round) {
+  if (!isPlayableRound(round)) return false;
+
+  const sourceWordLength = round.sourceWord.length;
+  const uniqueLetters = countUniqueLetters(round.sourceWord);
+
+  return (
+    sourceWordLength >= HARD_SOURCE_MIN_LENGTH &&
+    sourceWordLength <= HARD_SOURCE_MAX_LENGTH &&
+    uniqueLetters <= HARD_UNIQUE_LETTERS_MAX &&
+    hasRepeatedLetters(round.sourceWord) &&
+    round.validWords.length <= MAX_VALID_WORDS
+  );
+}
+
+function getRoundDifficultyScore(round) {
+  const uniqueLetters = countUniqueLetters(round.sourceWord);
+  const repeatedLetterBonus = round.sourceWord.length - uniqueLetters;
+  const shorterWordBonus = HARD_SOURCE_MAX_LENGTH - round.sourceWord.length;
+  const tighterAnswerPoolBonus = Math.max(
+    0,
+    MAX_VALID_WORDS - round.validWords.length,
+  );
+
+  return (
+    repeatedLetterBonus * 12 +
+    shorterWordBonus * 5 +
+    tighterAnswerPoolBonus
+  );
+}
+
 function getFallbackRounds() {
   const dictionary = loadDictionary();
 
@@ -201,13 +244,16 @@ function getFallbackRounds() {
   const dictionaryRounds = shuffle(
     dictionary.filter(
       (word) =>
-        word.length >= 8 && word.length <= 12 && new Set(word).size >= 5,
+        word.length >= HARD_SOURCE_MIN_LENGTH &&
+        word.length <= HARD_SOURCE_MAX_LENGTH,
     ),
   )
-    .slice(0, 250)
+    .slice(0, 500)
     .map((word) => word.toUpperCase())
     .map(makeRound)
-    .filter(isPlayableRound);
+    .filter(isHardPlayableRound)
+    .sort((a, b) => getRoundDifficultyScore(b) - getRoundDifficultyScore(a))
+    .slice(0, 120);
 
   if (dictionaryRounds.length) {
     return dictionaryRounds;
@@ -296,7 +342,9 @@ async function refillRoundCache() {
         const remoteSourceWords = await fetchDatamuseCandidates();
         const remoteRounds = uniqueWords(remoteSourceWords)
           .map(makeRound)
-          .filter(isPlayableRound);
+          .filter(isHardPlayableRound)
+          .sort((a, b) => getRoundDifficultyScore(b) - getRoundDifficultyScore(a))
+          .slice(0, 120);
 
         if (remoteRounds.length) {
           cachedRounds = remoteRounds;
