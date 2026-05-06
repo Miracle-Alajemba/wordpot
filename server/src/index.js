@@ -379,7 +379,8 @@ app.get("/api/leaderboard", (_req, res) => {
 
 app.get("/api/rounds/practice", async (_req, res) => {
   try {
-    const round = await getDynamicRound();
+    const difficulty = String(_req.query?.difficulty || "medium").trim().toLowerCase();
+    const round = await getDynamicRound(difficulty);
     return res.json({ round });
   } catch (error) {
     return res.status(500).json({
@@ -534,7 +535,7 @@ app.post("/api/rooms/:roomId/start", async (req, res) => {
     });
   }
 
-  const roundSeed = await getDynamicRound();
+  const roundSeed = await getDynamicRound("hard");
   room.status = "active";
   room.startedAt = new Date().toISOString();
   room.endsAt = Date.now() + ROUND_SECONDS * 1000;

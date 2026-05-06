@@ -77,12 +77,14 @@ export function HomeScreen({
             <p className="eyebrow">MiniPay Word Game</p>
             <button
               type="button"
-              className="theme-toggle hero-theme-toggle"
+              className="theme-toggle hero-theme-toggle theme-toggle--icon-only"
               onClick={onToggleTheme}
               aria-label={`Switch to ${darkMode ? "light" : "dark"} mode`}
+              title={darkMode ? "Switch to light mode" : "Switch to dark mode"}
             >
-              <span className={`theme-toggle__option ${darkMode ? "theme-toggle__option--active" : ""}`}>Dark</span>
-              <span className={`theme-toggle__option ${!darkMode ? "theme-toggle__option--active" : ""}`}>Light</span>
+              <span className="theme-toggle__icon" aria-hidden="true">
+                {darkMode ? "☀" : "☾"}
+              </span>
             </button>
           </div>
           <h1>WordPot</h1>

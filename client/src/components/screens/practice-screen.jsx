@@ -6,6 +6,19 @@ import {
 } from "../../game.js";
 import { MetricCard, ScoreBadge } from "../ui/game-ui.jsx";
 
+const PRACTICE_DIFFICULTIES = [
+  { id: "easy", label: "Warm Up" },
+  { id: "medium", label: "Standard" },
+  { id: "hard", label: "Expert" },
+];
+
+function getDifficultyLabel(difficulty) {
+  return (
+    PRACTICE_DIFFICULTIES.find((entry) => entry.id === difficulty)?.label ||
+    difficulty
+  );
+}
+
 function buildWordFromSelection(sourceWord, selectedIndexes) {
   const letters = String(sourceWord || "").split("");
   return selectedIndexes.map((index) => letters[index] || "").join("").toLowerCase();
@@ -50,6 +63,7 @@ function PracticeResults({ score, wordsFound, onReplay, onExit }) {
 
 export function PracticeScreen({ onExit, apiBaseUrl, roundSeconds = 60 }) {
   const [roundSeed, setRoundSeed] = useState(null);
+  const [difficulty, setDifficulty] = useState("medium");
   const [timeLeft, setTimeLeft] = useState(roundSeconds);
   const [draftWord, setDraftWord] = useState("");
   const [selectedIndexes, setSelectedIndexes] = useState([]);
@@ -70,7 +84,9 @@ export function PracticeScreen({ onExit, apiBaseUrl, roundSeconds = 60 }) {
     setFeedbackTone("neutral");
 
     try {
-      const response = await fetch(`${apiBaseUrl}/rounds/practice`);
+      const response = await fetch(
+        `${apiBaseUrl}/rounds/practice?difficulty=${encodeURIComponent(difficulty)}`,
+      );
       const data = await response.json();
 
       if (!response.ok) {
@@ -98,7 +114,7 @@ export function PracticeScreen({ onExit, apiBaseUrl, roundSeconds = 60 }) {
 
   useEffect(() => {
     loadPracticeRound("Build as many valid words as you can.");
-  }, []);
+  }, [difficulty]);
 
   useEffect(() => {
     if (isFinished || !roundSeed) return undefined;
@@ -203,6 +219,29 @@ export function PracticeScreen({ onExit, apiBaseUrl, roundSeconds = 60 }) {
           <p className="eyebrow">Practice Mode</p>
         </div>
 
+        <div className="practice-difficulty-bar">
+          <div>
+            <p className="play-label">Difficulty</p>
+            <p className="field-hint">
+              Warm Up gives broader letter pools. Expert gives tighter, trickier rounds.
+            </p>
+          </div>
+          <div className="theme-toggle" role="tablist" aria-label="Practice difficulty">
+            {PRACTICE_DIFFICULTIES.map((entry) => (
+              <button
+                key={entry.id}
+                type="button"
+                className={`theme-toggle__option ${difficulty === entry.id ? "theme-toggle__option--active" : ""}`}
+                onClick={() => setDifficulty(entry.id)}
+                disabled={loadingRound && difficulty === entry.id}
+                aria-pressed={difficulty === entry.id}
+              >
+                {entry.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
         <div className="play-hero">
           <div>
             <p className="play-label">Source word</p>
@@ -229,6 +268,7 @@ export function PracticeScreen({ onExit, apiBaseUrl, roundSeconds = 60 }) {
           </div>
 
           <div className="score-row">
+            <ScoreBadge label="Mode" value={getDifficultyLabel(difficulty)} />
             <ScoreBadge label="Time left" value={`${timeLeft}s`} />
             <ScoreBadge label="Score" value={score} />
             <ScoreBadge label="Claimed" value={claimedWords.length} />

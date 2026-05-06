@@ -5,10 +5,6 @@ const DATAMUSE_API_URL = "https://api.datamuse.com/words";
 const MIN_VALID_WORDS = 18;
 const MIN_THREE_LETTER_WORDS = 6;
 const MIN_FOUR_PLUS_LETTER_WORDS = 8;
-const MAX_VALID_WORDS = 36;
-const HARD_SOURCE_MIN_LENGTH = 7;
-const HARD_SOURCE_MAX_LENGTH = 9;
-const HARD_UNIQUE_LETTERS_MAX = 6;
 const CACHE_TTL_MS = 10 * 60 * 1000;
 const API_TIMEOUT_MS = 5000;
 const MAX_RETRIES = 2;
@@ -29,7 +25,7 @@ const SOURCE_WORD_POOL = [
   "REMITTANCE",
   "COMMUNITY",
   "STABLECOIN",
-  "EDUCATION,
+  "EDUCATION",
   "PLATFORM",
   "MIGRATION",
   "TREASURY",
@@ -46,12 +42,38 @@ const EMERGENCY_SOURCE_WORDS = [
   "REMITTANCE",
 ];
 
-let lastSourceWord = "";
-let cachedRounds = [];
-let cacheExpiresAt = 0;
+const DIFFICULTY_PROFILES = {
+  easy: {
+    minLength: 9,
+    maxLength: 12,
+    maxValidWords: 80,
+    maxUniqueLetters: 9,
+    requireRepeatedLetters: false,
+    sampleSize: 220,
+  },
+  medium: {
+    minLength: 8,
+    maxLength: 10,
+    maxValidWords: 54,
+    maxUniqueLetters: 7,
+    requireRepeatedLetters: true,
+    sampleSize: 160,
+  },
+  hard: {
+    minLength: 7,
+    maxLength: 9,
+    maxValidWords: 36,
+    maxUniqueLetters: 6,
+    requireRepeatedLetters: true,
+    sampleSize: 120,
+  },
+};
+
+const DEFAULT_DIFFICULTY = "hard";
+const lastSourceWordByDifficulty = new Map();
+const roundCaches = new Map();
 let dictionaryWords = [];
-let isCacheRefilling = false;
-let cacheRefillPromise = null;
+const cacheRefillPromises = new Map();
 const derivedWordsCache = new Map();
 
 // ✅ FIX: Fisher-Yates shuffle (unbiased)
@@ -179,6 +201,18 @@ function makeRound(sourceWord) {
   };
 }
 
+function normalizeDifficulty(value) {
+  const normalized = String(value || "")
+    .trim()
+    .toLowerCase();
+
+  return DIFFICULTY_PROFILES[normalized] ? normalized : DEFAULT_DIFFICULTY;
+}
+
+function getDifficultyProfile(difficulty) {
+  return DIFFICULTY_PROFILES[normalizeDifficulty(difficulty)];
+}
+
 function isPlayableRound(round) {
   const threeLetterWords = round.validWords.filter(
     (word) => word.length === 3,
@@ -202,84 +236,106 @@ function hasRepeatedLetters(word) {
   return countUniqueLetters(word) < String(word || "").length;
 }
 
-function isHardPlayableRound(round) {
+function isDifficultyPlayableRound(round, difficulty) {
   if (!isPlayableRound(round)) return false;
 
+  const profile = getDifficultyProfile(difficulty);
   const sourceWordLength = round.sourceWord.length;
   const uniqueLetters = countUniqueLetters(round.sourceWord);
 
   return (
-    sourceWordLength >= HARD_SOURCE_MIN_LENGTH &&
-    sourceWordLength <= HARD_SOURCE_MAX_LENGTH &&
-    uniqueLetters <= HARD_UNIQUE_LETTERS_MAX &&
-    hasRepeatedLetters(round.sourceWord) &&
-    round.validWords.length <= MAX_VALID_WORDS
+    sourceWordLength >= profile.minLength &&
+    sourceWordLength <= profile.maxLength &&
+    uniqueLetters <= profile.maxUniqueLetters &&
+    (!profile.requireRepeatedLetters || hasRepeatedLetters(round.sourceWord)) &&
+    round.validWords.length <= profile.maxValidWords
   );
 }
 
-function getRoundDifficultyScore(round) {
+function getRoundDifficultyScore(round, difficulty) {
+  const profile = getDifficultyProfile(difficulty);
   const uniqueLetters = countUniqueLetters(round.sourceWord);
   const repeatedLetterBonus = round.sourceWord.length - uniqueLetters;
-  const shorterWordBonus = HARD_SOURCE_MAX_LENGTH - round.sourceWord.length;
+  const shorterWordBonus = profile.maxLength - round.sourceWord.length;
   const tighterAnswerPoolBonus = Math.max(
     0,
-    MAX_VALID_WORDS - round.validWords.length,
+    profile.maxValidWords - round.validWords.length,
+  );
+  const uniqueLetterTensionBonus = Math.max(
+    0,
+    profile.maxUniqueLetters - uniqueLetters,
   );
 
   return (
     repeatedLetterBonus * 12 +
     shorterWordBonus * 5 +
-    tighterAnswerPoolBonus
+    tighterAnswerPoolBonus +
+    uniqueLetterTensionBonus * 4
   );
 }
 
-function getFallbackRounds() {
+function getFallbackRounds(difficulty) {
+  const profile = getDifficultyProfile(difficulty);
   const dictionary = loadDictionary();
 
   if (!dictionary.length) {
     console.warn("Dictionary empty; using SOURCE_WORD_POOL fallback");
-    return SOURCE_WORD_POOL.map(makeRound).filter(isPlayableRound);
+    return SOURCE_WORD_POOL.map(makeRound).filter((round) =>
+      isDifficultyPlayableRound(round, difficulty),
+    );
   }
 
   const dictionaryRounds = shuffle(
     dictionary.filter(
       (word) =>
-        word.length >= HARD_SOURCE_MIN_LENGTH &&
-        word.length <= HARD_SOURCE_MAX_LENGTH,
+        word.length >= profile.minLength &&
+        word.length <= profile.maxLength,
     ),
   )
     .slice(0, 500)
     .map((word) => word.toUpperCase())
     .map(makeRound)
-    .filter(isHardPlayableRound)
-    .sort((a, b) => getRoundDifficultyScore(b) - getRoundDifficultyScore(a))
-    .slice(0, 120);
+    .filter((round) => isDifficultyPlayableRound(round, difficulty))
+    .sort(
+      (a, b) =>
+        getRoundDifficultyScore(b, difficulty) -
+        getRoundDifficultyScore(a, difficulty),
+    )
+    .slice(0, profile.sampleSize);
 
   if (dictionaryRounds.length) {
     return dictionaryRounds;
   }
 
-  return SOURCE_WORD_POOL.map(makeRound).filter(isPlayableRound);
+  return SOURCE_WORD_POOL.map(makeRound).filter((round) =>
+    isDifficultyPlayableRound(round, difficulty),
+  );
 }
 
-function pickFromRounds(rounds) {
+function pickFromRounds(rounds, difficulty) {
   if (!rounds.length) {
     const emergencyRound = makeRound(
       EMERGENCY_SOURCE_WORDS[
         Math.floor(Math.random() * EMERGENCY_SOURCE_WORDS.length)
       ],
     );
-    lastSourceWord = emergencyRound.sourceWord;
-    return emergencyRound;
+    const normalizedDifficulty = normalizeDifficulty(difficulty);
+    lastSourceWordByDifficulty.set(
+      normalizedDifficulty,
+      emergencyRound.sourceWord,
+    );
+    return { ...emergencyRound, difficulty: normalizedDifficulty };
   }
 
+  const normalizedDifficulty = normalizeDifficulty(difficulty);
+  const lastSourceWord = lastSourceWordByDifficulty.get(normalizedDifficulty) || "";
   const candidates = rounds.filter(
     (round) => round.sourceWord !== lastSourceWord,
   );
   const pool = candidates.length ? candidates : rounds;
   const nextRound = pool[Math.floor(Math.random() * pool.length)];
-  lastSourceWord = nextRound.sourceWord;
-  return nextRound;
+  lastSourceWordByDifficulty.set(normalizedDifficulty, nextRound.sourceWord);
+  return { ...nextRound, difficulty: normalizedDifficulty };
 }
 
 // ✅ FIX: Add timeout to API calls
@@ -326,15 +382,16 @@ async function fetchDatamuseCandidates() {
 }
 
 // ✅ FIX: Prevent race conditions with promise deduplication
-async function refillRoundCache() {
-  // If already refilling, wait for the existing promise
-  if (isCacheRefilling) {
-    return cacheRefillPromise;
+async function refillRoundCache(difficulty) {
+  const normalizedDifficulty = normalizeDifficulty(difficulty);
+  const profile = getDifficultyProfile(normalizedDifficulty);
+  const activeRefillPromise = cacheRefillPromises.get(normalizedDifficulty);
+
+  if (activeRefillPromise) {
+    return activeRefillPromise;
   }
 
-  isCacheRefilling = true;
-
-  cacheRefillPromise = (async () => {
+  const refillPromise = (async () => {
     let retries = 0;
 
     while (retries <= MAX_RETRIES) {
@@ -342,15 +399,23 @@ async function refillRoundCache() {
         const remoteSourceWords = await fetchDatamuseCandidates();
         const remoteRounds = uniqueWords(remoteSourceWords)
           .map(makeRound)
-          .filter(isHardPlayableRound)
-          .sort((a, b) => getRoundDifficultyScore(b) - getRoundDifficultyScore(a))
-          .slice(0, 120);
+          .filter((round) =>
+            isDifficultyPlayableRound(round, normalizedDifficulty),
+          )
+          .sort(
+            (a, b) =>
+              getRoundDifficultyScore(b, normalizedDifficulty) -
+              getRoundDifficultyScore(a, normalizedDifficulty),
+          )
+          .slice(0, profile.sampleSize);
 
         if (remoteRounds.length) {
-          cachedRounds = remoteRounds;
-          cacheExpiresAt = Date.now() + CACHE_TTL_MS;
+          roundCaches.set(normalizedDifficulty, {
+            rounds: remoteRounds,
+            expiresAt: Date.now() + CACHE_TTL_MS,
+          });
           console.info(
-            `Cache refilled: ${remoteRounds.length} rounds from API`,
+            `Cache refilled: ${remoteRounds.length} ${normalizedDifficulty} rounds from API`,
           );
           return;
         }
@@ -373,30 +438,44 @@ async function refillRoundCache() {
 
     // Fallback chain
     console.warn("All API retries exhausted; using fallback rounds");
-    cachedRounds = getFallbackRounds();
+    const fallbackRounds = getFallbackRounds(normalizedDifficulty);
 
-    if (!cachedRounds.length) {
+    if (!fallbackRounds.length) {
       console.warn("Fallback pool exhausted; using EMERGENCY_SOURCE_WORDS");
-      cachedRounds =
-        EMERGENCY_SOURCE_WORDS.map(makeRound).filter(isPlayableRound);
+      roundCaches.set(normalizedDifficulty, {
+        rounds: EMERGENCY_SOURCE_WORDS.map(makeRound).filter((round) =>
+          isDifficultyPlayableRound(round, normalizedDifficulty),
+        ),
+        expiresAt: Date.now() + CACHE_TTL_MS,
+      });
+      return;
     }
 
-    cacheExpiresAt = Date.now() + CACHE_TTL_MS;
+    roundCaches.set(normalizedDifficulty, {
+      rounds: fallbackRounds,
+      expiresAt: Date.now() + CACHE_TTL_MS,
+    });
   })();
 
+  cacheRefillPromises.set(normalizedDifficulty, refillPromise);
+
   try {
-    await cacheRefillPromise;
+    await refillPromise;
   } finally {
-    isCacheRefilling = false;
+    cacheRefillPromises.delete(normalizedDifficulty);
   }
 }
 
-export async function getDynamicRound() {
-  const isCacheValid = cachedRounds.length > 0 && Date.now() <= cacheExpiresAt;
+export async function getDynamicRound(difficulty = DEFAULT_DIFFICULTY) {
+  const normalizedDifficulty = normalizeDifficulty(difficulty);
+  const cache = roundCaches.get(normalizedDifficulty);
+  const isCacheValid =
+    cache?.rounds?.length > 0 && Date.now() <= cache.expiresAt;
 
   if (!isCacheValid) {
-    await refillRoundCache();
+    await refillRoundCache(normalizedDifficulty);
   }
 
-  return pickFromRounds(cachedRounds);
+  const nextCache = roundCaches.get(normalizedDifficulty);
+  return pickFromRounds(nextCache?.rounds || [], normalizedDifficulty);
 }
