@@ -357,6 +357,45 @@ button:disabled {
   margin-top: 0.2rem;
 }
 
+.practice-difficulty-toggle {
+  background: linear-gradient(
+    180deg,
+    rgba(14, 22, 44, 0.92),
+    rgba(8, 14, 30, 0.96)
+  );
+  border: 1px solid rgba(99, 244, 202, 0.22);
+  box-shadow:
+    0 14px 30px rgba(3, 8, 20, 0.28),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  gap: 0.35rem;
+  padding: 0.32rem;
+}
+
+.practice-difficulty-toggle__option {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(141, 163, 255, 0.12);
+  color: #d8e1fb;
+  font-size: 0.72rem;
+  min-width: 88px;
+  padding: 0.6rem 0.92rem;
+}
+
+.practice-difficulty-toggle__option:hover {
+  background: rgba(255, 255, 255, 0.09);
+  border-color: rgba(141, 163, 255, 0.24);
+  color: #ffffff;
+}
+
+.practice-difficulty-toggle__option--active,
+.practice-difficulty-toggle .theme-toggle__option--active {
+  background: linear-gradient(135deg, #63f4ca 0%, #7bffcc 100%);
+  border-color: rgba(99, 244, 202, 0.5);
+  box-shadow:
+    0 10px 22px rgba(99, 244, 202, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.22);
+  color: #062230;
+}
+
 .wallet-state-strip {
   display: flex;
   flex-wrap: wrap;
@@ -3420,9 +3459,36 @@ button:disabled,
   color: #213047;
 }
 
+.app-light-mode .practice-difficulty-toggle {
+  background: linear-gradient(180deg, rgba(240, 246, 255, 0.96), rgba(230, 238, 250, 0.98));
+  border-color: rgba(70, 121, 161, 0.2);
+  box-shadow:
+    0 10px 24px rgba(122, 159, 181, 0.14),
+    inset 0 1px 0 rgba(255, 255, 255, 0.7);
+}
+
+.app-light-mode .practice-difficulty-toggle__option {
+  background: rgba(255, 255, 255, 0.78);
+  border-color: rgba(122, 159, 181, 0.22);
+  color: #29435e;
+}
+
+.app-light-mode .practice-difficulty-toggle__option:hover {
+  background: rgba(255, 255, 255, 0.96);
+  border-color: rgba(70, 121, 161, 0.34);
+  color: #132235;
+}
+
 .app-light-mode .theme-toggle__option--active {
   background: rgba(99, 244, 202, 0.14);
   color: #182235;
+}
+
+.app-light-mode .practice-difficulty-toggle__option--active,
+.app-light-mode .practice-difficulty-toggle .theme-toggle__option--active {
+  background: linear-gradient(135deg, #0f766e 0%, #22c55e 100%);
+  border-color: rgba(15, 118, 110, 0.3);
+  color: #f8fffd;
 }
 
 .app-light-mode button {

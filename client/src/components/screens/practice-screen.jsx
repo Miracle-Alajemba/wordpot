@@ -226,12 +226,16 @@ export function PracticeScreen({ onExit, apiBaseUrl, roundSeconds = 60 }) {
               Warm Up gives broader letter pools. Expert gives tighter, trickier rounds.
             </p>
           </div>
-          <div className="theme-toggle" role="tablist" aria-label="Practice difficulty">
+          <div
+            className="theme-toggle practice-difficulty-toggle"
+            role="tablist"
+            aria-label="Practice difficulty"
+          >
             {PRACTICE_DIFFICULTIES.map((entry) => (
               <button
                 key={entry.id}
                 type="button"
-                className={`theme-toggle__option ${difficulty === entry.id ? "theme-toggle__option--active" : ""}`}
+                className={`theme-toggle__option practice-difficulty-toggle__option ${difficulty === entry.id ? "theme-toggle__option--active practice-difficulty-toggle__option--active" : ""}`}
                 onClick={() => setDifficulty(entry.id)}
                 disabled={loadingRound && difficulty === entry.id}
                 aria-pressed={difficulty === entry.id}
