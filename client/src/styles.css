@@ -367,32 +367,33 @@ button:disabled {
 .practice-difficulty-toggle {
   background: linear-gradient(
     180deg,
-    rgba(18, 28, 56, 0.96),
-    rgba(9, 16, 35, 0.98)
+    rgba(22, 31, 58, 0.98),
+    rgba(10, 17, 34, 0.99)
   );
-  border: 1px solid rgba(99, 244, 202, 0.3);
+  border: 1px solid rgba(130, 152, 235, 0.32);
   box-shadow:
-    0 14px 30px rgba(3, 8, 20, 0.34),
+    0 14px 30px rgba(3, 8, 20, 0.38),
     inset 0 1px 0 rgba(255, 255, 255, 0.08);
   gap: 0.35rem;
   padding: 0.32rem;
 }
 
 .practice-difficulty-toggle__option {
-  background: rgba(255, 255, 255, 0.2);
-  border: 1px solid rgba(141, 163, 255, 0.34);
-  color: #ffffff;
+  background: rgba(255, 255, 255, 0.16);
+  border: 1px solid rgba(173, 190, 255, 0.4);
+  color: #f8fbff;
   font-size: 0.72rem;
   font-weight: 800;
   letter-spacing: 0.07em;
   min-width: 88px;
   padding: 0.6rem 0.92rem;
-  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.18);
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.22);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
 }
 
 .practice-difficulty-toggle__option:hover {
-  background: rgba(255, 255, 255, 0.26);
-  border-color: rgba(141, 163, 255, 0.46);
+  background: rgba(255, 255, 255, 0.22);
+  border-color: rgba(205, 216, 255, 0.58);
   color: #ffffff;
 }
 
@@ -404,6 +405,11 @@ button:disabled {
     0 10px 22px rgba(99, 244, 202, 0.2),
     inset 0 1px 0 rgba(255, 255, 255, 0.22);
   color: #062230;
+}
+
+.practice-difficulty-toggle__option:focus-visible {
+  outline: 2px solid rgba(123, 255, 204, 0.9);
+  outline-offset: 2px;
 }
 
 .wallet-state-strip {
