@@ -1,11 +1,8 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { createAppKit } from "@reown/appkit/react";
 import { celo } from "@reown/appkit/networks";
 import { WagmiAdapter } from "@reown/appkit-adapter-wagmi";
 import { WagmiProvider } from "wagmi";
 import { APP_URL, REOWN_PROJECT_ID } from "../config/app-config.js";
-
-const queryClient = new QueryClient();
 
 const metadata = {
   name: "WordPot",
@@ -30,14 +27,10 @@ createAppKit({
   projectId: REOWN_PROJECT_ID,
   metadata,
   features: {
-    analytics: true,
+    analytics: false,
   },
 });
 
 export function ReownProvider({ children }) {
-  return (
-    <WagmiProvider config={wagmiAdapter.wagmiConfig}>
-      <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
-    </WagmiProvider>
-  );
+  return <WagmiProvider config={wagmiAdapter.wagmiConfig}>{children}</WagmiProvider>;
 }

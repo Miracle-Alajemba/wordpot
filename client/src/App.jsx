@@ -1,15 +1,7 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, lazy, useEffect, useMemo, useRef, useState } from "react";
 import { zeroAddress } from "viem";
-import { AppBottomNav, ChatMessage } from "./components/ui/index.js";
-import {
-  HomeScreen,
-  LeaderboardScreen,
-  LobbyScreen,
-  MatchRoomScreen,
-  PracticeScreen,
-  ProfileScreen,
-  SettingsScreen,
-} from "./components/screens/index.js";
+import { AppBottomNav } from "./components/ui/index.js";
+import { HomeScreen, LobbyScreen, MatchRoomScreen } from "./components/screens/index.js";
 import {
   API_BASE_URL,
   CELO_MAINNET_CHAIN_ID,
@@ -40,6 +32,42 @@ const WORDPOT_ARENA_ABI = [
     type: "function",
   },
 ];
+const ROOM_FEED_LIMIT = 24;
+
+const PracticeScreen = lazy(() =>
+  import("./components/screens/practice-screen.jsx").then((module) => ({
+    default: module.PracticeScreen,
+  })),
+);
+const LeaderboardScreen = lazy(() =>
+  import("./components/screens/meta-screens.jsx").then((module) => ({
+    default: module.LeaderboardScreen,
+  })),
+);
+const ProfileScreen = lazy(() =>
+  import("./components/screens/meta-screens.jsx").then((module) => ({
+    default: module.ProfileScreen,
+  })),
+);
+const SettingsScreen = lazy(() =>
+  import("./components/screens/meta-screens.jsx").then((module) => ({
+    default: module.SettingsScreen,
+  })),
+);
+
+function ScreenLoader({ label = "Loading view..." }) {
+  return (
+    <main className="page-shell">
+      <section className="play-shell">
+        <div className="results-sheet">
+          <p className="eyebrow">Loading</p>
+          <h2>...</h2>
+          <p>{label}</p>
+        </div>
+      </section>
+    </main>
+  );
+}
 
 export default function App() {
   const [screen, setScreen] = useState("home");
@@ -123,7 +151,9 @@ export default function App() {
 
     async function restoreRoomSession() {
       try {
-        const response = await fetch(`${API_BASE_URL}/rooms/${session.roomId}`);
+        const response = await fetch(
+          `${API_BASE_URL}/rooms/${session.roomId}?feedLimit=${ROOM_FEED_LIMIT}`,
+        );
         const data = await response.json();
 
         if (!response.ok) {
@@ -230,7 +260,9 @@ export default function App() {
         setRoomSyncStatus("syncing");
       }
 
-      const response = await fetch(`${API_BASE_URL}/rooms/${room.id}`);
+      const response = await fetch(
+        `${API_BASE_URL}/rooms/${room.id}?feedLimit=${ROOM_FEED_LIMIT}`,
+      );
       const data = await response.json();
 
       if (!response.ok) {
@@ -680,10 +712,12 @@ export default function App() {
 
   if (screen === "practice") {
     content = (
-      <PracticeScreen
-        onExit={() => setScreen("home")}
-        apiBaseUrl={API_BASE_URL}
-      />
+      <Suspense fallback={<ScreenLoader label="Preparing practice arena..." />}>
+        <PracticeScreen
+          onExit={() => setScreen("home")}
+          apiBaseUrl={API_BASE_URL}
+        />
+      </Suspense>
     );
   } else if (screen === "lobby") {
     content = (
@@ -719,28 +753,34 @@ export default function App() {
     );
   } else if (screen === "profile") {
     content = (
-      <ProfileScreen
-        walletAddress={walletAddress}
-        onConnectWallet={connectWallet}
-        onBack={backHome}
-      />
+      <Suspense fallback={<ScreenLoader label="Loading profile..." />}>
+        <ProfileScreen
+          walletAddress={walletAddress}
+          onConnectWallet={connectWallet}
+          onBack={backHome}
+        />
+      </Suspense>
     );
   } else if (screen === "leaderboard") {
     content = (
-      <LeaderboardScreen
-        apiBaseUrl={API_BASE_URL}
-        room={room}
-        onQuickMatch={handleQuickMatch}
-        onBack={backHome}
-      />
+      <Suspense fallback={<ScreenLoader label="Loading leaderboard..." />}>
+        <LeaderboardScreen
+          apiBaseUrl={API_BASE_URL}
+          room={room}
+          onQuickMatch={handleQuickMatch}
+          onBack={backHome}
+        />
+      </Suspense>
     );
   } else if (screen === "settings") {
     content = (
-      <SettingsScreen
-        settings={settings}
-        onToggle={toggleSetting}
-        onBack={backHome}
-      />
+      <Suspense fallback={<ScreenLoader label="Loading settings..." />}>
+        <SettingsScreen
+          settings={settings}
+          onToggle={toggleSetting}
+          onBack={backHome}
+        />
+      </Suspense>
     );
   }
 

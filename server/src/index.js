@@ -1,6 +1,7 @@
 import cors from "cors";
 import dotenv from "dotenv";
 import express from "express";
+import zlib from "zlib";
 import { canBuildFromSource, getDynamicRound } from "./rounds.js";
 import { createWordPotContractService } from "./wordpot-contract.js";
 
@@ -26,7 +27,11 @@ const JOIN_PAYMENT_WEI = process.env.JOIN_PAYMENT_WEI || "1000000000000000";
 const JOIN_PAYMENT_DISPLAY = process.env.JOIN_PAYMENT_DISPLAY || "0.001 CELO";
 const ENTRY_FEE = JOIN_PAYMENT_DISPLAY;
 const REQUIRE_ONCHAIN_ROOM = process.env.REQUIRE_ONCHAIN_ROOM !== "false";
+const DEFAULT_FEED_LIMIT = 24;
+const DEFAULT_LEADERBOARD_LIMIT = 50;
 const rooms = new Map();
+let roomStateVersion = 0;
+let leaderboardCache = null;
 const wordPotContract = createWordPotContractService({
   contractAddress: WORDPOT_CONTRACT_ADDRESS,
   operatorPrivateKey: CONTRACT_OPERATOR_PRIVATE_KEY,
@@ -34,7 +39,42 @@ const wordPotContract = createWordPotContractService({
 });
 
 app.use(cors());
-app.use(express.json());
+app.use(
+  express.json({
+    limit: "32kb",
+  }),
+);
+app.use((req, res, next) => {
+  const acceptEncoding = String(req.headers["accept-encoding"] || "");
+  if (!/\bgzip\b/.test(acceptEncoding)) {
+    next();
+    return;
+  }
+
+  const originalJson = res.json.bind(res);
+  res.json = (payload) => {
+    const body = JSON.stringify(payload);
+    if (Buffer.byteLength(body) < 1024) {
+      res.setHeader("Content-Type", "application/json; charset=utf-8");
+      return res.send(body);
+    }
+
+    zlib.gzip(body, (error, compressed) => {
+      if (error) {
+        res.setHeader("Content-Type", "application/json; charset=utf-8");
+        res.send(body);
+        return;
+      }
+
+      res.setHeader("Content-Type", "application/json; charset=utf-8");
+      res.setHeader("Content-Encoding", "gzip");
+      res.setHeader("Vary", "Accept-Encoding");
+      res.send(compressed);
+    });
+  };
+
+  next();
+});
 
 function makeId(prefix) {
   return `${prefix}_${Math.random().toString(36).slice(2, 8)}`;
@@ -67,34 +107,26 @@ function isTxHash(value) {
   return /^0x([A-Fa-f0-9]{64})$/.test(String(value || "").trim());
 }
 
-function getRoomFeed(room) {
+function getRoomFeed(room, limit = DEFAULT_FEED_LIMIT) {
+  const normalizedLimit = Math.max(1, Number(limit) || DEFAULT_FEED_LIMIT);
+
   return (room.events || [])
     .slice()
     .sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt))
+    .slice(-normalizedLimit)
     .map((entry) => ({ ...entry }));
 }
 
-function getScoreboard(room) {
-  return room.players
-    .map((player) => {
-      const score = room.submissions
-        .filter((entry) => entry.playerId === player.id)
-        .reduce((sum, entry) => sum + entry.score, 0);
-
-      return {
-        playerId: player.id,
-        walletAddress: player.walletAddress,
-        score,
-        wordsFound: room.submissions.filter(
-          (entry) => entry.playerId === player.id,
-        ).length,
-      };
-    })
-    .sort((a, b) => b.score - a.score);
+function markRoomDirty(room) {
+  room._version = (room._version || 0) + 1;
+  room._summaryCache = null;
+  room._derivedCache = null;
+  roomStateVersion += 1;
+  leaderboardCache = null;
 }
 
 function getPaidPlayerIds(room) {
-  return new Set((room.joinTransactions || []).map((entry) => entry.playerId));
+  return getRoomDerived(room).paidPlayerIds;
 }
 
 function hasPlayerPaid(room, playerId) {
@@ -102,9 +134,65 @@ function hasPlayerPaid(room, playerId) {
 }
 
 function hasPlayerClaimRecord(room, playerId) {
-  return (room.claimTransactions || []).some(
-    (entry) => entry.playerId === playerId,
+  return getRoomDerived(room).claimPlayerIds.has(playerId);
+}
+
+function getRoomDerived(room) {
+  if (room._derivedCache?.version === room._version) {
+    return room._derivedCache.value;
+  }
+
+  const playerStats = new Map(
+    room.players.map((player) => [
+      player.id,
+      {
+        playerId: player.id,
+        walletAddress: player.walletAddress,
+        score: 0,
+        wordsFound: 0,
+      },
+    ]),
   );
+
+  for (const submission of room.submissions || []) {
+    const entry = playerStats.get(submission.playerId);
+    if (!entry) continue;
+    entry.score += submission.score;
+    entry.wordsFound += 1;
+  }
+
+  const scoreboard = Array.from(playerStats.values()).sort(
+    (a, b) => b.score - a.score,
+  );
+  const rewardPool = Number(getRewardPool(room.players.length));
+  const totalScore = scoreboard.reduce((sum, entry) => sum + entry.score, 0);
+  const payouts = totalScore
+    ? scoreboard.map((entry) => ({
+        walletAddress: entry.walletAddress,
+        amount: Number(((entry.score / totalScore) * rewardPool).toFixed(4)),
+      }))
+    : scoreboard.map((entry) => ({
+        walletAddress: entry.walletAddress,
+        amount: 0,
+      }));
+
+  const value = {
+    scoreboard,
+    payouts,
+    paidPlayerIds: new Set(
+      (room.joinTransactions || []).map((entry) => entry.playerId),
+    ),
+    claimPlayerIds: new Set(
+      (room.claimTransactions || []).map((entry) => entry.playerId),
+    ),
+  };
+
+  room._derivedCache = {
+    version: room._version,
+    value,
+  };
+
+  return value;
 }
 
 function settleRoom(room) {
@@ -118,6 +206,7 @@ function settleRoom(room) {
     message: "Game over! Results are ready.",
     createdAt: new Date().toISOString(),
   });
+  markRoomDirty(room);
 }
 
 function checkRoomTimeout(room) {
@@ -138,24 +227,6 @@ function checkRoomTimeout(room) {
   return false;
 }
 
-function getPayouts(room) {
-  const scoreboard = getScoreboard(room);
-  const rewardPool = Number(getRewardPool(room.players.length));
-  const totalScore = scoreboard.reduce((sum, entry) => sum + entry.score, 0);
-
-  if (!totalScore) {
-    return scoreboard.map((entry) => ({
-      walletAddress: entry.walletAddress,
-      amount: 0,
-    }));
-  }
-
-  return scoreboard.map((entry) => ({
-    walletAddress: entry.walletAddress,
-    amount: Number(((entry.score / totalScore) * rewardPool).toFixed(4)),
-  }));
-}
-
 function pushSystemEvent(room, message) {
   room.events.push({
     type: "system",
@@ -163,12 +234,22 @@ function pushSystemEvent(room, message) {
     message,
     createdAt: new Date().toISOString(),
   });
+  markRoomDirty(room);
 }
 
-function getRoomSummary(room) {
+function getRoomSummary(room, options = {}) {
   settleRoom(room);
+  const feedLimit = Math.max(
+    1,
+    Number(options.feedLimit) || DEFAULT_FEED_LIMIT,
+  );
+  const summaryCacheKey = `${room._version || 0}:${feedLimit}`;
+  if (room._summaryCache?.key === summaryCacheKey) {
+    return room._summaryCache.value;
+  }
+  const derived = getRoomDerived(room);
 
-  return {
+  const summary = {
     id: room.id,
     status: room.status,
     entryFee: ENTRY_FEE,
@@ -190,12 +271,12 @@ function getRoomSummary(room) {
       walletAddress: player.walletAddress,
       joinedAt: player.joinedAt,
       isHost: player.id === room.hostPlayerId,
-      joinPaid: hasPlayerPaid(room, player.id),
-      claimRecorded: hasPlayerClaimRecord(room, player.id),
+      joinPaid: derived.paidPlayerIds.has(player.id),
+      claimRecorded: derived.claimPlayerIds.has(player.id),
     })),
-    feed: getRoomFeed(room),
-    scoreboard: getScoreboard(room),
-    payouts: room.status === "finished" ? getPayouts(room) : [],
+    feed: getRoomFeed(room, feedLimit),
+    scoreboard: derived.scoreboard,
+    payouts: room.status === "finished" ? derived.payouts : [],
     onchain: {
       chainId: CELO_CHAIN_ID,
       treasuryWallet: TREASURY_WALLET,
@@ -228,10 +309,17 @@ function getRoomSummary(room) {
       joinTransactions: room.joinTransactions || [],
       claimTransactions: room.claimTransactions || [],
       refundTransactions: room.refundTransactions || [],
-      paidPlayersCount: getPaidPlayerIds(room).size,
+      paidPlayersCount: derived.paidPlayerIds.size,
     },
     cancelledAt: room.cancelledAt || null,
   };
+
+  room._summaryCache = {
+    key: summaryCacheKey,
+    value: summary,
+  };
+
+  return summary;
 }
 
 function getWaitingRoom() {
@@ -241,11 +329,15 @@ function getWaitingRoom() {
 }
 
 function getCommunityLeaderboard() {
+  if (leaderboardCache?.version === roomStateVersion) {
+    return leaderboardCache.entries;
+  }
+
   const aggregate = new Map();
 
   for (const room of rooms.values()) {
     settleRoom(room);
-    const scoreboard = getScoreboard(room);
+    const scoreboard = getRoomDerived(room).scoreboard;
 
     for (const entry of scoreboard) {
       const current = aggregate.get(entry.walletAddress) || {
@@ -271,16 +363,24 @@ function getCommunityLeaderboard() {
     }
   }
 
-  return Array.from(aggregate.values())
+  const entries = Array.from(aggregate.values())
     .sort((a, b) => {
       if (b.score !== a.score) return b.score - a.score;
       if (b.wins !== a.wins) return b.wins - a.wins;
       return b.wordsFound - a.wordsFound;
     })
+    .slice(0, DEFAULT_LEADERBOARD_LIMIT)
     .map((entry, index) => ({
       rank: index + 1,
       ...entry,
     }));
+
+  leaderboardCache = {
+    version: roomStateVersion,
+    entries,
+  };
+
+  return entries;
 }
 
 function getRoomOr404(roomId, res) {
@@ -294,7 +394,7 @@ function getRoomOr404(roomId, res) {
 
 function buildSettlementPayload(room) {
   const scoreboardMap = new Map(
-    getScoreboard(room).map((entry) => [entry.playerId, entry.score]),
+    getRoomDerived(room).scoreboard.map((entry) => [entry.playerId, entry.score]),
   );
 
   return room.players.map((player) => ({
@@ -498,7 +598,11 @@ app.get("/api/rooms/:roomId", (req, res) => {
   const room = getRoomOr404(req.params.roomId, res);
   if (!room) return;
 
-  return res.json({ room: getRoomSummary(room) });
+  return res.json({
+    room: getRoomSummary(room, {
+      feedLimit: req.query?.feedLimit,
+    }),
+  });
 });
 
 app.post("/api/rooms/:roomId/start", async (req, res) => {
@@ -575,6 +679,7 @@ app.post("/api/rooms/:roomId/submit", (req, res) => {
       reason,
       createdAt: new Date().toISOString(),
     });
+    markRoomDirty(room);
   }
 
   if (!rawWord) {
@@ -627,6 +732,7 @@ app.post("/api/rooms/:roomId/submit", (req, res) => {
   };
 
   room.submissions.push(submission);
+  markRoomDirty(room);
   logEvent({ status: "accepted", word: rawWord, score: submission.score });
 
   return res.status(201).json({
@@ -767,6 +873,7 @@ app.post("/api/rooms/:roomId/settle", async (req, res) => {
   } catch (error) {
     console.error("Contract settle failed:", error.message);
     room.contractSettleError = error.message;
+    markRoomDirty(room);
     return res.status(502).json({
       error: error.message || "Unable to settle the room onchain right now.",
     });
@@ -842,6 +949,7 @@ app.post("/api/rooms/:roomId/cancel", async (req, res) => {
   } catch (error) {
     console.error("Contract cancel failed:", error.message);
     room.contractCancelError = error.message;
+    markRoomDirty(room);
     return res.status(502).json({
       error:
         error.message ||
