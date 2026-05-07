@@ -360,29 +360,29 @@ button:disabled {
 .practice-difficulty-toggle {
   background: linear-gradient(
     180deg,
-    rgba(14, 22, 44, 0.92),
-    rgba(8, 14, 30, 0.96)
+    rgba(18, 28, 56, 0.96),
+    rgba(9, 16, 35, 0.98)
   );
-  border: 1px solid rgba(99, 244, 202, 0.22);
+  border: 1px solid rgba(99, 244, 202, 0.3);
   box-shadow:
-    0 14px 30px rgba(3, 8, 20, 0.28),
-    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    0 14px 30px rgba(3, 8, 20, 0.34),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
   gap: 0.35rem;
   padding: 0.32rem;
 }
 
 .practice-difficulty-toggle__option {
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(141, 163, 255, 0.12);
-  color: #d8e1fb;
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(141, 163, 255, 0.22);
+  color: #edf4ff;
   font-size: 0.72rem;
   min-width: 88px;
   padding: 0.6rem 0.92rem;
 }
 
 .practice-difficulty-toggle__option:hover {
-  background: rgba(255, 255, 255, 0.09);
-  border-color: rgba(141, 163, 255, 0.24);
+  background: rgba(255, 255, 255, 0.18);
+  border-color: rgba(141, 163, 255, 0.34);
   color: #ffffff;
 }
 
