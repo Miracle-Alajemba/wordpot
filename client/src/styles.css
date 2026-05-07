@@ -306,6 +306,13 @@ button:disabled {
   padding: 0.2rem;
 }
 
+.theme-toggle--icon-only:hover {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(130, 152, 235, 0.18);
+  box-shadow: none;
+  transform: translateY(0);
+}
+
 .theme-toggle__icon {
   align-items: center;
   display: inline-flex;
@@ -3457,6 +3464,13 @@ button:disabled,
   background: rgba(122, 159, 181, 0.08);
   border-color: rgba(122, 159, 181, 0.18);
   color: #213047;
+}
+
+.app-light-mode .theme-toggle--icon-only:hover {
+  background: rgba(122, 159, 181, 0.08);
+  border-color: rgba(122, 159, 181, 0.18);
+  box-shadow: none;
+  transform: translateY(0);
 }
 
 .app-light-mode .practice-difficulty-toggle {
