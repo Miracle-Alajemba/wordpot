@@ -3468,15 +3468,16 @@ button:disabled,
 }
 
 .app-light-mode .practice-difficulty-toggle__option {
-  background: rgba(255, 255, 255, 0.78);
-  border-color: rgba(122, 159, 181, 0.22);
-  color: #29435e;
+  background: rgba(255, 255, 255, 0.96);
+  border-color: rgba(70, 121, 161, 0.28);
+  color: #20344a;
+  font-weight: 800;
 }
 
 .app-light-mode .practice-difficulty-toggle__option:hover {
-  background: rgba(255, 255, 255, 0.96);
-  border-color: rgba(70, 121, 161, 0.34);
-  color: #132235;
+  background: #ffffff;
+  border-color: rgba(70, 121, 161, 0.42);
+  color: #102133;
 }
 
 .app-light-mode .theme-toggle__option--active {

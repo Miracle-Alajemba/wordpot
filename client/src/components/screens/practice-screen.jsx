@@ -12,6 +12,12 @@ const PRACTICE_DIFFICULTIES = [
   { id: "hard", label: "Expert" },
 ];
 
+const PRACTICE_DIFFICULTY_NOTES = {
+  easy: "Warm Up gives broader letter pools and easier words to spot quickly.",
+  medium: "Standard balances speed and challenge with a tighter but still fair word pool.",
+  hard: "Expert gives tighter, trickier rounds with fewer obvious words to find.",
+};
+
 function getDifficultyLabel(difficulty) {
   return (
     PRACTICE_DIFFICULTIES.find((entry) => entry.id === difficulty)?.label ||
@@ -77,6 +83,9 @@ export function PracticeScreen({ onExit, apiBaseUrl, roundSeconds = 60 }) {
   const [loadingRound, setLoadingRound] = useState(true);
   const sourceLetters = String(roundSeed?.sourceWord || "").split("");
   const selectedWord = draftWord;
+  const difficultyNote =
+    PRACTICE_DIFFICULTY_NOTES[difficulty] ||
+    PRACTICE_DIFFICULTY_NOTES.medium;
 
   async function loadPracticeRound(nextFeedback = "New round loaded. Go fast and go clean.") {
     setLoadingRound(true);
@@ -223,7 +232,7 @@ export function PracticeScreen({ onExit, apiBaseUrl, roundSeconds = 60 }) {
           <div>
             <p className="play-label">Difficulty</p>
             <p className="field-hint">
-              Warm Up gives broader letter pools. Expert gives tighter, trickier rounds.
+              {difficultyNote}
             </p>
           </div>
           <div
