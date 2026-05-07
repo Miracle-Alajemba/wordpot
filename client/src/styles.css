@@ -379,17 +379,20 @@ button:disabled {
 }
 
 .practice-difficulty-toggle__option {
-  background: rgba(255, 255, 255, 0.12);
-  border: 1px solid rgba(141, 163, 255, 0.22);
-  color: #edf4ff;
+  background: rgba(255, 255, 255, 0.2);
+  border: 1px solid rgba(141, 163, 255, 0.34);
+  color: #ffffff;
   font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.07em;
   min-width: 88px;
   padding: 0.6rem 0.92rem;
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.18);
 }
 
 .practice-difficulty-toggle__option:hover {
-  background: rgba(255, 255, 255, 0.18);
-  border-color: rgba(141, 163, 255, 0.34);
+  background: rgba(255, 255, 255, 0.26);
+  border-color: rgba(141, 163, 255, 0.46);
   color: #ffffff;
 }
 
