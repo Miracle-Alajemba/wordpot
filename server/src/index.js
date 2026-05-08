@@ -28,6 +28,7 @@ const JOIN_PAYMENT_DISPLAY = process.env.JOIN_PAYMENT_DISPLAY || "0.001 CELO";
 const ENTRY_FEE = JOIN_PAYMENT_DISPLAY;
 const REQUIRE_ONCHAIN_ROOM = process.env.REQUIRE_ONCHAIN_ROOM !== "false";
 const DEFAULT_FEED_LIMIT = 24;
+const DEFAULT_TX_LIMIT = 16;
 const DEFAULT_LEADERBOARD_LIMIT = 50;
 const rooms = new Map();
 let roomStateVersion = 0;
@@ -243,7 +244,8 @@ function getRoomSummary(room, options = {}) {
     1,
     Number(options.feedLimit) || DEFAULT_FEED_LIMIT,
   );
-  const summaryCacheKey = `${room._version || 0}:${feedLimit}`;
+  const txLimit = Math.max(1, Number(options.txLimit) || DEFAULT_TX_LIMIT);
+  const summaryCacheKey = `${room._version || 0}:${feedLimit}:${txLimit}`;
   if (room._summaryCache?.key === summaryCacheKey) {
     return room._summaryCache.value;
   }
@@ -306,9 +308,9 @@ function getRoomSummary(room, options = {}) {
         room.contractRoomId
         ? "contract_claim"
         : "contract_unavailable",
-      joinTransactions: room.joinTransactions || [],
-      claimTransactions: room.claimTransactions || [],
-      refundTransactions: room.refundTransactions || [],
+      joinTransactions: (room.joinTransactions || []).slice(-txLimit),
+      claimTransactions: (room.claimTransactions || []).slice(-txLimit),
+      refundTransactions: (room.refundTransactions || []).slice(-txLimit),
       paidPlayersCount: derived.paidPlayerIds.size,
     },
     cancelledAt: room.cancelledAt || null,
@@ -601,6 +603,7 @@ app.get("/api/rooms/:roomId", (req, res) => {
   return res.json({
     room: getRoomSummary(room, {
       feedLimit: req.query?.feedLimit,
+      txLimit: req.query?.txLimit,
     }),
   });
 });

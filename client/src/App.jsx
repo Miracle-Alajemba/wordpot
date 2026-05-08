@@ -33,6 +33,7 @@ const WORDPOT_ARENA_ABI = [
   },
 ];
 const ROOM_FEED_LIMIT = 24;
+const ROOM_TX_LIMIT = 12;
 
 const PracticeScreen = lazy(() =>
   import("./components/screens/practice-screen.jsx").then((module) => ({
@@ -152,7 +153,7 @@ export default function App() {
     async function restoreRoomSession() {
       try {
         const response = await fetch(
-          `${API_BASE_URL}/rooms/${session.roomId}?feedLimit=${ROOM_FEED_LIMIT}`,
+          `${API_BASE_URL}/rooms/${session.roomId}?feedLimit=${ROOM_FEED_LIMIT}&txLimit=${ROOM_TX_LIMIT}`,
         );
         const data = await response.json();
 
@@ -261,7 +262,7 @@ export default function App() {
       }
 
       const response = await fetch(
-        `${API_BASE_URL}/rooms/${room.id}?feedLimit=${ROOM_FEED_LIMIT}`,
+        `${API_BASE_URL}/rooms/${room.id}?feedLimit=${ROOM_FEED_LIMIT}&txLimit=${ROOM_TX_LIMIT}`,
       );
       const data = await response.json();
 
