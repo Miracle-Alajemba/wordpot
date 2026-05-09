@@ -1,8 +1,15 @@
 import { useEffect, useMemo, useState } from "react";
 import {
+  useAppKit,
+  useAppKitAccount,
+  useAppKitProvider,
+} from "@reown/appkit/react";
+import {
   CELO_MAINNET_CHAIN_ID,
+  REOWN_PROJECT_ID,
   WALLET_STORAGE_KEY,
 } from "../config/app-config.js";
+import { useDisconnect } from "wagmi";
 import {
   createCeloPublicClient,
   createInjectedWalletClient,
@@ -75,9 +82,17 @@ export function useWalletSession() {
   const [walletAddress, setWalletAddress] = useState("");
   const [walletStatus, setWalletStatus] = useState("");
   const [walletChainId, setWalletChainId] = useState(null);
-  const provider = useMemo(() => getInjectedWalletProvider(), []);
-  const isMiniPay = Boolean(provider?.isMiniPay);
-  const hasInjectedProvider = Boolean(provider?.request);
+  const { open } = useAppKit();
+  const { disconnect } = useDisconnect();
+  const { address: appKitAddress, isConnected: appKitConnected } = useAppKitAccount({
+    namespace: "eip155",
+  });
+  const { walletProvider: appKitProvider } = useAppKitProvider("eip155");
+  const injectedProvider = useMemo(() => getInjectedWalletProvider(), []);
+  const provider = injectedProvider?.request ? injectedProvider : appKitProvider || null;
+  const isMiniPay = Boolean(injectedProvider?.isMiniPay);
+  const hasInjectedProvider = Boolean(injectedProvider?.request);
+  const hasWalletConnect = Boolean(REOWN_PROJECT_ID);
 
   const walletProviderName = useMemo(
     () => getWalletProviderName(provider),
@@ -87,8 +102,7 @@ export function useWalletSession() {
     () => getNetworkLabel(walletChainId),
     [walletChainId],
   );
-  const walletReady =
-    Boolean(walletAddress) && parseChainId(walletChainId) === CELO_MAINNET_CHAIN_ID;
+  const walletReady = Boolean(walletAddress) && parseChainId(walletChainId) === CELO_MAINNET_CHAIN_ID;
 
   useEffect(() => {
     const storedWallet =
@@ -101,25 +115,25 @@ export function useWalletSession() {
       setWalletStatus("Using previously connected wallet.");
     }
 
-    provider?.request?.({ method: "eth_chainId" })
+    injectedProvider?.request?.({ method: "eth_chainId" })
       .then((chainId) => setWalletChainId(parseChainId(chainId)))
       .catch(() => {});
 
-    provider?.request?.({ method: "eth_accounts" })
+    injectedProvider?.request?.({ method: "eth_accounts" })
       .then((accounts) => {
         const nextWallet = accounts?.[0] || "";
         if (!isWalletAddress(nextWallet)) return;
         setWalletAddress(nextWallet);
         window.localStorage.setItem(WALLET_STORAGE_KEY, nextWallet);
         setWalletStatus(
-          provider?.isMiniPay
+          injectedProvider?.isMiniPay
             ? `MiniPay is available as ${shortenWalletAddress(nextWallet)}.`
             : "Using previously connected wallet.",
         );
       })
       .catch(() => {});
 
-    if (!provider?.on) return undefined;
+    if (!injectedProvider?.on) return undefined;
 
     function handleAccountsChanged(accounts) {
       const nextWallet = accounts?.[0] || "";
@@ -137,27 +151,80 @@ export function useWalletSession() {
     function handleChainChanged(chainId) {
       const normalized = parseChainId(chainId);
       setWalletChainId(normalized);
-      setWalletStatus(
-        normalized === CELO_MAINNET_CHAIN_ID
-          ? "Wallet ready on Celo Mainnet."
-          : `Connected on ${getNetworkLabel(normalized)}.`,
-      );
+      setWalletStatus(normalized === CELO_MAINNET_CHAIN_ID ? "Wallet ready on Celo Mainnet." : `Connected on ${getNetworkLabel(normalized)}.`);
     }
 
-    provider.on("accountsChanged", handleAccountsChanged);
-    provider.on("chainChanged", handleChainChanged);
+    injectedProvider.on("accountsChanged", handleAccountsChanged);
+    injectedProvider.on("chainChanged", handleChainChanged);
 
     return () => {
-      if (provider.removeListener) {
-        provider.removeListener("accountsChanged", handleAccountsChanged);
-        provider.removeListener("chainChanged", handleChainChanged);
+      if (injectedProvider.removeListener) {
+        injectedProvider.removeListener("accountsChanged", handleAccountsChanged);
+        injectedProvider.removeListener("chainChanged", handleChainChanged);
       }
     };
-  }, [provider]);
+  }, [injectedProvider]);
+
+  useEffect(() => {
+    if (!appKitConnected || !appKitProvider || !isWalletAddress(appKitAddress)) {
+      return;
+    }
+
+    setWalletAddress(appKitAddress);
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem(WALLET_STORAGE_KEY, appKitAddress);
+    }
+
+    appKitProvider
+      ?.request?.({ method: "eth_chainId" })
+      .then((chainId) => {
+        const normalizedChainId = parseChainId(chainId);
+        setWalletChainId(normalizedChainId);
+        setWalletStatus(
+          normalizedChainId === CELO_MAINNET_CHAIN_ID
+            ? `Wallet ready on Celo Mainnet as ${shortenWalletAddress(appKitAddress)}.`
+            : `Wallet connected as ${shortenWalletAddress(appKitAddress)}. Switch to Celo Mainnet to continue.`,
+        );
+      })
+      .catch(() => {
+        setWalletStatus(`Wallet connected as ${shortenWalletAddress(appKitAddress)}.`);
+      });
+  }, [appKitAddress, appKitConnected, appKitProvider]);
+
+  async function connectWithAppKitProvider() {
+    if (!appKitProvider?.request || !isWalletAddress(appKitAddress)) {
+      throw new Error("WalletConnect finished without a usable wallet session.");
+    }
+
+    setWalletStatus("Wallet connected. Preparing Celo Mainnet...");
+    await ensureCeloMainnet(appKitProvider, CELO_MAINNET_CHAIN_ID);
+    const chainId = await appKitProvider.request({ method: "eth_chainId" });
+    const normalizedChainId = parseChainId(chainId);
+
+    setWalletAddress(appKitAddress);
+    setWalletChainId(normalizedChainId);
+    setWalletStatus(`Ready on Celo Mainnet as ${shortenWalletAddress(appKitAddress)}`);
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem(WALLET_STORAGE_KEY, appKitAddress);
+    }
+  }
 
   async function connectWallet() {
+    const provider = getInjectedWalletProvider();
+
     if (!provider?.request) {
-      setWalletStatus("No injected wallet found. Open WordPot inside MiniPay or MetaMask browser.");
+      try {
+        if (appKitConnected && appKitProvider?.request && isWalletAddress(appKitAddress)) {
+          await connectWithAppKitProvider();
+          return;
+        }
+
+        setWalletStatus("Opening wallet options...");
+        await open({ view: "Connect" });
+        setWalletStatus("Choose a wallet to continue.");
+      } catch (error) {
+        setWalletStatus(error.message || "Unable to open wallet connection.");
+      }
       return;
     }
 
@@ -192,6 +259,9 @@ export function useWalletSession() {
   }
 
   async function disconnectWallet() {
+    try {
+      await disconnect();
+    } catch {}
     setWalletAddress("");
     setWalletChainId(null);
     setWalletStatus("Wallet disconnected locally.");
@@ -205,7 +275,7 @@ export function useWalletSession() {
     walletStatus,
     walletChainId,
     hasInjectedProvider,
-    hasWalletConnect: false,
+    hasWalletConnect,
     isMiniPay,
     walletProviderName,
     walletNetworkLabel,
