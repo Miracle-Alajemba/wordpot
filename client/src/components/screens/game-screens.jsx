@@ -269,6 +269,9 @@ export function LobbyScreen({
   onRefresh,
   onStart,
   onCancel,
+  onRefund,
+  refundBusy,
+  refundDone,
   onPayEntryFee,
   paymentBusy,
   onBack,
@@ -287,6 +290,9 @@ export function LobbyScreen({
     room?.status === "waiting" && enoughPlayers && isHost && allPaid;
   const joinPayment = room?.onchain?.joinPaymentDisplay || "0.001 CELO";
   const hasPaid = (room?.onchain?.joinTransactions || []).some((entry) => entry.playerId === playerId);
+  const canShowRefundButton =
+    hasPaid && (room?.status === "waiting" || room?.status === "cancelled");
+  const cancelTx = room?.onchain?.contractCancelTx;
   const unpaidPlayers = (room?.players || []).filter((entry) => !entry.joinPaid);
   const unpaidCount = unpaidPlayers.length;
   const joinedCount = room?.players?.length || 0;
@@ -440,7 +446,29 @@ export function LobbyScreen({
                       : "Waiting for more players"
                   : "Waiting for host"}
               </button>
+              {canShowRefundButton ? (
+                <button
+                  type="button"
+                  className="button-secondary"
+                  onClick={onRefund}
+                  disabled={refundBusy || refundDone}
+                >
+                  {refundBusy ? "Processing..." : refundDone ? "Refunded ✓" : "Refund"}
+                </button>
+              ) : null}
             </div>
+            {cancelTx ? (
+              <div className="notice-strip notice-strip--neutral">
+                Refund transaction:{" "}
+                <a
+                  href={`https://celoscan.io/tx/${cancelTx}`}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  {shortenHash(cancelTx)}
+                </a>
+              </div>
+            ) : null}
             {isHost && (
               <div style={{ marginTop: "1rem", display: "flex", gap: "0.5rem" }}>
                 <button

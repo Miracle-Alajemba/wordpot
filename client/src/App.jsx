@@ -77,6 +77,8 @@ export default function App() {
   const [roomError, setRoomError] = useState("");
   const [roomMessage, setRoomMessage] = useState("");
   const [paymentBusy, setPaymentBusy] = useState(false);
+  const [refundBusy, setRefundBusy] = useState(false);
+  const [refundDone, setRefundDone] = useState(false);
   const [claimBusy, setClaimBusy] = useState(false);
   const [roomSyncStatus, setRoomSyncStatus] = useState("idle");
   const [settings, setSettings] = useState({
@@ -198,6 +200,17 @@ export default function App() {
       cancelled = true;
     };
   }, [walletAddress, room?.id, playerId]);
+
+  useEffect(() => {
+    const paid = (room?.onchain?.joinTransactions || []).some(
+      (entry) => entry.playerId === playerId,
+    );
+    if (room?.onchain?.contractCancelTx && paid) {
+      setRefundDone(true);
+      return;
+    }
+    setRefundDone(false);
+  }, [room?.onchain?.contractCancelTx, room?.onchain?.joinTransactions, playerId]);
 
   async function handleHomeJoin() {
     setRoomError("");
@@ -504,6 +517,52 @@ export default function App() {
     }
   }
 
+  async function requestRefund() {
+    if (!room?.id || !playerId) return;
+    if (!walletAddress) {
+      setRoomError("Connect wallet to continue.");
+      return;
+    }
+
+    try {
+      setRefundBusy(true);
+      setRoomError("");
+      setRoomMessage("Processing refund onchain...");
+
+      const response = await fetch(`${API_BASE_URL}/rooms/${room.id}/refund`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          playerId,
+          walletAddress: walletAddress.trim(),
+        }),
+      });
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Refund failed.");
+      }
+
+      setRoom(data.room);
+      setRefundDone(true);
+      const txHash = data?.txHash || data?.room?.onchain?.contractCancelTx;
+      const explorerUrl =
+        data?.explorerUrl || (txHash ? `https://celoscan.io/tx/${txHash}` : "");
+
+      setRoomMessage(
+        txHash
+          ? `Refunded. Tx: ${txHash} (${explorerUrl})`
+          : "Refund completed.",
+      );
+
+      await new Promise((resolve) => window.setTimeout(resolve, 3000));
+    } catch (error) {
+      setRoomError(error.message || "Refund failed.");
+    } finally {
+      setRefundBusy(false);
+    }
+  }
+
   async function submitRoomWord(word) {
     if (!room?.id || !playerId) return;
 
@@ -736,6 +795,9 @@ export default function App() {
         onRefresh={refreshRoom}
         onStart={startRoom}
         onCancel={cancelRoom}
+        onRefund={requestRefund}
+        refundBusy={refundBusy}
+        refundDone={refundDone}
         onPayEntryFee={payEntryFeeOnchain}
         paymentBusy={paymentBusy}
         onBack={backHome}

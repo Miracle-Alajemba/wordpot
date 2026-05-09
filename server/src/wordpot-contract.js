@@ -122,10 +122,20 @@ export function createWordPotContractService(options) {
         console.log(`RoomID: ${contractRoomId}`);
         console.log(`Players: ${playerAddresses.length}`);
 
-        const hash = await contract.write.cancelRoom([
+        const args = [
           BigInt(contractRoomId),
           playerAddresses.map((addr) => String(addr || "").trim()),
-        ]);
+        ];
+        const gasEstimate = await publicClient.estimateContractGas({
+          address: contractAddress,
+          abi: artifact.abi,
+          functionName: "cancelRoom",
+          args,
+          account: account.address,
+        });
+        console.log("Estimated gas for cancelRoom:", gasEstimate.toString());
+
+        const hash = await contract.write.cancelRoom(args);
         console.log("Transaction hash:", hash);
 
         const receipt = await publicClient.waitForTransactionReceipt({ hash });
@@ -135,7 +145,7 @@ export function createWordPotContractService(options) {
           throw new Error(`Transaction reverted: ${hash}`);
         }
 
-        return { hash };
+        return { hash, gasEstimate: gasEstimate.toString() };
       } catch (error) {
         console.error("cancelRoom error:", error.message);
         throw error;
