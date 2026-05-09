@@ -493,7 +493,12 @@ export default function App() {
       }
 
       setRoom(data.room);
-      setRoomMessage("Room cancelled successfully. All players have been refunded.");
+      const cancelTx = data?.room?.onchain?.contractCancelTx;
+      setRoomMessage(
+        cancelTx
+          ? `Room cancelled. Onchain refund sent: ${cancelTx.slice(0, 10)}...${cancelTx.slice(-8)}`
+          : "Room cancelled successfully. All players have been refunded.",
+      );
     } catch (error) {
       setRoomError(error.message || "Unable to cancel this room.");
     }

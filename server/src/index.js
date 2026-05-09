@@ -913,18 +913,6 @@ app.post("/api/rooms/:roomId/cancel", async (req, res) => {
       .json({ error: "This room has already been cancelled." });
   }
 
-  // Mark room as cancelled
-  room.status = "cancelled";
-  room.cancelledAt = new Date().toISOString();
-  pushSystemEvent(
-    room,
-    "Room cancelled by host. All players will be refunded.",
-  );
-
-  // Collect all players who paid and need refunds
-  const paidPlayerIds = getPaidPlayerIds(room);
-  const refundedPlayers = [];
-
   if (
     !wordPotContract.enabled ||
     !isWalletAddress(WORDPOT_CONTRACT_ADDRESS) ||
@@ -937,17 +925,43 @@ app.post("/api/rooms/:roomId/cancel", async (req, res) => {
   }
 
   try {
-    const playerAddresses = room.players.map((p) => p.walletAddress);
+    const paidPlayerIds = getPaidPlayerIds(room);
+    const paidPlayerAddresses = room.players
+      .filter((p) => paidPlayerIds.has(p.id))
+      .map((p) => p.walletAddress);
+
+    if (paidPlayerAddresses.length === 0) {
+      return res.status(400).json({
+        error:
+          "No paid players were found for this room, so no onchain refund can be processed.",
+      });
+    }
+
     const cancelResult = await wordPotContract.cancelRoom(
       room.contractRoomId,
-      playerAddresses,
+      paidPlayerAddresses,
     );
+
+    room.status = "cancelled";
+    room.cancelledAt = new Date().toISOString();
     room.contractCancelTx = cancelResult?.hash ?? null;
     room.contractCancelError = null;
-    refundedPlayers.push(...playerAddresses);
+    room.refundTransactions = room.refundTransactions || [];
+    room.refundTransactions.push({
+      hash: cancelResult?.hash ?? null,
+      walletAddress: player.walletAddress,
+      amountWei: JOIN_PAYMENT_WEI,
+      createdAt: new Date().toISOString(),
+      kind: "contract_refund",
+      refundedCount: paidPlayerAddresses.length,
+    });
     pushSystemEvent(
       room,
-      `Onchain refund sent for ${playerAddresses.length} player${playerAddresses.length === 1 ? "" : "s"}.`,
+      "Room cancelled by host. Onchain refunds are processing.",
+    );
+    pushSystemEvent(
+      room,
+      `Onchain refund sent for ${paidPlayerAddresses.length} player${paidPlayerAddresses.length === 1 ? "" : "s"}.`,
     );
   } catch (error) {
     console.error("Contract cancel failed:", error.message);
