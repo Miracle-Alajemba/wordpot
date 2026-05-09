@@ -946,6 +946,11 @@ app.post("/api/rooms/:roomId/refund", async (req, res) => {
 
   const playerId = String(req.body?.playerId || "").trim();
   const walletAddress = String(req.body?.walletAddress || "").trim();
+  console.log("[refund] request_received", {
+    roomId: req.params.roomId,
+    playerId,
+    walletAddress,
+  });
   const player = getValidatedPlayerOrError(room, playerId, walletAddress, res);
   if (!player) return;
 
@@ -985,14 +990,20 @@ app.post("/api/rooms/:roomId/refund", async (req, res) => {
     room.refundedWallets.push(player.walletAddress.toLowerCase());
     room.refundedWallets = Array.from(new Set(room.refundedWallets));
     markRoomDirty(room);
-    return res.status(200).json({
+    const payload = {
       room: getRoomSummary(room),
       txHash: room.contractCancelTx,
       explorerUrl: `https://celoscan.io/tx/${room.contractCancelTx}`,
       refundedCount: paidCount,
       amountDisplay: JOIN_PAYMENT_DISPLAY,
       gasEstimate: null,
+    };
+    console.log("[refund] success_existing_tx", {
+      roomId: room.id,
+      txHash: payload.txHash,
+      refundedCount: payload.refundedCount,
     });
+    return res.status(200).json(payload);
   }
 
   if (room.status !== "waiting" && room.status !== "cancelled") {
@@ -1003,18 +1014,31 @@ app.post("/api/rooms/:roomId/refund", async (req, res) => {
 
   try {
     const result = await processRoomRefund(room, player.walletAddress);
-    return res.status(200).json({
+    const payload = {
       room: getRoomSummary(room),
       txHash: result.hash,
       explorerUrl: result.hash ? `https://celoscan.io/tx/${result.hash}` : null,
       refundedCount: result.refundedCount,
       amountDisplay: JOIN_PAYMENT_DISPLAY,
       gasEstimate: result.gasEstimate || null,
+    };
+    console.log("[refund] success", {
+      roomId: room.id,
+      txHash: payload.txHash,
+      refundedCount: payload.refundedCount,
+      gasEstimate: payload.gasEstimate,
     });
+    return res.status(200).json(payload);
   } catch (error) {
     console.error("Contract refund failed:", error.message);
     room.contractCancelError = error.message;
     markRoomDirty(room);
+    console.error("[refund] error_response", {
+      roomId: room.id,
+      playerId,
+      walletAddress,
+      error: error.message,
+    });
     return res.status(502).json({
       error: normalizeRefundErrorMessage(error.message),
     });
@@ -1051,10 +1075,21 @@ async function processRoomRefund(room, requestedByWalletAddress) {
     throw new Error("You are not in this room");
   }
 
+  console.log("[refund] contract_call_start", {
+    roomId: room.id,
+    contractRoomId: room.contractRoomId,
+    paidPlayers: paidPlayerAddresses.length,
+    requestedByWalletAddress,
+  });
   const cancelResult = await wordPotContract.cancelRoom(
     room.contractRoomId,
     paidPlayerAddresses,
   );
+  console.log("[refund] contract_call_tx_hash", {
+    roomId: room.id,
+    txHash: cancelResult?.hash ?? null,
+    gasEstimate: cancelResult?.gasEstimate ?? null,
+  });
 
   room.status = "cancelled";
   room.cancelledAt = new Date().toISOString();
