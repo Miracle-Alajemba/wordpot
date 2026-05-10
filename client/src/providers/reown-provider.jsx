@@ -2,6 +2,7 @@ import { createAppKit } from "@reown/appkit/react";
 import { celo } from "@reown/appkit/networks";
 import { WagmiAdapter } from "@reown/appkit-adapter-wagmi";
 import { WagmiProvider } from "wagmi";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { APP_URL, REOWN_PROJECT_ID } from "../config/app-config.js";
 
 const metadata = {
@@ -14,6 +15,7 @@ const metadata = {
 };
 
 const networks = [celo];
+const queryClient = new QueryClient();
 
 const wagmiAdapter = new WagmiAdapter({
   projectId: REOWN_PROJECT_ID,
@@ -32,5 +34,11 @@ createAppKit({
 });
 
 export function ReownProvider({ children }) {
-  return <WagmiProvider config={wagmiAdapter.wagmiConfig}>{children}</WagmiProvider>;
+  return (
+    <WagmiProvider config={wagmiAdapter.wagmiConfig}>
+      <QueryClientProvider client={queryClient}>
+        {children}
+      </QueryClientProvider>
+    </WagmiProvider>
+  );
 }
