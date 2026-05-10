@@ -1,4 +1,4 @@
- import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   ChatMessage,
   RoomPlayersStrip,
@@ -34,6 +34,10 @@ function getSyncStatusMeta(syncStatus) {
 function buildWordFromSelection(sourceWord, selectedIndexes) {
   const letters = String(sourceWord || "").split("");
   return selectedIndexes.map((index) => letters[index] || "").join("").toLowerCase();
+}
+
+function isWalletAddress(value) {
+  return /^0x[a-fA-F0-9]{40}$/.test(String(value || "").trim());
 }
 
 export function HomeScreen({
@@ -552,30 +556,31 @@ export function MatchRoomScreen({
     (entry) => entry.walletAddress === myPlayer?.walletAddress,
   );
   const claimRecorded = myPlayer?.claimRecorded;
-
-  const contractAddress = room?.onchain?.contractAddress;
-const contractRoomId = room?.onchain?.contractRoomId;
-const claimEnabled = contractAddress 
-  && contractRoomId 
-  && Number(myPayout?.amount || 0) > 0 
-  && !claimRecorded 
-  && !claimBusy;
-  
   const payoutAmount = Number(myPayout?.amount || 0);
+
+  // FIX: claimEnabled no longer gates on payoutMode string.
+  // The contract address and roomId being present is the real signal.
+  const contractAddress = room?.onchain?.contractAddress;
+  const contractRoomId = room?.onchain?.contractRoomId;
+  const claimEnabled =
+    isWalletAddress(contractAddress) &&
+    !!contractRoomId &&
+    payoutAmount > 0 &&
+    !claimRecorded &&
+    !claimBusy;
+
   const claimStatusTitle = claimRecorded
     ? "Claim recorded"
-    : room?.onchain?.payoutMode === "contract_claim"
-      ? payoutAmount > 0
-        ? "Ready to claim"
-        : "No reward to claim"
-      : "Claim preview only";
+    : payoutAmount > 0
+      ? "Ready to claim"
+      : "No reward to claim";
+
   const claimStatusCopy = claimRecorded
     ? `Your latest claim reference is ${shortenHash(myClaimTx?.txHash)}.`
-    : room?.onchain?.payoutMode === "contract_claim"
-      ? payoutAmount > 0
-        ? "This room is contract-ready. Once claim wiring is complete, this button will send your onchain reward claim."
-        : "You finished the room, but there is no positive payout available for this wallet."
-      : "The beta flow already records onchain joins. Contract reward claims are the next deployment step.";
+    : payoutAmount > 0
+      ? "Scores are settled onchain. Click Claim Reward to receive your CELO."
+      : "You finished the room, but there is no positive payout available for this wallet.";
+
   const sourceLetters = String(room?.sourceWord || "").split("");
   const selectedWord = draftWord;
 
@@ -765,7 +770,6 @@ const claimEnabled = contractAddress
                 </div>
               </article>
             </section>
-
           </>
         ) : null}
 
@@ -786,7 +790,6 @@ const claimEnabled = contractAddress
               </div>
               <div className="chat-feed chat-feed--live">
                 {feed.map((entry, index) => (
-                  
                   <ChatMessage
                     key={`${entry.createdAt}-${index}`}
                     entry={entry}
@@ -826,7 +829,7 @@ const claimEnabled = contractAddress
                   </div>
                   <div className="claim-meta-chip">
                     <span>Payout Mode</span>
-                    <strong>{room?.onchain?.payoutMode === "contract_claim" ? "Contract" : "Beta"}</strong>
+                    <strong>{contractRoomId ? "Contract" : "Beta"}</strong>
                   </div>
                 </div>
                 <div className="hero-actions">
@@ -869,8 +872,8 @@ const claimEnabled = contractAddress
               </div>
 
               <div className="notice-strip notice-strip--neutral">
-                {room?.onchain?.payoutMode === "contract_claim"
-                  ? "Contract payout mode is configured. Claim from here once the contract room wiring is connected."
+                {contractRoomId
+                  ? "Contract payout mode is configured. Claim your reward above."
                   : "Beta mode: join payments are onchain now, while reward claim stays in preview until contract payout is deployed."}
               </div>
 
