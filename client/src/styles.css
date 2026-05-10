@@ -3598,6 +3598,48 @@ button:disabled,
   color: #182235;
 }
 
+/* Final light-mode readability lock (kept at end to override earlier blocks) */
+.app-light-mode .panel-chat,
+.app-light-mode .panel-scoreboard,
+.app-light-mode .chat-feed,
+.app-light-mode .chat-feed--live,
+.app-light-mode .chat-feed--lobby,
+.app-light-mode .leaderboard-table,
+.app-light-mode .player-list--leaderboard {
+  color: #000000 !important;
+}
+
+.app-light-mode .chat-bubble,
+.app-light-mode .chat-bubble__main,
+.app-light-mode .chat-bubble__word,
+.app-light-mode .chat-bubble__points,
+.app-light-mode .chat-bubble__meta,
+.app-light-mode .leaderboard-table__stats strong,
+.app-light-mode .leaderboard-table__rank,
+.app-light-mode .leaderboard-points span,
+.app-light-mode .player-row strong,
+.app-light-mode .player-identity__copy strong,
+.app-light-mode .live-score {
+  color: #000000 !important;
+}
+
+.app-light-mode .chat-bubble__time,
+.app-light-mode .chat-bubble__reason,
+.app-light-mode .leaderboard-table__stats span,
+.app-light-mode .leaderboard-points small,
+.app-light-mode .player-row p,
+.app-light-mode .player-identity__copy span,
+.app-light-mode .room-panel__header p,
+.app-light-mode .system-message small {
+  color: #333333 !important;
+}
+
+.app-light-mode .system-message__body strong,
+.app-light-mode .system-message__body span,
+.app-light-mode .room-panel__header h3 {
+  color: #000000 !important;
+}
+
 .app-light-mode .button-accent-blue {
   background: linear-gradient(180deg, rgba(233, 239, 247, 0.98), rgba(222, 231, 241, 0.98));
   border: 1px solid rgba(122, 159, 181, 0.24);
