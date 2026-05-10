@@ -950,6 +950,8 @@ app.post("/api/rooms/:roomId/refund", async (req, res) => {
     roomId: req.params.roomId,
     playerId,
     walletAddress,
+    roomStatus: room?.status,
+    contractRoomId: room?.contractRoomId || null,
   });
   const player = getValidatedPlayerOrError(room, playerId, walletAddress, res);
   if (!player) return;
@@ -977,6 +979,16 @@ app.post("/api/rooms/:roomId/refund", async (req, res) => {
     !isWalletAddress(WORDPOT_CONTRACT_ADDRESS) ||
     !room.contractRoomId
   ) {
+    console.error("[refund] contract_not_ready", {
+      roomId: room?.id,
+      contractEnabled: wordPotContract.enabled,
+      contractAddress: WORDPOT_CONTRACT_ADDRESS,
+      contractAddressValid: isWalletAddress(WORDPOT_CONTRACT_ADDRESS),
+      contractOperatorAddress: wordPotContract.enabled
+        ? wordPotContract.account
+        : null,
+      contractRoomId: room?.contractRoomId || null,
+    });
     return res.status(503).json({
       error:
         "This room cannot refund onchain because the contract room is missing. Open a fresh room after the server is fully configured.",
@@ -993,7 +1005,7 @@ app.post("/api/rooms/:roomId/refund", async (req, res) => {
     const payload = {
       room: getRoomSummary(room),
       txHash: room.contractCancelTx,
-      explorerUrl: `https://celoscan.io/tx/${room.contractCancelTx}`,
+      explorerUrl: getCeloExplorerTxUrl(room.contractCancelTx),
       refundedCount: paidCount,
       amountDisplay: JOIN_PAYMENT_DISPLAY,
       gasEstimate: null,
@@ -1017,7 +1029,7 @@ app.post("/api/rooms/:roomId/refund", async (req, res) => {
     const payload = {
       room: getRoomSummary(room),
       txHash: result.hash,
-      explorerUrl: result.hash ? `https://celoscan.io/tx/${result.hash}` : null,
+      explorerUrl: result.hash ? getCeloExplorerTxUrl(result.hash) : null,
       refundedCount: result.refundedCount,
       amountDisplay: JOIN_PAYMENT_DISPLAY,
       gasEstimate: result.gasEstimate || null,
@@ -1050,6 +1062,15 @@ function shortenAddress(value) {
   return `${value.slice(0, 6)}...${value.slice(-4)}`;
 }
 
+function getCeloExplorerTxUrl(hash) {
+  const txHash = String(hash || "").trim();
+  if (!txHash) return "";
+  if (CELO_CHAIN_ID === 44787) {
+    return `https://alfajores.celoscan.io/tx/${txHash}`;
+  }
+  return `https://celoscan.io/tx/${txHash}`;
+}
+
 function normalizeRefundErrorMessage(message) {
   const raw = String(message || "");
   const lower = raw.toLowerCase();
@@ -1080,6 +1101,10 @@ async function processRoomRefund(room, requestedByWalletAddress) {
     contractRoomId: room.contractRoomId,
     paidPlayers: paidPlayerAddresses.length,
     requestedByWalletAddress,
+    contractAddress: WORDPOT_CONTRACT_ADDRESS,
+    contractOperatorAddress: wordPotContract.enabled
+      ? wordPotContract.account
+      : null,
   });
   const cancelResult = await wordPotContract.cancelRoom(
     room.contractRoomId,

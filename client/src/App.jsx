@@ -519,7 +519,14 @@ export default function App() {
 
   async function requestRefund() {
     if (!room?.id || !playerId) return;
+    console.log("[refund-ui] click", {
+      roomId: room?.id,
+      playerId,
+      walletAddress,
+      roomStatus: room?.status,
+    });
     if (!walletAddress) {
+      console.warn("[refund-ui] blocked: wallet not connected");
       setRoomError("Connect wallet to continue.");
       return;
     }
@@ -529,6 +536,13 @@ export default function App() {
       setRoomError("");
       setRoomMessage("Processing refund onchain...");
 
+      console.log("[refund-ui] calling_api", {
+        endpoint: `${API_BASE_URL}/rooms/${room.id}/refund`,
+        payload: {
+          playerId,
+          walletAddress: walletAddress.trim(),
+        },
+      });
       const response = await fetch(`${API_BASE_URL}/rooms/${room.id}/refund`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -538,6 +552,11 @@ export default function App() {
         }),
       });
       const data = await response.json();
+      console.log("[refund-ui] api_response", {
+        status: response.status,
+        ok: response.ok,
+        data,
+      });
 
       if (!response.ok) {
         throw new Error(data.error || "Refund failed.");
@@ -548,15 +567,32 @@ export default function App() {
       const txHash = data?.txHash || data?.room?.onchain?.contractCancelTx;
       const explorerUrl =
         data?.explorerUrl || (txHash ? `https://celoscan.io/tx/${txHash}` : "");
+      console.log("[refund-ui] tx_hash", {
+        txHash: txHash || null,
+        explorerUrl: explorerUrl || null,
+      });
+
+      if (!txHash) {
+        console.warn("[refund-ui] missing_tx_hash", {
+          reason: "Refund API returned success but no tx hash was present.",
+          roomId: room?.id,
+        });
+      }
 
       setRoomMessage(
         txHash
           ? `Refunded. Tx: ${txHash} (${explorerUrl})`
-          : "Refund completed.",
+          : "Refund completed, but no transaction hash was returned.",
       );
 
       await new Promise((resolve) => window.setTimeout(resolve, 3000));
     } catch (error) {
+      console.error("[refund-ui] failed", {
+        roomId: room?.id,
+        playerId,
+        walletAddress,
+        error: error.message,
+      });
       setRoomError(error.message || "Refund failed.");
     } finally {
       setRefundBusy(false);
