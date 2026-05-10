@@ -552,7 +552,15 @@ export function MatchRoomScreen({
     (entry) => entry.walletAddress === myPlayer?.walletAddress,
   );
   const claimRecorded = myPlayer?.claimRecorded;
-  const claimEnabled = room?.onchain?.payoutMode === "contract_claim" && Number(myPayout?.amount || 0) > 0 && !claimRecorded;
+
+  const contractAddress = room?.onchain?.contractAddress;
+const contractRoomId = room?.onchain?.contractRoomId;
+const claimEnabled = contractAddress 
+  && contractRoomId 
+  && Number(myPayout?.amount || 0) > 0 
+  && !claimRecorded 
+  && !claimBusy;
+  
   const payoutAmount = Number(myPayout?.amount || 0);
   const claimStatusTitle = claimRecorded
     ? "Claim recorded"

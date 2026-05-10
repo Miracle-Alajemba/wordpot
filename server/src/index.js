@@ -83,7 +83,9 @@ function makeId(prefix) {
 
 function getRewardPool(playerCount) {
   return (
-    (playerCount * (Number(JOIN_PAYMENT_WEI) / 1_000_000_000_000_000_000)) * 0.9
+    playerCount *
+    (Number(JOIN_PAYMENT_WEI) / 1_000_000_000_000_000_000) *
+    0.9
   ).toFixed(4);
 }
 
@@ -306,8 +308,8 @@ function getRoomSummary(room, options = {}) {
         isWalletAddress(WORDPOT_CONTRACT_ADDRESS) &&
         wordPotContract.enabled &&
         room.contractRoomId
-        ? "contract_claim"
-        : "contract_unavailable",
+          ? "contract_claim"
+          : "contract_unavailable",
       joinTransactions: (room.joinTransactions || []).slice(-txLimit),
       claimTransactions: (room.claimTransactions || []).slice(-txLimit),
       refundTransactions: (room.refundTransactions || []).slice(-txLimit),
@@ -396,7 +398,10 @@ function getRoomOr404(roomId, res) {
 
 function buildSettlementPayload(room) {
   const scoreboardMap = new Map(
-    getRoomDerived(room).scoreboard.map((entry) => [entry.playerId, entry.score]),
+    getRoomDerived(room).scoreboard.map((entry) => [
+      entry.playerId,
+      entry.score,
+    ]),
   );
 
   return room.players.map((player) => ({
@@ -466,8 +471,8 @@ app.get("/api/meta", (_req, res) => {
           : "contract_unavailable",
       payoutMode:
         isWalletAddress(WORDPOT_CONTRACT_ADDRESS) && wordPotContract.enabled
-        ? "contract_claim"
-        : "contract_unavailable",
+          ? "contract_claim"
+          : "contract_unavailable",
     },
   });
 });
@@ -481,7 +486,9 @@ app.get("/api/leaderboard", (_req, res) => {
 
 app.get("/api/rounds/practice", async (_req, res) => {
   try {
-    const difficulty = String(_req.query?.difficulty || "medium").trim().toLowerCase();
+    const difficulty = String(_req.query?.difficulty || "medium")
+      .trim()
+      .toLowerCase();
     const round = await getDynamicRound(difficulty);
     return res.json({ round });
   } catch (error) {
@@ -870,7 +877,10 @@ app.post("/api/rooms/:roomId/settle", async (req, res) => {
     room.contractSettleTx = settleResult?.hash ?? null;
     room.contractSettledAt = new Date().toISOString();
     room.contractSettleError = null;
-    pushSystemEvent(room, "Final scores were settled onchain. Claims are now live.");
+    pushSystemEvent(
+      room,
+      "Final scores were settled onchain. Claims are now live.",
+    );
 
     return res.status(200).json({ room: getRoomSummary(room), settled: true });
   } catch (error) {
@@ -940,123 +950,62 @@ app.post("/api/rooms/:roomId/cancel", async (req, res) => {
   return res.status(200).json({ room: getRoomSummary(room) });
 });
 
-app.post("/api/rooms/:roomId/refund", async (req, res) => {
-  const room = getRoomOr404(req.params.roomId, res);
-  if (!room) return;
+app.post("/rooms/:id/refund", async (req, res) => {
+  const { id } = req.params;
+  const { playerId, walletAddress } = req.body;
 
-  const playerId = String(req.body?.playerId || "").trim();
-  const walletAddress = String(req.body?.walletAddress || "").trim();
-  console.log("[refund] request_received", {
-    roomId: req.params.roomId,
-    playerId,
-    walletAddress,
-    roomStatus: room?.status,
-    contractRoomId: room?.contractRoomId || null,
-  });
-  const player = getValidatedPlayerOrError(room, playerId, walletAddress, res);
-  if (!player) return;
+  const room = rooms.get(id); // however you look up room state
+  if (!room) return res.status(404).json({ error: "Room not found." });
 
-  if (!hasPlayerPaid(room, player.id)) {
-    return res.status(400).json({ error: "You are not in this room" });
-  }
-
-  settleRoom(room);
-  if (room.status === "finished") {
-    return res
-      .status(400)
-      .json({ error: "Room is already settled and cannot be refunded" });
-  }
-
-  const alreadyRefunded = (room.refundedWallets || []).includes(
-    player.walletAddress.toLowerCase(),
+  // Only allow refund if room is waiting or cancelled, and player paid
+  const hasPaid = (room.onchain?.joinTransactions || []).some(
+    (tx) => tx.playerId === playerId,
   );
-  if (alreadyRefunded) {
-    return res.status(400).json({ error: "You already received refund" });
-  }
-
-  if (
-    !wordPotContract.enabled ||
-    !isWalletAddress(WORDPOT_CONTRACT_ADDRESS) ||
-    !room.contractRoomId
-  ) {
-    console.error("[refund] contract_not_ready", {
-      roomId: room?.id,
-      contractEnabled: wordPotContract.enabled,
-      contractAddress: WORDPOT_CONTRACT_ADDRESS,
-      contractAddressValid: isWalletAddress(WORDPOT_CONTRACT_ADDRESS),
-      contractOperatorAddress: wordPotContract.enabled
-        ? wordPotContract.account
-        : null,
-      contractRoomId: room?.contractRoomId || null,
-    });
-    return res.status(503).json({
-      error:
-        "This room cannot refund onchain because the contract room is missing. Open a fresh room after the server is fully configured.",
-    });
-  }
-
-  if (room.contractCancelTx) {
-    const paidPlayerIds = getPaidPlayerIds(room);
-    const paidCount = room.players.filter((p) => paidPlayerIds.has(p.id)).length;
-    room.refundedWallets = room.refundedWallets || [];
-    room.refundedWallets.push(player.walletAddress.toLowerCase());
-    room.refundedWallets = Array.from(new Set(room.refundedWallets));
-    markRoomDirty(room);
-    const payload = {
-      room: getRoomSummary(room),
-      txHash: room.contractCancelTx,
-      explorerUrl: getCeloExplorerTxUrl(room.contractCancelTx),
-      refundedCount: paidCount,
-      amountDisplay: JOIN_PAYMENT_DISPLAY,
-      gasEstimate: null,
-    };
-    console.log("[refund] success_existing_tx", {
-      roomId: room.id,
-      txHash: payload.txHash,
-      refundedCount: payload.refundedCount,
-    });
-    return res.status(200).json(payload);
+  if (!hasPaid) {
+    return res.status(400).json({ error: "No payment found for this player." });
   }
 
   if (room.status !== "waiting" && room.status !== "cancelled") {
-    return res.status(400).json({
-      error: "Refund is only available before game start or after cancellation",
-    });
+    return res
+      .status(400)
+      .json({ error: "Room is not in a refundable state." });
+  }
+
+  // Get all paid player addresses for the contract call
+  const paidAddresses = (room.onchain?.joinTransactions || []).map(
+    (tx) => tx.walletAddress,
+  );
+
+  if (!contractService.enabled) {
+    return res.status(503).json({ error: "Contract service not available." });
   }
 
   try {
-    const result = await processRoomRefund(room, player.walletAddress);
-    const payload = {
-      room: getRoomSummary(room),
+    const contractRoomId = room.onchain?.contractRoomId;
+    if (!contractRoomId) {
+      return res.status(400).json({ error: "No contract room ID found." });
+    }
+
+    const result = await contractService.cancelRoom(
+      contractRoomId,
+      paidAddresses,
+    );
+
+    // Mark room cancelled and store the tx
+    room.status = "cancelled";
+    room.onchain.contractCancelTx = result.hash;
+
+    return res.json({
+      ok: true,
       txHash: result.hash,
-      explorerUrl: result.hash ? getCeloExplorerTxUrl(result.hash) : null,
-      refundedCount: result.refundedCount,
-      amountDisplay: JOIN_PAYMENT_DISPLAY,
-      gasEstimate: result.gasEstimate || null,
-    };
-    console.log("[refund] success", {
-      roomId: room.id,
-      txHash: payload.txHash,
-      refundedCount: payload.refundedCount,
-      gasEstimate: payload.gasEstimate,
+      explorerUrl: `https://celoscan.io/tx/${result.hash}`,
+      room,
     });
-    return res.status(200).json(payload);
-  } catch (error) {
-    console.error("Contract refund failed:", error.message);
-    room.contractCancelError = error.message;
-    markRoomDirty(room);
-    console.error("[refund] error_response", {
-      roomId: room.id,
-      playerId,
-      walletAddress,
-      error: error.message,
-    });
-    return res.status(502).json({
-      error: normalizeRefundErrorMessage(error.message),
-    });
+  } catch (err) {
+    console.error("[refund] contract error:", err.message);
+    return res.status(500).json({ error: err.message || "Refund failed." });
   }
 });
-
 function shortenAddress(value) {
   if (!value) return "--";
   return `${value.slice(0, 6)}...${value.slice(-4)}`;
@@ -1074,9 +1023,11 @@ function getCeloExplorerTxUrl(hash) {
 function normalizeRefundErrorMessage(message) {
   const raw = String(message || "");
   const lower = raw.toLowerCase();
-  if (lower.includes("insufficient funds")) return "Not enough funds in contract";
+  if (lower.includes("insufficient funds"))
+    return "Not enough funds in contract";
   if (lower.includes("already cancelled")) return "You already received refund";
-  if (lower.includes("already settled")) return "Room is already settled and cannot be refunded";
+  if (lower.includes("already settled"))
+    return "Room is already settled and cannot be refunded";
   if (lower.includes("room missing")) return "Room no longer exists";
   return raw || "Onchain refund failed. Please retry.";
 }
@@ -1092,7 +1043,13 @@ async function processRoomRefund(room, requestedByWalletAddress) {
     );
   }
 
-  if (!paidPlayerAddresses.some((address) => address.toLowerCase() === String(requestedByWalletAddress || "").toLowerCase())) {
+  if (
+    !paidPlayerAddresses.some(
+      (address) =>
+        address.toLowerCase() ===
+        String(requestedByWalletAddress || "").toLowerCase(),
+    )
+  ) {
     throw new Error("You are not in this room");
   }
 
@@ -1125,7 +1082,9 @@ async function processRoomRefund(room, requestedByWalletAddress) {
   room.refundedWallets = Array.from(
     new Set([
       ...room.refundedWallets,
-      ...paidPlayerAddresses.map((address) => String(address || "").toLowerCase()),
+      ...paidPlayerAddresses.map((address) =>
+        String(address || "").toLowerCase(),
+      ),
     ]),
   );
   room.refundTransactions.push({

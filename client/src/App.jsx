@@ -647,11 +647,6 @@ export default function App() {
       return;
     }
 
-    if (room?.onchain?.payoutMode !== "contract_claim") {
-      setRoomError("Reward claiming will go live after the WordPot payout contract is deployed.");
-      return;
-    }
-
     const contractAddress = room?.onchain?.contractAddress;
     const contractRoomId = room?.onchain?.contractRoomId;
 
