@@ -97,10 +97,3 @@ npm install
 cp .env.example .env
 npm run dev
 ```
-
-## Next Upgrade
-
-- deploy `WordPotArena.sol`
-- switch join flow from treasury beta to contract entry
-- add claim reward transaction flow in the results screen
-- move room sync from polling to sockets
