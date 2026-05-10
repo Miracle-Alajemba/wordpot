@@ -3337,6 +3337,12 @@ button:disabled,
   border-color: rgba(122, 159, 181, 0.18);
 }
 
+.app-light-mode .chat-feed,
+.app-light-mode .chat-feed--live,
+.app-light-mode .chat-feed--lobby {
+  color: #1a1a1a;
+}
+
 .app-light-mode .player-row--self {
   border-color: rgba(99, 244, 202, 0.28);
   box-shadow:
@@ -3377,6 +3383,54 @@ button:disabled,
 .app-light-mode .letter-tile,
 .app-light-mode .letter-tile--compact {
   color: #172033;
+}
+
+.app-light-mode .chat-bubble__points,
+.app-light-mode .chat-bubble__word,
+.app-light-mode .chat-bubble__meta {
+  color: #1a1a1a;
+}
+
+.app-light-mode .chat-bubble__points--muted,
+.app-light-mode .chat-bubble__word--muted,
+.app-light-mode .chat-bubble__reason,
+.app-light-mode .chat-bubble__time {
+  color: #444444;
+}
+
+.app-light-mode .system-message__body strong,
+.app-light-mode .system-message__body span {
+  color: #1a1a1a;
+}
+
+.app-light-mode .system-message small {
+  color: #444444;
+}
+
+.app-light-mode .room-panel__header h3,
+.app-light-mode .room-panel__header p {
+  color: #1a1a1a;
+}
+
+.app-light-mode .leaderboard-table__row,
+.app-light-mode .player-row {
+  border-color: rgba(122, 159, 181, 0.32);
+}
+
+.app-light-mode .leaderboard-table__rank,
+.app-light-mode .leaderboard-table__stats strong,
+.app-light-mode .leaderboard-points span,
+.app-light-mode .player-row strong,
+.app-light-mode .player-identity__copy strong,
+.app-light-mode .live-score {
+  color: #1a1a1a;
+}
+
+.app-light-mode .leaderboard-table__stats span,
+.app-light-mode .leaderboard-points small,
+.app-light-mode .player-row p,
+.app-light-mode .player-identity__copy span {
+  color: #444444;
 }
 
 .app-light-mode .letter-tile {
