@@ -438,15 +438,6 @@ function shortenAddress(value) {
   return `${value.slice(0, 6)}...${value.slice(-4)}`;
 }
 
-function getCeloExplorerTxUrl(hash) {
-  const txHash = String(hash || "").trim();
-  if (!txHash) return "";
-  if (CELO_CHAIN_ID === 44787) {
-    return `https://alfajores.celoscan.io/tx/${txHash}`;
-  }
-  return `https://celoscan.io/tx/${txHash}`;
-}
-
 function normalizeRefundErrorMessage(message) {
   const raw = String(message || "");
   const lower = raw.toLowerCase();
@@ -690,6 +681,61 @@ app.post("/api/rooms/quick-match", async (req, res) => {
 
   const player = {
     id: room.players.length === 0 ? room.hostPlayerId : makeId("player"),
+    walletAddress,
+    joinedAt: new Date().toISOString(),
+  };
+
+  room.players.push(player);
+  pushSystemEvent(
+    room,
+    `${shortenAddress(player.walletAddress)} joined the game`,
+  );
+
+  return res.status(201).json({
+    room: getRoomSummary(room),
+    playerId: player.id,
+  });
+});
+
+app.post("/api/rooms/:roomId/join", (req, res) => {
+  const room = getRoomOr404(req.params.roomId, res);
+  if (!room) return;
+
+  const walletAddress = String(req.body?.walletAddress || "").trim();
+
+  if (!isWalletAddress(walletAddress)) {
+    return res
+      .status(400)
+      .json({ error: "A valid wallet address is required." });
+  }
+
+  if (room.status !== "waiting") {
+    return res.status(400).json({
+      error: "This invite room is no longer waiting for players.",
+    });
+  }
+
+  if (room.players.length >= MAX_PLAYERS) {
+    return res.status(400).json({
+      error: "This room is already full.",
+    });
+  }
+
+  const existingPlayer = room.players.find(
+    (player) =>
+      player.walletAddress.toLowerCase() === walletAddress.toLowerCase(),
+  );
+
+  if (existingPlayer) {
+    return res.status(200).json({
+      room: getRoomSummary(room),
+      playerId: existingPlayer.id,
+      restored: true,
+    });
+  }
+
+  const player = {
+    id: makeId("player"),
     walletAddress,
     joinedAt: new Date().toISOString(),
   };
@@ -1049,66 +1095,6 @@ app.post("/api/rooms/:roomId/cancel", async (req, res) => {
   }
 
   return res.status(200).json({ room: getRoomSummary(room) });
-});
-
-// Player refund — any paid player can trigger a refund while room is still waiting
-app.post("/api/rooms/:roomId/refund", async (req, res) => {
-  const room = getRoomOr404(req.params.roomId, res);
-  if (!room) return;
-
-  const playerId = String(req.body?.playerId || "").trim();
-  const walletAddress = String(req.body?.walletAddress || "").trim();
-  const player = getValidatedPlayerOrError(room, playerId, walletAddress, res);
-  if (!player) return;
-
-  if (room.status !== "waiting" && room.status !== "cancelled") {
-    return res.status(400).json({
-      error: "Refunds are only available while the room is still in the lobby.",
-    });
-  }
-
-  // If already cancelled, just return current state with the existing tx
-  if (room.cancelledAt) {
-    return res.status(200).json({
-      ok: true,
-      txHash: room.contractCancelTx || null,
-      explorerUrl: getCeloExplorerTxUrl(room.contractCancelTx),
-      room: getRoomSummary(room),
-    });
-  }
-
-  if (!hasPlayerPaid(room, playerId)) {
-    return res.status(400).json({
-      error: "No entry payment found for this player.",
-    });
-  }
-
-  if (
-    !wordPotContract.enabled ||
-    !isWalletAddress(WORDPOT_CONTRACT_ADDRESS) ||
-    !room.contractRoomId
-  ) {
-    return res.status(503).json({
-      error: "Contract refund is not available for this room.",
-    });
-  }
-
-  try {
-    const result = await processRoomRefund(room, player.walletAddress);
-    return res.json({
-      ok: true,
-      txHash: result.hash,
-      explorerUrl: getCeloExplorerTxUrl(result.hash),
-      room: getRoomSummary(room),
-    });
-  } catch (error) {
-    console.error("[refund] failed:", error.message);
-    room.contractCancelError = error.message;
-    markRoomDirty(room);
-    return res.status(502).json({
-      error: normalizeRefundErrorMessage(error.message),
-    });
-  }
 });
 
 app.listen(port, () => {

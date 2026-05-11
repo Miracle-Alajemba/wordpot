@@ -77,10 +77,10 @@ export default function App() {
   const [roomError, setRoomError] = useState("");
   const [roomMessage, setRoomMessage] = useState("");
   const [paymentBusy, setPaymentBusy] = useState(false);
-  const [refundBusy, setRefundBusy] = useState(false);
-  const [refundDone, setRefundDone] = useState(false);
+  const [inviteCopied, setInviteCopied] = useState(false);
   const [claimBusy, setClaimBusy] = useState(false);
   const [roomSyncStatus, setRoomSyncStatus] = useState("idle");
+  const inviteRoomJoinAttemptedRef = useRef(false);
   const [settings, setSettings] = useState({
     sound: true,
     haptics: true,
@@ -202,15 +202,16 @@ export default function App() {
   }, [walletAddress, room?.id, playerId]);
 
   useEffect(() => {
-    const paid = (room?.onchain?.joinTransactions || []).some(
-      (entry) => entry.playerId === playerId,
-    );
-    if (room?.onchain?.contractCancelTx && paid) {
-      setRefundDone(true);
-      return;
-    }
-    setRefundDone(false);
-  }, [room?.onchain?.contractCancelTx, room?.onchain?.joinTransactions, playerId]);
+    if (inviteRoomJoinAttemptedRef.current) return;
+    if (!isWalletAddress(walletAddress.trim()) || !walletReady) return;
+
+    const params = new URLSearchParams(window.location.search);
+    const inviteRoomId = String(params.get("room") || "").trim();
+    if (!inviteRoomId) return;
+
+    inviteRoomJoinAttemptedRef.current = true;
+    handleQuickMatch(inviteRoomId);
+  }, [walletAddress, walletReady]);
 
   async function handleHomeJoin() {
     setRoomError("");
@@ -228,7 +229,7 @@ export default function App() {
     await handleQuickMatch();
   }
 
-  async function handleQuickMatch() {
+  async function handleQuickMatch(targetRoomId = "") {
     setRoomError("");
     setRoomMessage("");
 
@@ -238,7 +239,11 @@ export default function App() {
     }
 
     try {
-      const response = await fetch(`${API_BASE_URL}/rooms/quick-match`, {
+      const inviteRoomId = String(targetRoomId || "").trim();
+      const endpoint = inviteRoomId
+        ? `${API_BASE_URL}/rooms/${encodeURIComponent(inviteRoomId)}/join`
+        : `${API_BASE_URL}/rooms/quick-match`;
+      const response = await fetch(endpoint, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -258,10 +263,27 @@ export default function App() {
         playerId: data.playerId,
         walletAddress: walletAddress.trim(),
       });
-      setRoomMessage("You joined a public room. Invite more players or refresh the lobby.");
+      setRoomMessage(
+        inviteRoomId
+          ? "You joined the invited room. Confirm your entry to lock your seat."
+          : "You joined a public room. Invite more players or refresh the lobby.",
+      );
       setScreen("lobby");
     } catch (error) {
       setRoomError(error.message || "Unable to join quick match.");
+    }
+  }
+
+  async function copyInviteLink() {
+    if (!room?.id || typeof window === "undefined") return;
+
+    const inviteLink = `${window.location.origin}?room=${room.id}`;
+    try {
+      await navigator.clipboard.writeText(inviteLink);
+      setInviteCopied(true);
+      window.setTimeout(() => setInviteCopied(false), 3000);
+    } catch (error) {
+      setRoomError(error.message || "Unable to copy invite link.");
     }
   }
 
@@ -517,90 +539,6 @@ export default function App() {
     }
   }
 
-  async function requestRefund() {
-    if (!room?.id || !playerId) return;
-      console.log("[refund] API_BASE_URL:", API_BASE_URL);  // ADD THIS
-
-    console.log("[refund-ui] click", {
-      roomId: room?.id,
-      playerId,
-      walletAddress,
-      roomStatus: room?.status,
-    });
-    if (!walletAddress) {
-      console.warn("[refund-ui] blocked: wallet not connected");
-      setRoomError("Connect wallet to continue.");
-      return;
-    }
-
-    try {
-      setRefundBusy(true);
-      setRoomError("");
-      setRoomMessage("Processing refund onchain...");
-
-      console.log("[refund-ui] calling_api", {
-        endpoint: `${API_BASE_URL}/rooms/${room.id}/refund`,
-        payload: {
-          playerId,
-          walletAddress: walletAddress.trim(),
-        },
-      });
-      const response = await fetch(`${API_BASE_URL}/rooms/${room.id}/refund`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          playerId,
-          walletAddress: walletAddress.trim(),
-        }),
-      });
-      const data = await response.json();
-      console.log("[refund-ui] api_response", {
-        status: response.status,
-        ok: response.ok,
-        data,
-      });
-
-      if (!response.ok) {
-        throw new Error(data.error || "Refund failed.");
-      }
-
-      setRoom(data.room);
-      setRefundDone(true);
-      const txHash = data?.txHash || data?.room?.onchain?.contractCancelTx;
-      const explorerUrl =
-        data?.explorerUrl || (txHash ? `https://celoscan.io/tx/${txHash}` : "");
-      console.log("[refund-ui] tx_hash", {
-        txHash: txHash || null,
-        explorerUrl: explorerUrl || null,
-      });
-
-      if (!txHash) {
-        console.warn("[refund-ui] missing_tx_hash", {
-          reason: "Refund API returned success but no tx hash was present.",
-          roomId: room?.id,
-        });
-      }
-
-      setRoomMessage(
-        txHash
-          ? `Refunded. Tx: ${txHash} (${explorerUrl})`
-          : "Refund completed, but no transaction hash was returned.",
-      );
-
-      await new Promise((resolve) => window.setTimeout(resolve, 3000));
-    } catch (error) {
-      console.error("[refund-ui] failed", {
-        roomId: room?.id,
-        playerId,
-        walletAddress,
-        error: error.message,
-      });
-      setRoomError(error.message || "Refund failed.");
-    } finally {
-      setRefundBusy(false);
-    }
-  }
-
   async function submitRoomWord(word) {
     if (!room?.id || !playerId) return;
 
@@ -828,9 +766,8 @@ export default function App() {
         onRefresh={refreshRoom}
         onStart={startRoom}
         onCancel={cancelRoom}
-        onRefund={requestRefund}
-        refundBusy={refundBusy}
-        refundDone={refundDone}
+        onCopyInvite={copyInviteLink}
+        inviteCopied={inviteCopied}
         onPayEntryFee={payEntryFeeOnchain}
         paymentBusy={paymentBusy}
         onBack={backHome}

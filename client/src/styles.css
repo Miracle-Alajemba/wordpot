@@ -1441,6 +1441,32 @@ button:disabled {
   text-align: right;
 }
 
+.invite-link-card {
+  align-items: center;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(170, 190, 255, 0.16);
+  border-radius: 18px;
+  display: grid;
+  gap: 0.7rem;
+  grid-template-columns: minmax(0, 1fr) auto;
+  margin-bottom: 1rem;
+  padding: 0.85rem;
+}
+
+.invite-link-card input {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(170, 190, 255, 0.16);
+  border-radius: 999px;
+  color: #f8fbff;
+  min-width: 0;
+  padding: 0.78rem 1rem;
+  width: 100%;
+}
+
+.invite-link-card button {
+  white-space: nowrap;
+}
+
 .lobby-summary-grid {
   display: grid;
   gap: 1rem;
@@ -3314,6 +3340,17 @@ button:disabled,
   border-color: rgba(122, 159, 181, 0.24);
 }
 
+.app-light-mode .invite-link-card {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.99), rgba(237, 242, 249, 0.98));
+  border-color: rgba(122, 159, 181, 0.24);
+}
+
+.app-light-mode .invite-link-card input {
+  background: rgba(255, 255, 255, 0.96);
+  border-color: rgba(122, 159, 181, 0.24);
+  color: #172033;
+}
+
 .app-light-mode .notice-strip--neutral {
   background: linear-gradient(180deg, rgba(255, 241, 221, 0.98), rgba(255, 232, 207, 0.98));
   border-color: rgba(234, 168, 78, 0.34);
@@ -3490,6 +3527,10 @@ button:disabled,
   .bottom-nav__item span {
     font-size: 0.64rem;
     letter-spacing: 0.06em;
+  }
+
+  .invite-link-card {
+    grid-template-columns: 1fr;
   }
 }
 
