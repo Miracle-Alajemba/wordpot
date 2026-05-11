@@ -272,7 +272,6 @@ export function LobbyScreen({
   syncStatus,
   onRefresh,
   onStart,
-  onCancel,
   onCopyInvite,
   inviteCopied,
   onPayEntryFee,
@@ -289,8 +288,7 @@ export function LobbyScreen({
   const enoughPlayers = totalPlayers >= minPlayers;
   const roomReadyToStart = enoughPlayers && allPaid;
   const joinMode = room?.onchain?.joinMode || "treasury_beta";
-  const canStart =
-    room?.status === "waiting" && enoughPlayers && isHost && allPaid;
+  const canStart = room?.status === "waiting" && enoughPlayers && isHost && allPaid;
   const joinPayment = room?.onchain?.joinPaymentDisplay || "0.001 CELO";
   const hasPaid = (room?.onchain?.joinTransactions || []).some((entry) => entry.playerId === playerId);
   const inviteLink =
@@ -374,14 +372,18 @@ export function LobbyScreen({
             </div>
 
             <div className="invite-link-card">
-              <input
-                aria-label="Room invite link"
-                readOnly
-                value={inviteLink}
-              />
-              <button type="button" className="button-secondary" onClick={onCopyInvite}>
-                {inviteCopied ? "Copied ✓" : "Copy Invite Link"}
-              </button>
+              <p className="invite-link-card__label">Invite friends to join this room</p>
+              <div className="invite-link-card__row">
+                <input
+                  aria-label="Room invite link"
+                  readOnly
+                  value={inviteLink}
+                  onClick={(e) => e.target.select()}
+                />
+                <button type="button" className="button-secondary" onClick={onCopyInvite}>
+                  {inviteCopied ? "Copied ✓" : "Copy Link"}
+                </button>
+              </div>
             </div>
 
             <div className="lobby-summary-grid">
@@ -462,27 +464,6 @@ export function LobbyScreen({
                   : "Waiting for host"}
               </button>
             </div>
-            {isHost && (
-              <div style={{ marginTop: "1rem", display: "flex", gap: "0.5rem" }}>
-                <button
-                  type="button"
-                  className="button-secondary"
-                  onClick={onCancel}
-                  style={{
-                    backgroundColor: "#dd3333",
-                    color: "white",
-                    padding: "0.75rem 1.5rem",
-                    borderRadius: "0.25rem",
-                    border: "none",
-                    fontSize: "1rem",
-                    cursor: "pointer",
-                    fontWeight: "500",
-                  }}
-                >
-                  🚨 Cancel & Refund All
-                </button>
-              </div>
-            )}
           </article>
 
           <article className="panel room-panel">
@@ -546,9 +527,6 @@ export function MatchRoomScreen({
   );
   const claimRecorded = myPlayer?.claimRecorded;
   const payoutAmount = Number(myPayout?.amount || 0);
-
-  // FIX: claimEnabled no longer gates on payoutMode string.
-  // The contract address and roomId being present is the real signal.
   const contractAddress = room?.onchain?.contractAddress;
   const contractRoomId = room?.onchain?.contractRoomId;
   const claimEnabled =
@@ -581,11 +559,7 @@ export function MatchRoomScreen({
   useEffect(() => {
     const node = chatFeedRef.current;
     if (!node || pausedAutoScroll) return;
-
-    node.scrollTo({
-      top: node.scrollHeight,
-      behavior: "smooth",
-    });
+    node.scrollTo({ top: node.scrollHeight, behavior: "smooth" });
   }, [feed, pausedAutoScroll]);
 
   function handleFeedScroll() {
@@ -714,7 +688,6 @@ export function MatchRoomScreen({
                   </div>
                   {selectedIndexes.length ? <span className="typing-indicator">You are forming a word...</span> : null}
                 </div>
-
                 <div
                   ref={chatFeedRef}
                   className="chat-feed chat-feed--live"
@@ -729,9 +702,7 @@ export function MatchRoomScreen({
                       />
                     ))
                   ) : (
-                    <div className="empty-card">
-                      Waiting for the first word claim...
-                    </div>
+                    <div className="empty-card">Waiting for the first word claim...</div>
                   )}
                 </div>
               </article>
