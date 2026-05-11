@@ -519,6 +519,8 @@ export default function App() {
 
   async function requestRefund() {
     if (!room?.id || !playerId) return;
+      console.log("[refund] API_BASE_URL:", API_BASE_URL);  // ADD THIS
+
     console.log("[refund-ui] click", {
       roomId: room?.id,
       playerId,
