@@ -149,7 +149,7 @@ contract WordPotArena {
             address player = players[i];
             if (!joinedRoom[roomId][player]) continue;
             (bool ok, ) = player.call{value: room.entryFee}("");
-            require(ok, "WordPot: refund failed");
+            require(ok, "WordPot: transfer failed");
         }
 
         emit RoomCancelled(roomId);

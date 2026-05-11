@@ -501,44 +501,6 @@ export default function App() {
     }
   }
 
-  async function cancelRoom() {
-    if (!room?.id || !playerId) return;
-
-    if (!window.confirm("Are you sure you want to cancel this room? All players will be refunded.")) {
-      return;
-    }
-
-    try {
-      setRoomError("");
-      setRoomMessage("Cancelling room and processing refunds...");
-
-      const response = await fetch(`${API_BASE_URL}/rooms/${room.id}/cancel`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          playerId,
-          walletAddress: walletAddress.trim(),
-        }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || "Unable to cancel this room.");
-      }
-
-      setRoom(data.room);
-      const cancelTx = data?.room?.onchain?.contractCancelTx;
-      setRoomMessage(
-        cancelTx
-          ? `Room cancelled. Onchain refund sent: ${cancelTx.slice(0, 10)}...${cancelTx.slice(-8)}`
-          : "Room cancelled successfully. All players have been refunded.",
-      );
-    } catch (error) {
-      setRoomError(error.message || "Unable to cancel this room.");
-    }
-  }
-
   async function submitRoomWord(word) {
     if (!room?.id || !playerId) return;
 
@@ -765,7 +727,6 @@ export default function App() {
         syncStatus={roomSyncStatus}
         onRefresh={refreshRoom}
         onStart={startRoom}
-        onCancel={cancelRoom}
         onCopyInvite={copyInviteLink}
         inviteCopied={inviteCopied}
         onPayEntryFee={payEntryFeeOnchain}

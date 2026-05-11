@@ -284,8 +284,6 @@ function getRoomSummary(room, options = {}) {
       contractSettleTx: room.contractSettleTx || null,
       contractSettledAt: room.contractSettledAt || null,
       contractSettleError: room.contractSettleError || null,
-      contractCancelTx: room.contractCancelTx || null,
-      contractCancelError: room.contractCancelError || null,
       contractReady: wordPotContract.enabled,
       contractOperatorAddress: wordPotContract.enabled
         ? wordPotContract.account
@@ -306,7 +304,6 @@ function getRoomSummary(room, options = {}) {
           : "contract_unavailable",
       joinTransactions: (room.joinTransactions || []).slice(-txLimit),
       claimTransactions: (room.claimTransactions || []).slice(-txLimit),
-      refundTransactions: (room.refundTransactions || []).slice(-txLimit),
       paidPlayersCount: derived.paidPlayerIds.size,
     },
     cancelledAt: room.cancelledAt || null,
@@ -436,99 +433,6 @@ function getValidatedPlayerOrError(room, playerId, walletAddress, res) {
 function shortenAddress(value) {
   if (!value) return "--";
   return `${value.slice(0, 6)}...${value.slice(-4)}`;
-}
-
-function normalizeRefundErrorMessage(message) {
-  const raw = String(message || "");
-  const lower = raw.toLowerCase();
-  if (lower.includes("insufficient funds"))
-    return "Not enough funds in contract";
-  if (lower.includes("already cancelled")) return "You already received refund";
-  if (lower.includes("already settled"))
-    return "Room is already settled and cannot be refunded";
-  if (lower.includes("room missing")) return "Room no longer exists";
-  return raw || "Onchain refund failed. Please retry.";
-}
-
-async function processRoomRefund(room, requestedByWalletAddress) {
-  const paidPlayerIds = getPaidPlayerIds(room);
-  const paidPlayers = room.players.filter((p) => paidPlayerIds.has(p.id));
-  const paidPlayerAddresses = paidPlayers.map((p) => p.walletAddress);
-
-  if (!paidPlayerAddresses.length) {
-    throw new Error(
-      "No paid players were found for this room, so no onchain refund can be processed.",
-    );
-  }
-
-  if (
-    !paidPlayerAddresses.some(
-      (address) =>
-        address.toLowerCase() ===
-        String(requestedByWalletAddress || "").toLowerCase(),
-    )
-  ) {
-    throw new Error("You are not in this room");
-  }
-
-  console.log("[refund] contract_call_start", {
-    roomId: room.id,
-    contractRoomId: room.contractRoomId,
-    paidPlayers: paidPlayerAddresses.length,
-    requestedByWalletAddress,
-    contractAddress: WORDPOT_CONTRACT_ADDRESS,
-    contractOperatorAddress: wordPotContract.enabled
-      ? wordPotContract.account
-      : null,
-  });
-
-  const cancelResult = await wordPotContract.cancelRoom(
-    room.contractRoomId,
-    paidPlayerAddresses,
-  );
-
-  console.log("[refund] contract_call_tx_hash", {
-    roomId: room.id,
-    txHash: cancelResult?.hash ?? null,
-    gasEstimate: cancelResult?.gasEstimate ?? null,
-  });
-
-  room.status = "cancelled";
-  room.cancelledAt = new Date().toISOString();
-  room.contractCancelTx = cancelResult?.hash ?? null;
-  room.contractCancelError = null;
-  room.refundTransactions = room.refundTransactions || [];
-  room.refundedWallets = room.refundedWallets || [];
-  room.refundedWallets = Array.from(
-    new Set([
-      ...room.refundedWallets,
-      ...paidPlayerAddresses.map((address) =>
-        String(address || "").toLowerCase(),
-      ),
-    ]),
-  );
-  room.refundTransactions.push({
-    hash: cancelResult?.hash ?? null,
-    walletAddress: requestedByWalletAddress,
-    amountWei: JOIN_PAYMENT_WEI,
-    createdAt: new Date().toISOString(),
-    kind: "contract_refund",
-    refundedCount: paidPlayerAddresses.length,
-  });
-  pushSystemEvent(
-    room,
-    "Room cancelled by refund request. Onchain refunds are processing.",
-  );
-  pushSystemEvent(
-    room,
-    `Onchain refund sent for ${paidPlayerAddresses.length} player${paidPlayerAddresses.length === 1 ? "" : "s"}.`,
-  );
-
-  return {
-    hash: cancelResult?.hash ?? null,
-    gasEstimate: cancelResult?.gasEstimate ?? null,
-    refundedCount: paidPlayerAddresses.length,
-  };
 }
 
 // ─── Routes ───────────────────────────────────────────────────────────────────
@@ -1042,7 +946,6 @@ app.post("/api/rooms/:roomId/settle", async (req, res) => {
   }
 });
 
-// Host cancel — cancels room and refunds all paid players onchain
 app.post("/api/rooms/:roomId/cancel", async (req, res) => {
   const room = getRoomOr404(req.params.roomId, res);
   if (!room) return;
@@ -1070,29 +973,9 @@ app.post("/api/rooms/:roomId/cancel", async (req, res) => {
       .json({ error: "This room has already been cancelled." });
   }
 
-  if (
-    !wordPotContract.enabled ||
-    !isWalletAddress(WORDPOT_CONTRACT_ADDRESS) ||
-    !room.contractRoomId
-  ) {
-    return res.status(503).json({
-      error:
-        "This room cannot refund onchain because the contract room is missing. Open a fresh room after the server is fully configured.",
-    });
-  }
-
-  try {
-    await processRoomRefund(room, player.walletAddress);
-  } catch (error) {
-    console.error("Contract cancel failed:", error.message);
-    room.contractCancelError = error.message;
-    markRoomDirty(room);
-    return res.status(502).json({
-      error:
-        normalizeRefundErrorMessage(error.message) ||
-        "Onchain refund failed. No treasury fallback was used, so please retry.",
-    });
-  }
+  room.status = "cancelled";
+  room.cancelledAt = new Date().toISOString();
+  pushSystemEvent(room, "Room cancelled by host.");
 
   return res.status(200).json({ room: getRoomSummary(room) });
 });
