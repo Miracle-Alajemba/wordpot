@@ -126,9 +126,6 @@ export function HomeScreen({
           <div className="wallet-panel">
             <div className="wallet-panel__copy">
               <label>Wallet sign in</label>
-              <strong>
-                {walletAddress ? shortenWalletAddress(walletAddress) : "No wallet connected"}
-              </strong>
               <div className="wallet-state-strip">
                 <span className={`wallet-chip ${walletReady ? "wallet-chip--ok" : "wallet-chip--warn"}`}>
                   {walletAddress
