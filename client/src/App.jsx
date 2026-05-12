@@ -239,7 +239,8 @@ export default function App() {
     }
 
     try {
-      const inviteRoomId = String(targetRoomId || "").trim();
+      const params = new URLSearchParams(window.location.search);
+      const inviteRoomId = String(targetRoomId || params.get("room") || "").trim();
       const endpoint = inviteRoomId
         ? `${API_BASE_URL}/rooms/${encodeURIComponent(inviteRoomId)}/join`
         : `${API_BASE_URL}/rooms/quick-match`;
@@ -257,6 +258,7 @@ export default function App() {
       }
 
       setRoom(data.room);
+      window.history.replaceState({}, "", window.location.pathname);
       setPlayerId(data.playerId);
       saveRoomSession({
         roomId: data.room.id,
@@ -308,6 +310,9 @@ export default function App() {
       const previousStatus = room?.status;
       const nextStatus = data.room.status;
       setRoom(data.room);
+      if (data.room.status === "expired") {
+        setRoomMessage("This room expired before the game could start. Go back and create a new one.");
+      }
       setScreen(data.room.status === "waiting" ? "lobby" : "match-room");
       saveRoomSession({
         roomId: data.room.id,
@@ -317,7 +322,9 @@ export default function App() {
 
       if (!silent) {
         setRoomMessage(
-          nextStatus === "waiting"
+          nextStatus === "expired"
+            ? "This room expired before the game could start. Go back and create a new one."
+            : nextStatus === "waiting"
             ? "Lobby updated."
             : nextStatus === "finished"
               ? "Results updated."
@@ -329,6 +336,8 @@ export default function App() {
             ? "The arena is live now."
             : nextStatus === "finished"
               ? "Round finished. Results are ready."
+              : nextStatus === "expired"
+                ? "This room expired before the game could start. Go back and create a new one."
               : "Room state changed.",
         );
       }

@@ -31,6 +31,18 @@ const DEFAULT_FEED_LIMIT = 24;
 const DEFAULT_TX_LIMIT = 16;
 const DEFAULT_LEADERBOARD_LIMIT = 50;
 const rooms = new Map();
+setInterval(() => {
+  const EXPIRY_MS = 4 * 60 * 1000;
+  for (const [roomId, room] of rooms.entries()) {
+    if (room.status !== "waiting") continue;
+    const age = Date.now() - new Date(room.createdAt).getTime();
+    if (age > EXPIRY_MS) {
+      room.status = "expired";
+      pushSystemEvent(room, "Room expired. No game started in time.");
+      markRoomDirty(room);
+    }
+  }
+}, 30_000);
 let roomStateVersion = 0;
 let leaderboardCache = null;
 const wordPotContract = createWordPotContractService({
@@ -258,6 +270,9 @@ function getRoomSummary(room, options = {}) {
     sourceWord: room.sourceWord || null,
     rewardPool: `${getRewardPool(room.players.length)} CELO`,
     createdAt: room.createdAt,
+    expiresAt: room.status === "waiting" && room.createdAt
+      ? new Date(new Date(room.createdAt).getTime() + 4 * 60 * 1000).toISOString()
+      : null,
     startedAt: room.startedAt || null,
     endsAt: room.endsAt || null,
     timeLeftSeconds:
@@ -613,6 +628,10 @@ app.post("/api/rooms/:roomId/join", (req, res) => {
       .json({ error: "A valid wallet address is required." });
   }
 
+  if (room.status === "expired") {
+    return res.status(410).json({ error: "This room has expired. Ask your friend to create a new one." });
+  }
+
   if (room.status !== "waiting") {
     return res.status(400).json({
       error: "This invite room is no longer waiting for players.",
@@ -670,10 +689,14 @@ app.get("/api/rooms/:roomId", (req, res) => {
 
 app.post("/api/rooms/:roomId/start", async (req, res) => {
   const room = getRoomOr404(req.params.roomId, res);
-  const playerId = String(req.body?.playerId || "").trim();
-  const walletAddress = String(req.body?.walletAddress || "").trim();
   if (!room) return;
 
+  if (room.status === "expired") {
+    return res.status(400).json({ error: "This room has expired. Go back and start a new one." });
+  }
+
+  const playerId = String(req.body?.playerId || "").trim();
+  const walletAddress = String(req.body?.walletAddress || "").trim();
   const player = getValidatedPlayerOrError(room, playerId, walletAddress, res);
   if (!player) return;
 

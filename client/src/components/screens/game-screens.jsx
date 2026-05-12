@@ -276,6 +276,27 @@ export function LobbyScreen({
   onBack,
   paymentProviderLabel,
 }) {
+  const [roomTimeLeft, setRoomTimeLeft] = useState("");
+
+  useEffect(() => {
+    if (!room?.expiresAt) return;
+
+    function tick() {
+      const remaining = new Date(room.expiresAt).getTime() - Date.now();
+      if (remaining <= 0) {
+        setRoomTimeLeft("Expired");
+        return;
+      }
+      const minutes = Math.floor(remaining / 60000);
+      const seconds = Math.floor((remaining % 60000) / 1000);
+      setRoomTimeLeft(`${minutes}:${seconds.toString().padStart(2, "0")}`);
+    }
+
+    tick();
+    const interval = setInterval(tick, 1000);
+    return () => clearInterval(interval);
+  }, [room?.expiresAt]);
+
   const syncMeta = getSyncStatusMeta(syncStatus);
   const isHost = room?.hostPlayerId === playerId;
   const minPlayers = room?.minPlayers || 2;
@@ -383,6 +404,10 @@ export function LobbyScreen({
               </div>
             </div>
 
+            <div className="notice-strip notice-strip--neutral">
+              Entry fees are non-refundable. If the room expires before the game starts your fee goes to the WordPot treasury. Invite friends quickly so the game can begin in time.
+            </div>
+
             <div className="lobby-summary-grid">
               <div className="lobby-stat-card">
                 <span>Entry Fee</span>
@@ -433,6 +458,22 @@ export function LobbyScreen({
             ) : null}
 
             <RoomPlayersStrip players={room?.players} scoreboard={room?.scoreboard} playerId={playerId} />
+
+            {room?.status === "waiting" && roomTimeLeft ? (
+              <div
+                className="notice-strip notice-strip--neutral"
+                style={{
+                  borderLeftColor:
+                    roomTimeLeft === "Expired" || roomTimeLeft.startsWith("0:")
+                      ? "#cc4444"
+                      : "rgba(255,255,255,0.15)",
+                }}
+              >
+                {roomTimeLeft === "Expired"
+                  ? "This room has expired. Go back and start a new game."
+                  : `Room closes in ${roomTimeLeft} — share the invite link so your friends can join in time.`}
+              </div>
+            ) : null}
 
             <div className="lobby-actions lobby-actions--row">
               <button type="button" onClick={onRefresh}>
