@@ -313,8 +313,6 @@ export function LobbyScreen({
     room?.id && typeof window !== "undefined"
       ? `${window.location.origin}?room=${room.id}`
       : "";
-  const unpaidPlayers = (room?.players || []).filter((entry) => !entry.joinPaid);
-  const unpaidCount = unpaidPlayers.length;
   const joinedCount = room?.players?.length || 0;
   const lobbyTitle = !hasPaid
     ? "Complete your entry to confirm your seat in this round."
@@ -402,10 +400,9 @@ export function LobbyScreen({
                   {inviteCopied ? "Copied ✓" : "Copy Link"}
                 </button>
               </div>
-            </div>
-
-            <div className="notice-strip notice-strip--neutral">
-              Entry fees are non-refundable. If the room expires before the game starts your fee goes to the WordPot treasury. Invite friends quickly so the game can begin in time.
+              <p className="field-hint">
+                Entry fees are non-refundable. If the room expires before the game starts your fee goes to the WordPot treasury.
+              </p>
             </div>
 
             <div className="lobby-summary-grid">
@@ -446,16 +443,6 @@ export function LobbyScreen({
                 ? `Entry confirmed. Payment reference: ${shortenHash((room?.onchain?.joinTransactions || []).find((entry) => entry.playerId === playerId)?.txHash)}`
                 : `Pay ${joinPayment} to confirm your seat. The round starts once every joined player has paid.`}
             </div>
-
-            {!roomReadyToStart ? (
-              <div className="notice-strip notice-strip--neutral">
-                {!enoughPlayers
-                  ? `At least ${minPlayers} players are needed before the round can begin. Need ${Math.max(minPlayers - joinedCount, 0)} more player${Math.max(minPlayers - joinedCount, 0) === 1 ? "" : "s"} to start. Players can still join until the room reaches ${room?.maxPlayers || 5}.`
-                  : unpaidCount
-                  ? `Waiting for ${unpaidCount} player${unpaidCount > 1 ? "s" : ""} to confirm entry: ${unpaidPlayers.map((entry) => getPlayerAlias(entry.walletAddress)).join(", ")}.`
-                  : "All joined players must confirm entry before the host can start the round."}
-              </div>
-            ) : null}
 
             <RoomPlayersStrip players={room?.players} scoreboard={room?.scoreboard} playerId={playerId} />
 

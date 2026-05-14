@@ -55,6 +55,17 @@ export function PlayerIdentity({ walletAddress, emphasis = false }) {
 
 export function RoomPlayersStrip({ players = [], scoreboard = [], playerId }) {
   const scoreLookup = new Map(scoreboard.map((entry) => [entry.playerId, entry]));
+  const playerBadgeStyle = {
+    display: "inline-block",
+    padding: "2px 10px",
+    fontSize: "10px",
+    fontWeight: "700",
+    borderRadius: "4px",
+    background: "rgba(201,146,10,0.12)",
+    border: "1px solid rgba(201,146,10,0.3)",
+    color: "#c9920a",
+    marginRight: "6px",
+  };
 
   return (
     <div className="room-players-strip" aria-label="Players in room">
@@ -69,8 +80,12 @@ export function RoomPlayersStrip({ players = [], scoreboard = [], playerId }) {
               <small>{scoreEntry?.wordsFound || 0} words</small>
             </div>
             {isCurrentPlayer ? <span className="self-pill">You</span> : null}
-            {index === 0 ? <span className="host-pill">Host</span> : null}
-            {player.joinPaid ? <span className="host-pill">Paid</span> : null}
+            {index === 0 || player.joinPaid ? (
+              <div style={{ display: "flex", flexWrap: "wrap", gap: "4px" }}>
+                {index === 0 ? <span className="host-pill" style={playerBadgeStyle}>HOST</span> : null}
+                {player.joinPaid ? <span className="host-pill" style={playerBadgeStyle}>PAID</span> : null}
+              </div>
+            ) : null}
           </article>
         );
       })}
