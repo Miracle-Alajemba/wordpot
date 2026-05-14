@@ -450,6 +450,7 @@ export function LobbyScreen({
               <div
                 className="notice-strip notice-strip--neutral"
                 style={{
+                  marginBottom: "1.5rem",
                   borderLeftColor:
                     roomTimeLeft === "Expired" || roomTimeLeft.startsWith("0:")
                       ? "#cc4444"
@@ -462,7 +463,7 @@ export function LobbyScreen({
               </div>
             ) : null}
 
-            <div className="lobby-actions lobby-actions--row">
+            <div className="lobby-actions lobby-actions--row" style={{ marginTop: "1rem" }}>
               <button type="button" onClick={onRefresh}>
                 Refresh Lobby
               </button>
