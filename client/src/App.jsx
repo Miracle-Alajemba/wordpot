@@ -311,16 +311,23 @@ export default function App() {
       const nextStatus = data.room.status;
       setRoom(data.room);
       if (data.room.status === "expired") {
-        setRoomMessage("This room expired before the game could start. Go back and create a new one.");
+        setRoomError("This room expired before the game could start. Go back home and create a new one.");
+        setRoomMessage("");
       }
-      setScreen(data.room.status === "waiting" ? "lobby" : "match-room");
+      if (data.room.status === "waiting") {
+        setScreen("lobby");
+      } else if (data.room.status === "expired") {
+        setScreen("lobby");
+      } else {
+        setScreen("match-room");
+      }
       saveRoomSession({
         roomId: data.room.id,
         playerId,
         walletAddress: walletAddress.trim(),
       });
 
-      if (!silent) {
+      if (!silent && nextStatus !== "expired") {
         setRoomMessage(
           nextStatus === "expired"
             ? "This room expired before the game could start. Go back and create a new one."
@@ -330,7 +337,7 @@ export default function App() {
               ? "Results updated."
               : "Room updated.",
         );
-      } else if (previousStatus !== nextStatus) {
+      } else if (previousStatus !== nextStatus && nextStatus !== "expired") {
         setRoomMessage(
           nextStatus === "active"
             ? "The arena is live now."
@@ -341,7 +348,9 @@ export default function App() {
               : "Room state changed.",
         );
       }
-      setRoomError("");
+      if (nextStatus !== "expired") {
+        setRoomError("");
+      }
       setRoomSyncStatus("live");
     } catch (error) {
       if (!silent) {

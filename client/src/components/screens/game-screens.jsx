@@ -334,6 +334,16 @@ export function LobbyScreen({
 
   return (
     <main className="page-shell">
+      {room?.status === "expired" ? (
+        <div style={{ textAlign: "center", padding: "2rem 1rem" }}>
+          <div className="notice-strip notice-strip--neutral" style={{ borderLeftColor: "#cc4444", marginBottom: "1.5rem" }}>
+            This room expired before the game could start. Your entry fee has been noted. Go back home and create a new room.
+          </div>
+          <button type="button" onClick={onBack}>
+            Back to Home
+          </button>
+        </div>
+      ) : null}
       <section className="play-shell">
         <div className="play-header">
           <button type="button" className="ghost-button" onClick={onBack}>
