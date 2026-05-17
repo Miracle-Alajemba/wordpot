@@ -732,6 +732,8 @@ export default function App() {
         <PracticeScreen
           onExit={() => setScreen("home")}
           apiBaseUrl={API_BASE_URL}
+          walletAddress={walletAddress}
+          connectWallet={connectWallet}
         />
       </Suspense>
     );

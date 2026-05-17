@@ -30,7 +30,9 @@ const REQUIRE_ONCHAIN_ROOM = process.env.REQUIRE_ONCHAIN_ROOM !== "false";
 const DEFAULT_FEED_LIMIT = 24;
 const DEFAULT_TX_LIMIT = 16;
 const DEFAULT_LEADERBOARD_LIMIT = 50;
+const FREE_REWARD_TARGET_SCORE = Number(process.env.FREE_REWARD_TARGET_SCORE || 50);
 const rooms = new Map();
+const freeRewardClaims = new Map();
 let roomStateVersion = 0;
 let leaderboardCache = null;
 
@@ -557,6 +559,52 @@ app.get("/api/rounds/practice", async (_req, res) => {
           error.message || "Unable to generate a practice round right now.",
       });
   }
+});
+
+app.post("/api/reward-claims", (req, res) => {
+  const walletAddress = String(req.body?.walletAddress || "").trim();
+  const score = Number(req.body?.score || 0);
+  const difficulty = String(req.body?.difficulty || "practice").trim();
+  const wordsFound = Array.isArray(req.body?.wordsFound) ? req.body.wordsFound : [];
+
+  if (!isWalletAddress(walletAddress)) {
+    return res.status(400).json({ error: "Connect a valid wallet before claiming." });
+  }
+
+  if (score < FREE_REWARD_TARGET_SCORE) {
+    return res.status(400).json({
+      error: `Reach ${FREE_REWARD_TARGET_SCORE} points before claiming this reward.`,
+    });
+  }
+
+  const claimDay = new Date().toISOString().slice(0, 10);
+  const claimKey = `${claimDay}:${walletAddress.toLowerCase()}`;
+  const existingClaim = freeRewardClaims.get(claimKey);
+
+  if (existingClaim) {
+    return res.status(409).json({
+      error: "This wallet already claimed today's free reward.",
+      claim: existingClaim,
+    });
+  }
+
+  const claim = {
+    id: makeId("free_claim"),
+    walletAddress,
+    score,
+    difficulty,
+    wordsFound: wordsFound.slice(0, 30),
+    targetScore: FREE_REWARD_TARGET_SCORE,
+    status: "recorded",
+    createdAt: new Date().toISOString(),
+  };
+
+  freeRewardClaims.set(claimKey, claim);
+
+  return res.status(201).json({
+    claim,
+    message: "Free reward claim recorded. Payout review is queued.",
+  });
 });
 
 // FIX: contract room created in background so player joins instantly
