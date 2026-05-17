@@ -18,7 +18,7 @@ const PRACTICE_DIFFICULTY_NOTES = {
   medium: "Standard balances speed and challenge with a tighter but still fair word pool.",
   hard: "Expert gives tighter, trickier rounds with fewer obvious words to find.",
 };
-const FREE_REWARD_TARGET_SCORE = 50;
+const FREE_REWARD_TARGET_SCORE = 120;
 
 function getDifficultyLabel(difficulty) {
   return (
@@ -75,7 +75,7 @@ function PracticeResults({
       <div className="claim-card">
         <div className="claim-card__top">
           <div>
-            <span className="claim-card__label">Free Reward Challenge</span>
+            <span className="claim-card__label">Daily Challenge</span>
             <strong className="claim-card__amount">
               {canClaimReward ? "Unlocked" : `${Math.max(FREE_REWARD_TARGET_SCORE - score, 0)} pts away`}
             </strong>
@@ -85,7 +85,7 @@ function PracticeResults({
           </span>
         </div>
         <p className="claim-card__copy">
-          Reach {FREE_REWARD_TARGET_SCORE} points in free practice, connect your wallet, and record a reward claim. No entry payment required.
+          Reach {FREE_REWARD_TARGET_SCORE} points today, connect your wallet, and claim your daily CELO reward. No entry payment required.
         </p>
         <div className="claim-card__meta">
           <div className="claim-meta-chip">
