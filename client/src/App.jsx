@@ -1,4 +1,4 @@
-import { Suspense, lazy, useEffect, useMemo, useRef, useState } from "react";
+import { Component, Suspense, lazy, useEffect, useMemo, useRef, useState } from "react";
 import { zeroAddress } from "viem";
 import { AppBottomNav } from "./components/ui/index.js";
 import { HomeScreen, LobbyScreen, MatchRoomScreen } from "./components/screens/index.js";
@@ -40,6 +40,11 @@ const PracticeScreen = lazy(() =>
     default: module.PracticeScreen,
   })),
 );
+const DailyChallenge = lazy(() =>
+  import("./components/screens/daily-challenge.jsx").then((module) => ({
+    default: module.DailyChallenge,
+  })),
+);
 const LeaderboardScreen = lazy(() =>
   import("./components/screens/meta-screens.jsx").then((module) => ({
     default: module.LeaderboardScreen,
@@ -70,6 +75,35 @@ function ScreenLoader({ label = "Loading view..." }) {
   );
 }
 
+class DailyChallengeErrorBoundary extends Component {
+  constructor(props) {
+    super(props);
+    this.state = { error: null };
+  }
+
+  static getDerivedStateFromError(error) {
+    return { error };
+  }
+
+  render() {
+    if (this.state.error) {
+      return (
+        <main className="page-shell">
+          <section className="play-shell">
+            <div className="results-sheet">
+              <p className="eyebrow">Daily Challenge Error</p>
+              <h2>Could not load</h2>
+              <p>{this.state.error.message || "Daily Challenge failed to load."}</p>
+            </div>
+          </section>
+        </main>
+      );
+    }
+
+    return this.props.children;
+  }
+}
+
 export default function App() {
   const [screen, setScreen] = useState("home");
   const [room, setRoom] = useState(null);
@@ -79,6 +113,12 @@ export default function App() {
   const [paymentBusy, setPaymentBusy] = useState(false);
   const [inviteCopied, setInviteCopied] = useState(false);
   const [claimBusy, setClaimBusy] = useState(false);
+  const [dailyScore, setDailyScore] = useState(0);
+  const [dailyClaimed, setDailyClaimed] = useState(false);
+  const [dailyClaimBusy, setDailyClaimBusy] = useState(false);
+  const [dailyClaimTx, setDailyClaimTx] = useState("");
+  const [dailyClaimError, setDailyClaimError] = useState("");
+  const [dailyClaimMessage, setDailyClaimMessage] = useState("");
   const [roomSyncStatus, setRoomSyncStatus] = useState("idle");
   const inviteRoomJoinAttemptedRef = useRef(false);
   const [settings, setSettings] = useState({
@@ -212,6 +252,66 @@ export default function App() {
     inviteRoomJoinAttemptedRef.current = true;
     handleQuickMatch(inviteRoomId);
   }, [walletAddress, walletReady]);
+
+  async function checkDailyStatus() {
+    if (screen !== "daily-challenge") return;
+    if (!isWalletAddress(walletAddress.trim())) return;
+
+    try {
+      const response = await fetch(
+        `${API_BASE_URL}/daily/status?walletAddress=${encodeURIComponent(walletAddress.trim())}`,
+      );
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Unable to check daily claim status.");
+      }
+
+      setDailyClaimed(Boolean(data.claimed));
+      setDailyClaimTx(data.txHash || "");
+    } catch (error) {
+      setDailyClaimError(error.message || "Unable to check daily claim status.");
+    }
+  }
+
+  useEffect(() => {
+    checkDailyStatus();
+  }, [screen, walletAddress]);
+
+  async function claimDailyReward() {
+    setDailyClaimError("");
+    setDailyClaimMessage("");
+
+    if (!isWalletAddress(walletAddress.trim())) {
+      await connectWallet();
+      return;
+    }
+
+    setDailyClaimBusy(true);
+    try {
+      const response = await fetch(`${API_BASE_URL}/daily/claim`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          walletAddress: walletAddress.trim(),
+          score: dailyScore,
+        }),
+      });
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Unable to claim daily reward.");
+      }
+
+      setDailyClaimed(true);
+      setDailyClaimTx(data.txHash || "");
+      setDailyClaimMessage("Claimed! 0.01 CELO is on its way to your wallet.");
+    } catch (error) {
+      setDailyClaimError(error.message || "Unable to claim daily reward.");
+    } finally {
+      setDailyClaimBusy(false);
+    }
+  }
 
   async function handleHomeJoin() {
     setRoomError("");
@@ -704,6 +804,7 @@ export default function App() {
     <HomeScreen
       gameRules={GAME_RULES}
       onStartPractice={() => setScreen("practice")}
+      onOpenDailyChallenge={() => setScreen("daily-challenge")}
       onQuickMatch={handleHomeJoin}
       onOpenLeaderboard={() => setScreen("leaderboard")}
       onOpenProfile={() => setScreen("profile")}
@@ -736,6 +837,28 @@ export default function App() {
           connectWallet={connectWallet}
         />
       </Suspense>
+    );
+  } else if (screen === "daily-challenge") {
+    content = (
+      <DailyChallengeErrorBoundary>
+        <Suspense fallback={<ScreenLoader label="Loading Daily Challenge..." />}>
+          <DailyChallenge
+            apiBaseUrl={API_BASE_URL}
+            walletAddress={walletAddress}
+            walletReady={walletReady}
+            onConnectWallet={connectWallet}
+            onBack={() => setScreen("home")}
+            dailyScore={dailyScore}
+            onScoreUpdate={setDailyScore}
+            dailyClaimed={dailyClaimed}
+            dailyClaimBusy={dailyClaimBusy}
+            dailyClaimTx={dailyClaimTx}
+            dailyClaimError={dailyClaimError}
+            dailyClaimMessage={dailyClaimMessage}
+            onClaimDaily={claimDailyReward}
+          />
+        </Suspense>
+      </DailyChallengeErrorBoundary>
     );
   } else if (screen === "lobby") {
     content = (
