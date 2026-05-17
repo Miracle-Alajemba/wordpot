@@ -31,6 +31,16 @@ const DEFAULT_FEED_LIMIT = 24;
 const DEFAULT_TX_LIMIT = 16;
 const DEFAULT_LEADERBOARD_LIMIT = 50;
 const rooms = new Map();
+let roomStateVersion = 0;
+let leaderboardCache = null;
+
+const wordPotContract = createWordPotContractService({
+  contractAddress: WORDPOT_CONTRACT_ADDRESS,
+  operatorPrivateKey: CONTRACT_OPERATOR_PRIVATE_KEY,
+  rpcUrl: CELO_MAINNET_RPC_URL,
+});
+
+// ─── Room expiry — runs every 30 seconds ──────────────────────────────────────
 setInterval(() => {
   const EXPIRY_MS = 4 * 60 * 1000;
   for (const [roomId, room] of rooms.entries()) {
@@ -43,20 +53,9 @@ setInterval(() => {
     }
   }
 }, 30_000);
-let roomStateVersion = 0;
-let leaderboardCache = null;
-const wordPotContract = createWordPotContractService({
-  contractAddress: WORDPOT_CONTRACT_ADDRESS,
-  operatorPrivateKey: CONTRACT_OPERATOR_PRIVATE_KEY,
-  rpcUrl: CELO_MAINNET_RPC_URL,
-});
 
 app.use(cors());
-app.use(
-  express.json({
-    limit: "32kb",
-  }),
-);
+app.use(express.json({ limit: "32kb" }));
 app.use((req, res, next) => {
   const acceptEncoding = String(req.headers["accept-encoding"] || "");
   if (!/\bgzip\b/.test(acceptEncoding)) {
@@ -78,7 +77,6 @@ app.use((req, res, next) => {
         res.send(body);
         return;
       }
-
       res.setHeader("Content-Type", "application/json; charset=utf-8");
       res.setHeader("Content-Encoding", "gzip");
       res.setHeader("Vary", "Accept-Encoding");
@@ -88,6 +86,8 @@ app.use((req, res, next) => {
 
   next();
 });
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function makeId(prefix) {
   return `${prefix}_${Math.random().toString(36).slice(2, 8)}`;
@@ -122,9 +122,33 @@ function isTxHash(value) {
   return /^0x([A-Fa-f0-9]{64})$/.test(String(value || "").trim());
 }
 
+function shortenAddress(value) {
+  if (!value) return "--";
+  return `${value.slice(0, 6)}...${value.slice(-4)}`;
+}
+
+function getCeloExplorerTxUrl(hash) {
+  const txHash = String(hash || "").trim();
+  if (!txHash) return "";
+  return CELO_CHAIN_ID === 44787
+    ? `https://alfajores.celoscan.io/tx/${txHash}`
+    : `https://celoscan.io/tx/${txHash}`;
+}
+
+function normalizeRefundErrorMessage(message) {
+  const raw = String(message || "");
+  const lower = raw.toLowerCase();
+  if (lower.includes("insufficient funds"))
+    return "Not enough funds in contract";
+  if (lower.includes("already cancelled")) return "You already received refund";
+  if (lower.includes("already settled"))
+    return "Room is already settled and cannot be refunded";
+  if (lower.includes("room missing")) return "Room no longer exists";
+  return raw || "Onchain refund failed. Please retry.";
+}
+
 function getRoomFeed(room, limit = DEFAULT_FEED_LIMIT) {
   const normalizedLimit = Math.max(1, Number(limit) || DEFAULT_FEED_LIMIT);
-
   return (room.events || [])
     .slice()
     .sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt))
@@ -148,8 +172,14 @@ function hasPlayerPaid(room, playerId) {
   return getPaidPlayerIds(room).has(playerId);
 }
 
-function hasPlayerClaimRecord(room, playerId) {
-  return getRoomDerived(room).claimPlayerIds.has(playerId);
+function pushSystemEvent(room, message) {
+  room.events.push({
+    type: "system",
+    status: "system",
+    message,
+    createdAt: new Date().toISOString(),
+  });
+  markRoomDirty(room);
 }
 
 function getRoomDerived(room) {
@@ -202,11 +232,7 @@ function getRoomDerived(room) {
     ),
   };
 
-  room._derivedCache = {
-    version: room._version,
-    value,
-  };
-
+  room._derivedCache = { version: room._version, value };
   return value;
 }
 
@@ -224,28 +250,6 @@ function settleRoom(room) {
   markRoomDirty(room);
 }
 
-function checkRoomTimeout(room) {
-  if (room.status !== "waiting") return;
-  if (!room.createdAt) return;
-  const WAIT_TIMEOUT_MS = 5 * 60 * 1000;
-  const createdTime = new Date(room.createdAt).getTime();
-  const elapsedTime = Date.now() - createdTime;
-  if (elapsedTime > WAIT_TIMEOUT_MS && room.players.length < MIN_PLAYERS) {
-    return true;
-  }
-  return false;
-}
-
-function pushSystemEvent(room, message) {
-  room.events.push({
-    type: "system",
-    status: "system",
-    message,
-    createdAt: new Date().toISOString(),
-  });
-  markRoomDirty(room);
-}
-
 function getRoomSummary(room, options = {}) {
   settleRoom(room);
   const feedLimit = Math.max(
@@ -254,9 +258,9 @@ function getRoomSummary(room, options = {}) {
   );
   const txLimit = Math.max(1, Number(options.txLimit) || DEFAULT_TX_LIMIT);
   const summaryCacheKey = `${room._version || 0}:${feedLimit}:${txLimit}`;
-  if (room._summaryCache?.key === summaryCacheKey) {
+  if (room._summaryCache?.key === summaryCacheKey)
     return room._summaryCache.value;
-  }
+
   const derived = getRoomDerived(room);
 
   const summary = {
@@ -270,9 +274,12 @@ function getRoomSummary(room, options = {}) {
     sourceWord: room.sourceWord || null,
     rewardPool: `${getRewardPool(room.players.length)} CELO`,
     createdAt: room.createdAt,
-    expiresAt: room.status === "waiting" && room.createdAt
-      ? new Date(new Date(room.createdAt).getTime() + 4 * 60 * 1000).toISOString()
-      : null,
+    expiresAt:
+      room.status === "waiting" && room.createdAt
+        ? new Date(
+            new Date(room.createdAt).getTime() + 4 * 60 * 1000,
+          ).toISOString()
+        : null,
     startedAt: room.startedAt || null,
     endsAt: room.endsAt || null,
     timeLeftSeconds:
@@ -299,6 +306,8 @@ function getRoomSummary(room, options = {}) {
       contractSettleTx: room.contractSettleTx || null,
       contractSettledAt: room.contractSettledAt || null,
       contractSettleError: room.contractSettleError || null,
+      contractCancelTx: room.contractCancelTx || null,
+      contractCancelError: room.contractCancelError || null,
       contractReady: wordPotContract.enabled,
       contractOperatorAddress: wordPotContract.enabled
         ? wordPotContract.account
@@ -319,16 +328,13 @@ function getRoomSummary(room, options = {}) {
           : "contract_unavailable",
       joinTransactions: (room.joinTransactions || []).slice(-txLimit),
       claimTransactions: (room.claimTransactions || []).slice(-txLimit),
+      refundTransactions: (room.refundTransactions || []).slice(-txLimit),
       paidPlayersCount: derived.paidPlayerIds.size,
     },
     cancelledAt: room.cancelledAt || null,
   };
 
-  room._summaryCache = {
-    key: summaryCacheKey,
-    value: summary,
-  };
-
+  room._summaryCache = { key: summaryCacheKey, value: summary };
   return summary;
 }
 
@@ -339,16 +345,14 @@ function getWaitingRoom() {
 }
 
 function getCommunityLeaderboard() {
-  if (leaderboardCache?.version === roomStateVersion) {
+  if (leaderboardCache?.version === roomStateVersion)
     return leaderboardCache.entries;
-  }
 
   const aggregate = new Map();
 
   for (const room of rooms.values()) {
     settleRoom(room);
     const scoreboard = getRoomDerived(room).scoreboard;
-
     for (const entry of scoreboard) {
       const current = aggregate.get(entry.walletAddress) || {
         walletAddress: entry.walletAddress,
@@ -357,18 +361,15 @@ function getCommunityLeaderboard() {
         gamesPlayed: 0,
         wins: 0,
       };
-
       current.score += entry.score;
       current.wordsFound += entry.wordsFound;
       current.gamesPlayed += 1;
-
       if (
         scoreboard[0]?.walletAddress === entry.walletAddress &&
         entry.score > 0
       ) {
         current.wins += 1;
       }
-
       aggregate.set(entry.walletAddress, current);
     }
   }
@@ -380,16 +381,9 @@ function getCommunityLeaderboard() {
       return b.wordsFound - a.wordsFound;
     })
     .slice(0, DEFAULT_LEADERBOARD_LIMIT)
-    .map((entry, index) => ({
-      rank: index + 1,
-      ...entry,
-    }));
+    .map((entry, index) => ({ rank: index + 1, ...entry }));
 
-  leaderboardCache = {
-    version: roomStateVersion,
-    entries,
-  };
-
+  leaderboardCache = { version: roomStateVersion, entries };
   return entries;
 }
 
@@ -409,7 +403,6 @@ function buildSettlementPayload(room) {
       entry.score,
     ]),
   );
-
   return room.players.map((player) => ({
     playerId: player.id,
     walletAddress: player.walletAddress,
@@ -445,9 +438,61 @@ function getValidatedPlayerOrError(room, playerId, walletAddress, res) {
   return player;
 }
 
-function shortenAddress(value) {
-  if (!value) return "--";
-  return `${value.slice(0, 6)}...${value.slice(-4)}`;
+async function processRoomRefund(room, requestedByWalletAddress) {
+  const paidPlayerIds = getPaidPlayerIds(room);
+  const paidPlayers = room.players.filter((p) => paidPlayerIds.has(p.id));
+  const paidPlayerAddresses = paidPlayers.map((p) => p.walletAddress);
+
+  if (!paidPlayerAddresses.length) {
+    throw new Error(
+      "No paid players were found for this room, so no onchain refund can be processed.",
+    );
+  }
+
+  if (
+    !paidPlayerAddresses.some(
+      (address) =>
+        address.toLowerCase() ===
+        String(requestedByWalletAddress || "").toLowerCase(),
+    )
+  ) {
+    throw new Error("You are not in this room");
+  }
+
+  const cancelResult = await wordPotContract.cancelRoom(
+    room.contractRoomId,
+    paidPlayerAddresses,
+  );
+
+  room.status = "cancelled";
+  room.cancelledAt = new Date().toISOString();
+  room.contractCancelTx = cancelResult?.hash ?? null;
+  room.contractCancelError = null;
+  room.refundTransactions = room.refundTransactions || [];
+  room.refundedWallets = Array.from(
+    new Set([
+      ...(room.refundedWallets || []),
+      ...paidPlayerAddresses.map((a) => String(a || "").toLowerCase()),
+    ]),
+  );
+  room.refundTransactions.push({
+    hash: cancelResult?.hash ?? null,
+    walletAddress: requestedByWalletAddress,
+    amountWei: JOIN_PAYMENT_WEI,
+    createdAt: new Date().toISOString(),
+    kind: "contract_refund",
+    refundedCount: paidPlayerAddresses.length,
+  });
+  pushSystemEvent(
+    room,
+    `Onchain refund sent for ${paidPlayerAddresses.length} player${paidPlayerAddresses.length === 1 ? "" : "s"}.`,
+  );
+
+  return {
+    hash: cancelResult?.hash ?? null,
+    gasEstimate: cancelResult?.gasEstimate ?? null,
+    refundedCount: paidPlayerAddresses.length,
+  };
 }
 
 // ─── Routes ───────────────────────────────────────────────────────────────────
@@ -505,12 +550,16 @@ app.get("/api/rounds/practice", async (_req, res) => {
     const round = await getDynamicRound(difficulty);
     return res.json({ round });
   } catch (error) {
-    return res.status(500).json({
-      error: error.message || "Unable to generate a practice round right now.",
-    });
+    return res
+      .status(500)
+      .json({
+        error:
+          error.message || "Unable to generate a practice round right now.",
+      });
   }
 });
 
+// FIX: contract room created in background so player joins instantly
 app.post("/api/rooms/quick-match", async (req, res) => {
   const walletAddress = String(req.body?.walletAddress || "").trim();
 
@@ -550,39 +599,47 @@ app.post("/api/rooms/quick-match", async (req, res) => {
       claimTransactions: [],
       contractRoomId: null,
       contractRoomCreateTx: null,
+      _contractRoomPending: false,
     };
 
+    rooms.set(room.id, room);
+
+    // Create contract room in background — player lands in lobby immediately
     if (wordPotContract.enabled && isWalletAddress(WORDPOT_CONTRACT_ADDRESS)) {
-      try {
-        const contractRoom = await wordPotContract.createRoom(JOIN_PAYMENT_WEI);
-        room.contractRoomId = contractRoom?.roomId ?? null;
-        room.contractRoomCreateTx = contractRoom?.hash ?? null;
-
-        if (!room.contractRoomId) {
-          throw new Error("Contract room was created without a room id.");
-        }
-
-        pushSystemEvent(
-          room,
-          room.contractRoomId
-            ? `Onchain room ${room.contractRoomId} opened on WordPotArena`
-            : "Onchain room creation submitted",
-        );
-      } catch (error) {
-        console.error("Unable to create onchain room", error);
-        return res.status(502).json({
-          error:
-            "Unable to open this room onchain right now. No player was charged. Please try again.",
+      room._contractRoomPending = true;
+      wordPotContract
+        .createRoom(JOIN_PAYMENT_WEI)
+        .then((contractRoom) => {
+          room.contractRoomId = contractRoom?.roomId ?? null;
+          room.contractRoomCreateTx = contractRoom?.hash ?? null;
+          room._contractRoomPending = false;
+          if (room.contractRoomId) {
+            pushSystemEvent(
+              room,
+              `Onchain room ${room.contractRoomId} opened on WordPotArena`,
+            );
+          }
+          markRoomDirty(room);
+        })
+        .catch((error) => {
+          console.error(
+            "Background contract room creation failed:",
+            error.message,
+          );
+          room._contractRoomPending = false;
+          pushSystemEvent(
+            room,
+            "Onchain room setup failed. Contract joins may be unavailable for this room.",
+          );
+          markRoomDirty(room);
         });
-      }
     } else if (REQUIRE_ONCHAIN_ROOM) {
+      rooms.delete(room.id);
       return res.status(503).json({
         error:
           "Live rooms are temporarily unavailable until the onchain room contract is ready.",
       });
     }
-
-    rooms.set(room.id, room);
   }
 
   const existingPlayer = room.players.find(
@@ -591,11 +648,13 @@ app.post("/api/rooms/quick-match", async (req, res) => {
   );
 
   if (existingPlayer) {
-    return res.status(200).json({
-      room: getRoomSummary(room),
-      playerId: existingPlayer.id,
-      restored: true,
-    });
+    return res
+      .status(200)
+      .json({
+        room: getRoomSummary(room),
+        playerId: existingPlayer.id,
+        restored: true,
+      });
   }
 
   const player = {
@@ -610,10 +669,9 @@ app.post("/api/rooms/quick-match", async (req, res) => {
     `${shortenAddress(player.walletAddress)} joined the game`,
   );
 
-  return res.status(201).json({
-    room: getRoomSummary(room),
-    playerId: player.id,
-  });
+  return res
+    .status(201)
+    .json({ room: getRoomSummary(room), playerId: player.id });
 });
 
 app.post("/api/rooms/:roomId/join", (req, res) => {
@@ -629,19 +687,21 @@ app.post("/api/rooms/:roomId/join", (req, res) => {
   }
 
   if (room.status === "expired") {
-    return res.status(410).json({ error: "This room has expired. Ask your friend to create a new one." });
+    return res
+      .status(410)
+      .json({
+        error: "This room has expired. Ask your friend to create a new one.",
+      });
   }
 
   if (room.status !== "waiting") {
-    return res.status(400).json({
-      error: "This invite room is no longer waiting for players.",
-    });
+    return res
+      .status(400)
+      .json({ error: "This room is no longer accepting players." });
   }
 
   if (room.players.length >= MAX_PLAYERS) {
-    return res.status(400).json({
-      error: "This room is already full.",
-    });
+    return res.status(400).json({ error: "This room is already full." });
   }
 
   const existingPlayer = room.players.find(
@@ -650,11 +710,13 @@ app.post("/api/rooms/:roomId/join", (req, res) => {
   );
 
   if (existingPlayer) {
-    return res.status(200).json({
-      room: getRoomSummary(room),
-      playerId: existingPlayer.id,
-      restored: true,
-    });
+    return res
+      .status(200)
+      .json({
+        room: getRoomSummary(room),
+        playerId: existingPlayer.id,
+        restored: true,
+      });
   }
 
   const player = {
@@ -669,10 +731,9 @@ app.post("/api/rooms/:roomId/join", (req, res) => {
     `${shortenAddress(player.walletAddress)} joined the game`,
   );
 
-  return res.status(201).json({
-    room: getRoomSummary(room),
-    playerId: player.id,
-  });
+  return res
+    .status(201)
+    .json({ room: getRoomSummary(room), playerId: player.id });
 });
 
 app.get("/api/rooms/:roomId", (req, res) => {
@@ -692,7 +753,9 @@ app.post("/api/rooms/:roomId/start", async (req, res) => {
   if (!room) return;
 
   if (room.status === "expired") {
-    return res.status(400).json({ error: "This room has expired. Go back and start a new one." });
+    return res
+      .status(400)
+      .json({ error: "This room has expired. Go back and start a new one." });
   }
 
   const playerId = String(req.body?.playerId || "").trim();
@@ -711,9 +774,11 @@ app.post("/api/rooms/:roomId/start", async (req, res) => {
   }
 
   if (room.players.length < MIN_PLAYERS) {
-    return res.status(400).json({
-      error: `At least ${MIN_PLAYERS} players are needed before the room can start.`,
-    });
+    return res
+      .status(400)
+      .json({
+        error: `At least ${MIN_PLAYERS} players are needed before the room can start.`,
+      });
   }
 
   const unpaidPlayers = room.players.filter(
@@ -740,10 +805,11 @@ app.post("/api/rooms/:roomId/start", async (req, res) => {
 
 app.post("/api/rooms/:roomId/submit", (req, res) => {
   const room = getRoomOr404(req.params.roomId, res);
+  if (!room) return;
+
   const playerId = String(req.body?.playerId || "").trim();
   const walletAddress = String(req.body?.walletAddress || "").trim();
   const rawWord = normalizeWord(req.body?.word);
-  if (!room) return;
 
   settleRoom(room);
 
@@ -783,10 +849,7 @@ app.post("/api/rooms/:roomId/submit", (req, res) => {
     return res.status(400).json({ error: "Words must be at least 3 letters." });
   }
 
-  const alreadyClaimed = room.submissions.some(
-    (entry) => entry.word === rawWord,
-  );
-  if (alreadyClaimed) {
+  if (room.submissions.some((entry) => entry.word === rawWord)) {
     logEvent({ status: "rejected", word: rawWord, reason: "Already used" });
     return res.status(409).json({ error: "Already used by another player." });
   }
@@ -821,10 +884,7 @@ app.post("/api/rooms/:roomId/submit", (req, res) => {
   markRoomDirty(room);
   logEvent({ status: "accepted", word: rawWord, score: submission.score });
 
-  return res.status(201).json({
-    submission,
-    room: getRoomSummary(room),
-  });
+  return res.status(201).json({ submission, room: getRoomSummary(room) });
 });
 
 app.post("/api/rooms/:roomId/join-tx", (req, res) => {
@@ -923,9 +983,12 @@ app.post("/api/rooms/:roomId/settle", async (req, res) => {
   settleRoom(room);
 
   if (room.status !== "finished") {
-    return res.status(400).json({
-      error: "This room is not finished yet, so it cannot be settled onchain.",
-    });
+    return res
+      .status(400)
+      .json({
+        error:
+          "This room is not finished yet, so it cannot be settled onchain.",
+      });
   }
 
   if (room.contractSettledAt) {
@@ -937,9 +1000,11 @@ app.post("/api/rooms/:roomId/settle", async (req, res) => {
     !isWalletAddress(WORDPOT_CONTRACT_ADDRESS) ||
     !room.contractRoomId
   ) {
-    return res.status(503).json({
-      error: "Onchain settlement is not available for this room yet.",
-    });
+    return res
+      .status(503)
+      .json({
+        error: "Onchain settlement is not available for this room yet.",
+      });
   }
 
   try {
@@ -963,9 +1028,11 @@ app.post("/api/rooms/:roomId/settle", async (req, res) => {
     console.error("Contract settle failed:", error.message);
     room.contractSettleError = error.message;
     markRoomDirty(room);
-    return res.status(502).json({
-      error: error.message || "Unable to settle the room onchain right now.",
-    });
+    return res
+      .status(502)
+      .json({
+        error: error.message || "Unable to settle the room onchain right now.",
+      });
   }
 });
 
@@ -1001,6 +1068,67 @@ app.post("/api/rooms/:roomId/cancel", async (req, res) => {
   pushSystemEvent(room, "Room cancelled by host.");
 
   return res.status(200).json({ room: getRoomSummary(room) });
+});
+
+app.post("/api/rooms/:roomId/refund", async (req, res) => {
+  const room = getRoomOr404(req.params.roomId, res);
+  if (!room) return;
+
+  const playerId = String(req.body?.playerId || "").trim();
+  const walletAddress = String(req.body?.walletAddress || "").trim();
+  const player = getValidatedPlayerOrError(room, playerId, walletAddress, res);
+  if (!player) return;
+
+  if (room.status !== "waiting" && room.status !== "cancelled") {
+    return res
+      .status(400)
+      .json({
+        error:
+          "Refunds are only available while the room is still in the lobby.",
+      });
+  }
+
+  if (room.cancelledAt) {
+    return res.status(200).json({
+      ok: true,
+      txHash: room.contractCancelTx || null,
+      explorerUrl: getCeloExplorerTxUrl(room.contractCancelTx),
+      room: getRoomSummary(room),
+    });
+  }
+
+  if (!hasPlayerPaid(room, playerId)) {
+    return res
+      .status(400)
+      .json({ error: "No entry payment found for this player." });
+  }
+
+  if (
+    !wordPotContract.enabled ||
+    !isWalletAddress(WORDPOT_CONTRACT_ADDRESS) ||
+    !room.contractRoomId
+  ) {
+    return res
+      .status(503)
+      .json({ error: "Contract refund is not available for this room." });
+  }
+
+  try {
+    const result = await processRoomRefund(room, player.walletAddress);
+    return res.json({
+      ok: true,
+      txHash: result.hash,
+      explorerUrl: getCeloExplorerTxUrl(result.hash),
+      room: getRoomSummary(room),
+    });
+  } catch (error) {
+    console.error("[refund] failed:", error.message);
+    room.contractCancelError = error.message;
+    markRoomDirty(room);
+    return res
+      .status(502)
+      .json({ error: normalizeRefundErrorMessage(error.message) });
+  }
 });
 
 app.listen(port, () => {
