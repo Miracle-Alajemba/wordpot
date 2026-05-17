@@ -98,7 +98,15 @@ function PracticeResults({
           </div>
           <div className="claim-meta-chip">
             <span>Claim</span>
-            <strong>{rewardClaim?.id || "Not recorded"}</strong>
+            <strong>{rewardClaim?.status || "Not recorded"}</strong>
+          </div>
+          <div className="claim-meta-chip">
+            <span>Payout</span>
+            <strong>{rewardClaim?.payoutAmount || "Pending"}</strong>
+          </div>
+          <div className="claim-meta-chip">
+            <span>TX</span>
+            <strong>{rewardClaim?.payoutTxHash ? `${rewardClaim.payoutTxHash.slice(0, 10)}...` : "Not sent"}</strong>
           </div>
         </div>
         {rewardClaimStatus ? (

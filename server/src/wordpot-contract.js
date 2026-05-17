@@ -9,7 +9,7 @@ import {
   http,
 } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
-import { celo } from "viem/chains";
+import { celo, celoAlfajores } from "viem/chains";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -32,6 +32,67 @@ function normalizePrivateKey(value) {
 
 function isAddress(value) {
   return /^0x[a-fA-F0-9]{40}$/.test(String(value || "").trim());
+}
+
+function getCeloChain(chainId) {
+  return Number(chainId) === 44787 ? celoAlfajores : celo;
+}
+
+export function createCeloPayoutService(options) {
+  const rpcUrl = String(options?.rpcUrl || "https://forno.celo.org").trim();
+  const operatorKey = normalizePrivateKey(options?.operatorPrivateKey);
+  const chain = getCeloChain(options?.chainId);
+
+  if (!operatorKey) {
+    return {
+      enabled: false,
+      reason: "missing_operator_key",
+      account: null,
+      async sendPayout() {
+        return null;
+      },
+    };
+  }
+
+  const account = privateKeyToAccount(operatorKey);
+  const publicClient = createPublicClient({
+    chain,
+    transport: http(rpcUrl),
+  });
+  const walletClient = createWalletClient({
+    account,
+    chain,
+    transport: http(rpcUrl),
+  });
+
+  return {
+    enabled: true,
+    reason: "ready",
+    account: account.address,
+    async sendPayout({ to, amountWei }) {
+      if (!isAddress(to)) {
+        throw new Error("Invalid payout wallet address.");
+      }
+
+      const value = BigInt(amountWei || 0);
+      if (value <= 0n) {
+        throw new Error("Payout amount must be greater than zero.");
+      }
+
+      const hash = await walletClient.sendTransaction({
+        account,
+        to,
+        value,
+      });
+      const receipt = await publicClient.waitForTransactionReceipt({ hash });
+
+      if (receipt?.status === "reverted") {
+        throw new Error(`Payout transaction reverted: ${hash}`);
+      }
+
+      return { hash };
+    },
+  };
 }
 
 export function createWordPotContractService(options) {
@@ -60,13 +121,14 @@ export function createWordPotContractService(options) {
   }
 
   const account = privateKeyToAccount(operatorKey);
+  const chain = getCeloChain(options?.chainId);
   const publicClient = createPublicClient({
-    chain: celo,
+    chain,
     transport: http(rpcUrl),
   });
   const walletClient = createWalletClient({
     account,
-    chain: celo,
+    chain,
     transport: http(rpcUrl),
   });
   const artifact = loadWordPotArtifact();

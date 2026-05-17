@@ -3,7 +3,10 @@ import dotenv from "dotenv";
 import express from "express";
 import zlib from "zlib";
 import { canBuildFromSource, getDynamicRound } from "./rounds.js";
-import { createWordPotContractService } from "./wordpot-contract.js";
+import {
+  createCeloPayoutService,
+  createWordPotContractService,
+} from "./wordpot-contract.js";
 
 dotenv.config();
 
@@ -31,6 +34,8 @@ const DEFAULT_FEED_LIMIT = 24;
 const DEFAULT_TX_LIMIT = 16;
 const DEFAULT_LEADERBOARD_LIMIT = 50;
 const FREE_REWARD_TARGET_SCORE = Number(process.env.FREE_REWARD_TARGET_SCORE || 50);
+const FREE_REWARD_PAYOUT_WEI = process.env.FREE_REWARD_PAYOUT_WEI || "0";
+const FREE_REWARD_PAYOUT_DISPLAY = process.env.FREE_REWARD_PAYOUT_DISPLAY || "0 CELO";
 const rooms = new Map();
 const freeRewardClaims = new Map();
 let roomStateVersion = 0;
@@ -40,6 +45,12 @@ const wordPotContract = createWordPotContractService({
   contractAddress: WORDPOT_CONTRACT_ADDRESS,
   operatorPrivateKey: CONTRACT_OPERATOR_PRIVATE_KEY,
   rpcUrl: CELO_MAINNET_RPC_URL,
+  chainId: CELO_CHAIN_ID,
+});
+const celoPayoutService = createCeloPayoutService({
+  operatorPrivateKey: CONTRACT_OPERATOR_PRIVATE_KEY,
+  rpcUrl: CELO_MAINNET_RPC_URL,
+  chainId: CELO_CHAIN_ID,
 });
 
 // ─── Room expiry — runs every 30 seconds ──────────────────────────────────────
@@ -561,11 +572,12 @@ app.get("/api/rounds/practice", async (_req, res) => {
   }
 });
 
-app.post("/api/reward-claims", (req, res) => {
+app.post("/api/reward-claims", async (req, res) => {
   const walletAddress = String(req.body?.walletAddress || "").trim();
   const score = Number(req.body?.score || 0);
   const difficulty = String(req.body?.difficulty || "practice").trim();
   const wordsFound = Array.isArray(req.body?.wordsFound) ? req.body.wordsFound : [];
+  const payoutWei = BigInt(FREE_REWARD_PAYOUT_WEI || 0);
 
   if (!isWalletAddress(walletAddress)) {
     return res.status(400).json({ error: "Connect a valid wallet before claiming." });
@@ -588,6 +600,12 @@ app.post("/api/reward-claims", (req, res) => {
     });
   }
 
+  if (payoutWei > 0n && !celoPayoutService.enabled) {
+    return res.status(503).json({
+      error: "Reward payouts are not configured yet. Try again later.",
+    });
+  }
+
   const claim = {
     id: makeId("free_claim"),
     walletAddress,
@@ -595,16 +613,38 @@ app.post("/api/reward-claims", (req, res) => {
     difficulty,
     wordsFound: wordsFound.slice(0, 30),
     targetScore: FREE_REWARD_TARGET_SCORE,
-    status: "recorded",
+    payoutAmount: FREE_REWARD_PAYOUT_DISPLAY,
+    payoutWei: FREE_REWARD_PAYOUT_WEI,
+    payoutTxHash: null,
+    status: payoutWei > 0n ? "processing" : "recorded",
     createdAt: new Date().toISOString(),
   };
 
-  freeRewardClaims.set(claimKey, claim);
+  try {
+    if (payoutWei > 0n) {
+      const payout = await celoPayoutService.sendPayout({
+        to: walletAddress,
+        amountWei: payoutWei,
+      });
+      claim.payoutTxHash = payout?.hash || null;
+      claim.status = "paid";
+      claim.paidAt = new Date().toISOString();
+    }
 
-  return res.status(201).json({
-    claim,
-    message: "Free reward claim recorded. Payout review is queued.",
-  });
+    freeRewardClaims.set(claimKey, claim);
+
+    return res.status(201).json({
+      claim,
+      message:
+        payoutWei > 0n
+          ? `Free reward paid: ${FREE_REWARD_PAYOUT_DISPLAY}.`
+          : "Free reward claim recorded. Payout review is queued.",
+    });
+  } catch (error) {
+    return res.status(502).json({
+      error: error.message || "Unable to send free reward payout.",
+    });
+  }
 });
 
 // FIX: contract room created in background so player joins instantly
