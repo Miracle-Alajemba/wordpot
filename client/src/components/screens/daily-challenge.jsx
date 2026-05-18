@@ -5,7 +5,7 @@
         normalizeWord,
       } from "../../game.js";
 
-      const DAILY_TARGET_SCORE = 50;
+      const DAILY_TARGET_SCORE = 40;
       const DAILY_ROUND_SECONDS = 60;
 
       function isWalletAddress(value) {
@@ -13,6 +13,36 @@
       }
 
       function ScoreBadge({ label, value }) {
+        if (!isWalletAddress(walletAddress)) {
+          return (
+            <main className="page-shell">
+              <section className="play-shell">
+                <div className="play-header">
+                  <button type="button" className="ghost-button" onClick={onBack}>
+                    Back
+                  </button>
+                  <p className="eyebrow">Daily Challenge</p>
+                </div>
+                <div className="results-sheet" style={{ textAlign: "center", padding: "3rem 1.5rem" }}>
+                  <div style={{ fontSize: "2.5rem", marginBottom: "1rem" }}>🏆</div>
+                  <h2>Sign In to Play</h2>
+                  <p style={{ marginBottom: "1.5rem" }}>
+                    Connect your Celo wallet to play the Daily Challenge and claim your 0.01 CELO reward once per day.
+                  </p>
+                  <div className="hero-actions">
+                    <button type="button" onClick={onConnectWallet}>
+                      Connect Wallet
+                    </button>
+                    <button type="button" className="button-secondary" onClick={onBack}>
+                      Go Back
+                    </button>
+                  </div>
+                </div>
+              </section>
+            </main>
+          );
+        }
+
         return (
           <div className="score-badge">
             <span>{label}</span>

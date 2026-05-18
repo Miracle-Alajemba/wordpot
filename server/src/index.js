@@ -661,8 +661,8 @@ app.post("/api/daily/claim", async (req, res) => {
     return res.status(400).json({ error: "A valid wallet address is required." });
   }
 
-  if (score < 120) {
-    return res.status(400).json({ error: "You need at least 120 points to claim the daily reward." });
+  if (score < 40) {
+    return res.status(400).json({ error: "You need at least 40 points to claim the daily reward." });
   }
 
   const claimKey = getTodayKey(walletAddress);
