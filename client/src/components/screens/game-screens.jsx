@@ -43,6 +43,7 @@ function isWalletAddress(value) {
 export function HomeScreen({
   gameRules = [],
   onStartPractice,
+  onOpenDailyChallenge,
   onQuickMatch,
   onOpenLeaderboard,
   onOpenProfile,
@@ -102,6 +103,9 @@ export function HomeScreen({
           <div className="hero-actions">
             <button type="button" onClick={onQuickMatch}>
               {joinLabel}
+            </button>
+            <button type="button" className="button-secondary" onClick={onOpenDailyChallenge}>
+              Daily Challenge
             </button>
             <button type="button" className="button-secondary" onClick={onStartPractice}>
               Practice Arena

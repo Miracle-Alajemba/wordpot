@@ -107,6 +107,9 @@ export function createWordPotContractService(options) {
       async createRoom() {
         return null;
       },
+      async sendReward() {
+        return null;
+      },
     };
   }
 
@@ -115,6 +118,9 @@ export function createWordPotContractService(options) {
       enabled: false,
       reason: "missing_operator_key",
       async createRoom() {
+        return null;
+      },
+      async sendReward() {
         return null;
       },
     };
@@ -146,6 +152,20 @@ export function createWordPotContractService(options) {
     reason: "ready",
     address: contractAddress,
     account: account.address,
+    async sendReward(toAddress, amountWei) {
+      if (!isAddress(toAddress)) {
+        throw new Error("Invalid reward wallet address.");
+      }
+
+      const hash = await walletClient.sendTransaction({
+        account,
+        chain,
+        to: toAddress,
+        value: BigInt(amountWei),
+      });
+      await publicClient.waitForTransactionReceipt({ hash });
+      return hash;
+    },
     async createRoom(entryFeeWei) {
       const hash = await contract.write.createRoom([BigInt(entryFeeWei)]);
       const receipt = await publicClient.waitForTransactionReceipt({ hash });

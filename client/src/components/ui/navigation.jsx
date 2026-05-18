@@ -17,6 +17,15 @@ function Icon({ name }) {
         <path d="M6.5 9.5V20h11V9.5" />
       </>
     ),
+    daily: (
+      <>
+        <path d="M7 3.8v3.4" />
+        <path d="M17 3.8v3.4" />
+        <path d="M5 6h14v14H5z" />
+        <path d="M8 11h8" />
+        <path d="M8 15h5" />
+      </>
+    ),
     profile: (
       <>
         <circle cx="12" cy="8" r="3.2" />
@@ -45,6 +54,7 @@ function Icon({ name }) {
 export function AppBottomNav({ screen, onNavigate, walletAddress, onWalletAction }) {
   const items = [
     { id: "home", label: "Home", icon: "home" },
+    { id: "daily-challenge", label: "Daily", icon: "daily" },
     { id: "leaderboard", label: "Leaderboard", icon: "leaderboard" },
     { id: "profile", label: "Profile", icon: "profile" },
   ];

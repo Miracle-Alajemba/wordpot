@@ -37,6 +37,7 @@ const FREE_REWARD_TARGET_SCORE = Number(process.env.FREE_REWARD_TARGET_SCORE || 
 const FREE_REWARD_PAYOUT_WEI = process.env.FREE_REWARD_PAYOUT_WEI || "0";
 const FREE_REWARD_PAYOUT_DISPLAY = process.env.FREE_REWARD_PAYOUT_DISPLAY || "0 CELO";
 const rooms = new Map();
+const dailyClaims = new Map(); // key: "walletAddress:YYYY-MM-DD" -> claim entry
 const freeRewardClaims = new Map();
 let roomStateVersion = 0;
 let leaderboardCache = null;
@@ -129,6 +130,11 @@ function getWordScore(word) {
 
 function isWalletAddress(value) {
   return /^0x[a-fA-F0-9]{40}$/.test(String(value || "").trim());
+}
+
+function getTodayKey(walletAddress) {
+  const today = new Date().toISOString().slice(0, 10);
+  return `${walletAddress.toLowerCase()}:${today}`;
 }
 
 function isTxHash(value) {
@@ -645,6 +651,62 @@ app.post("/api/reward-claims", async (req, res) => {
       error: error.message || "Unable to send free reward payout.",
     });
   }
+});
+
+app.post("/api/daily/claim", async (req, res) => {
+  const walletAddress = String(req.body?.walletAddress || "").trim();
+  const score = Number(req.body?.score || 0);
+
+  if (!isWalletAddress(walletAddress)) {
+    return res.status(400).json({ error: "A valid wallet address is required." });
+  }
+
+  if (score < 120) {
+    return res.status(400).json({ error: "You need at least 120 points to claim the daily reward." });
+  }
+
+  const claimKey = getTodayKey(walletAddress);
+  if (dailyClaims.has(claimKey)) {
+    return res.status(409).json({ error: "You have already claimed your daily reward today. Come back tomorrow." });
+  }
+
+  if (!wordPotContract.enabled || !isWalletAddress(WORDPOT_CONTRACT_ADDRESS)) {
+    return res.status(503).json({ error: "Daily rewards are not available right now. Try again later." });
+  }
+
+  try {
+    const DAILY_REWARD_WEI = "10000000000000000"; // 0.01 CELO
+    const txHash = await wordPotContract.sendReward(walletAddress, DAILY_REWARD_WEI);
+    dailyClaims.set(claimKey, {
+      walletAddress,
+      claimedAt: new Date().toISOString(),
+      txHash,
+    });
+    return res.json({
+      ok: true,
+      txHash,
+      amount: "0.01 CELO",
+      explorerUrl: `https://celoscan.io/tx/${txHash}`,
+    });
+  } catch (error) {
+    console.error("[daily-claim] failed:", error.message);
+    return res.status(502).json({ error: "Unable to send the daily reward right now. Please try again." });
+  }
+});
+
+app.get("/api/daily/status", (req, res) => {
+  const walletAddress = String(req.query?.walletAddress || "").trim();
+  if (!isWalletAddress(walletAddress)) {
+    return res.status(400).json({ error: "A valid wallet address is required." });
+  }
+  const claimKey = getTodayKey(walletAddress);
+  const claimed = dailyClaims.has(claimKey);
+  const entry = claimed ? dailyClaims.get(claimKey) : null;
+  return res.json({
+    claimed,
+    claimedAt: entry?.claimedAt || null,
+    txHash: entry?.txHash || null,
+  });
 });
 
 // FIX: contract room created in background so player joins instantly
