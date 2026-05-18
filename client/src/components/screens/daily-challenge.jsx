@@ -5,7 +5,7 @@
         normalizeWord,
       } from "../../game.js";
 
-      const DAILY_TARGET_SCORE = 120;
+      const DAILY_TARGET_SCORE = 50;
       const DAILY_ROUND_SECONDS = 60;
 
       function isWalletAddress(value) {
@@ -116,7 +116,7 @@
         function startChallenge() {
           setPhase("playing");
           setTimeLeft(DAILY_ROUND_SECONDS);
-          setFeedback("Build valid words fast. Reach 120 points to unlock today's reward.");
+          setFeedback("Build valid words fast. Reach 50 points to unlock today's reward.");
           setFeedbackTone("neutral");
         }
 
@@ -199,7 +199,7 @@
                   <p className="play-label">Today's Word</p>
                   <h1>{roundSeed?.sourceWord || "LOADING"}</h1>
                   <p className="lede">
-                    Score 120 points in one free round to claim today's 0.01 CELO reward.
+                    Score 50 points in one free round to claim today's 0.01 CELO reward.
                   </p>
                   <div className="letter-rack letter-rack--play">
                     {sourceLetters.map((letter, index) => (
@@ -238,7 +238,7 @@
                 <div className="results-sheet">
                   <p className="eyebrow">Ready</p>
                   <h2>Daily Challenge</h2>
-                  <p>Start a free 60-second round. Reach 120 points to unlock a once-per-day CELO claim.</p>
+                  <p>Start a free 60-second round. Reach 50 points to unlock a once-per-day CELO claim.</p>
                   <div className="hero-actions">
                     <button type="button" onClick={startChallenge}>
                       Start Daily Challenge

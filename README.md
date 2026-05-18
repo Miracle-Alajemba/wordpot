@@ -1,99 +1,162 @@
 # WordPot
 
-WordPot is a MiniPay-first multiplayer word game where players join a live room,
-make words from a shared source word, and compete for a score-based share of the
-reward pool.
+> A Celo-powered word game where players race to form words, compete for points, join paid rooms, and earn rewards through wallet-based gameplay.
 
-## Live App
+🎮 Play now: https://wordpot.vercel.app
 
-- App: https://wordpot.vercel.app/
-- Celo Mainnet Contract: `0x764b3f8761CEB44e6FFA6480484b706C3c3A8284`
+---
+
+## How It Works
+
+Players can enter WordPot in two main ways.
+
+**Paid multiplayer rooms** — Connect a Celo-compatible wallet, join or create a room, pay the entry fee, and invite friends with a room link. When the room starts, everyone gets the same source word and races to submit valid words before the timer ends. Longer words score more points. Rewards are split based on each player's final score.
+
+**Practice Arena** — Free to play, no wallet required to start. Players can test their word skills, improve their vocabulary, and explore the game loop without any cost.
+
+---
+
+## Game Modes
+
+**Paid Rooms**
+Players join with CELO, compete in a live room, and rewards are distributed based on score. Each room has a 4-minute lobby window. If the game does not start in time the room expires and players are sent back to create a new one.
+
+**Practice Arena**
+Play freely without paying. Full word validation, scoring, and source word mechanics are active. No wallet needed to start.
+
+**Daily Challenge** *(coming soon)*
+Score at least 120 points in Practice Arena, connect your wallet, and claim a daily CELO reward. One claim per wallet per day. Wallet-based claiming will be enabled in the next release.
+
+---
+
+## Scoring
+
+Words are scored by length:
+
+```
+3 letters  =  3 points
+4 letters  =  5 points
+5 letters  =  8 points
+6+ letters = 12 points
+```
+
+Players must form valid words using only the letters in the source word. Duplicate words are blocked, invalid words are rejected, and every accepted word adds to the player's score.
+
+---
+
+## Room System
+
+Each room has a waiting lobby where players can join, pay the entry fee, and invite friends before the game starts.
+
+Lobby features:
+- Invite link to share with friends
+- Player list with host and paid badges
+- Entry payment status
+- 4-minute countdown timer
+- Start button for the host
+- Contract mode notice
+
+---
+
+## Wallet and Payments
+
+WordPot uses wallet identity for all players in paid rooms. The app supports MiniPay and other Celo-compatible injected wallets. Entry payments and reward claims run through Celo Mainnet transactions.
+
+---
+
+## Reward System
+
+For paid rooms, the reward pool is 90% of total entry fees. Each player's payout is calculated as:
+
+```
+(player score / total room score) × reward pool
+```
+
+The remaining 10% goes to the WordPot treasury.
+
+---
+
+## Tech Stack
+
+- Frontend: React + Vite
+- Backend: Node.js + Express
+- Smart Contract: Solidity on Celo Mainnet
+- Wallet: MiniPay + injected wallets via viem
+- Network: Celo Mainnet
+- Contract Address: `0x764b3f8761CEB44e6FFA6480484b706C3c3A8284`
+
+---
+
+## Onchain
+
+- Live App: https://wordpot.vercel.app
+- Contract: `0x764b3f8761CEB44e6FFA6480484b706C3c3A8284`
 - Explorer: https://celoscan.io/address/0x764b3f8761CEB44e6FFA6480484b706C3c3A8284
 
-## Stack
+---
 
-- `client/`: React + Vite + viem
-- `server/`: Node.js + Express
-- `contracts/`: Solidity + Hardhat
-- `network`: Celo Mainnet
+## Getting Started
 
-## MiniPay Direction
+1. Open WordPot and connect your Celo-compatible wallet
+2. Click **Join Game** to enter a room or **Practice Arena** to play free
+3. Share your room invite link with friends and start competing
 
-WordPot is being built as a MiniPay-ready social game on Celo. The product
-direction is focused on:
+---
 
-- MiniPay wallet connection and wallet-based player identity
-- real onchain room entry activity on Celo Mainnet
-- mobile-first multiplayer play for live room creation and repeat usage
-- a simple game loop that can bring real users and real transactions onchain
+## Trust and Safety
 
-## What Is Live Now
+- Room expiry prevents abandoned lobbies
+- One claim per wallet per day for Daily Challenge
+- Minimum score requirement before claiming
+- Server-side claim recording
+- Wallet address validation on all requests
+- Duplicate word prevention
+- Backend payout configuration so rewards can be adjusted or paused
 
-- Practice arena
-- Quick match rooms
-- Wallet-based player identity
-- Shared room feed and scoreboard
-- Tile tap plus typing input
-- Beta onchain join flow from the lobby
-
-## Onchain Plan
-
-WordPot is being upgraded in two stages:
-
-1. `Beta join flow`
-   - players can send a real Celo mainnet transaction from the lobby
-   - the tx hash is recorded on the room
-   - this starts generating real onchain activity, fees, and transaction count
-
-2. `Contract payout flow`
-   - the `contracts/WordPotArena.sol` scaffold holds room entry fees
-   - keeps a treasury cut
-   - supports score-based reward claims after settlement
+---
 
 ## Project Structure
 
-- `client/` React frontend
-- `server/` Express backend and room logic
-- `contracts/` Solidity scaffold for escrow and claims
-- `docs/` product and rules notes
+```
+client/     React + Vite frontend
+server/     Node.js + Express backend and room logic
+contracts/  Solidity smart contract for escrow and claims
+docs/       Product notes and specs
+```
 
-## Prize Model
-
-- Offchain game entry display: `0.1 cUSD`
-- Treasury cut: `10%`
-- Reward pool: `90%`
-- Payout formula:
-
-`(player score / total room score) × reward pool`
-
-## Environment
-
-Create `server/.env` from `server/.env.example` and set:
-
-- `TREASURY_WALLET`
-- `WORDPOT_CONTRACT_ADDRESS`
-- `CELO_CHAIN_ID`
-- `JOIN_PAYMENT_WEI`
-- `JOIN_PAYMENT_DISPLAY`
-
-If `WORDPOT_CONTRACT_ADDRESS` is not set yet, the lobby uses the treasury beta
-join-payment flow while payout remains preview-only in the UI.
+---
 
 ## Run Locally
 
-### Client
-
+**Client**
 ```bash
 cd client
 npm install
 npm run dev
 ```
 
-### Server
-
+**Server**
 ```bash
 cd server
 npm install
 cp .env.example .env
 npm run dev
 ```
+
+**Environment variables** — create `server/.env` from `server/.env.example` and set:
+
+```
+TREASURY_WALLET
+WORDPOT_CONTRACT_ADDRESS
+CONTRACT_OPERATOR_PRIVATE_KEY
+CELO_CHAIN_ID
+JOIN_PAYMENT_WEI
+JOIN_PAYMENT_DISPLAY
+```
+
+If `WORDPOT_CONTRACT_ADDRESS` is not set the lobby falls back to treasury beta join-payment mode while contract payout stays in preview.
+
+
+
+
+
