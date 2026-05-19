@@ -43,6 +43,7 @@ const FREE_REWARD_PAYOUT_DISPLAY =
   process.env.FREE_REWARD_PAYOUT_DISPLAY || "0 CELO";
 const rooms = new Map();
 const dailyClaims = new Map(); // key: "walletAddress:YYYY-MM-DD" -> claim entry
+const dailyChallengeSessions = new Map();
 const freeRewardClaims = new Map();
 let roomStateVersion = 0;
 let leaderboardCache = null;
@@ -628,14 +629,7 @@ app.get("/api/rounds/practice", async (_req, res) => {
 
     const round = await getDynamicRound(difficulty);
     practiceRoundCache.set(difficulty, { round, cachedAt: now });
-
-    return res.json({
-      round: {
-        ...round,
-        validWords: undefined,
-        validWordsCount: round.validWords?.length || 0,
-      },
-    });
+    return res.json({ round });
   } catch (error) {
     return res.status(500).json({
       error: error.message || "Unable to generate a practice round right now.",
@@ -645,11 +639,31 @@ app.get("/api/rounds/practice", async (_req, res) => {
 
 app.get("/api/rounds/daily-challenge", async (_req, res) => {
   try {
+    const walletAddress = String(_req.query?.walletAddress || "").trim();
+    if (!isWalletAddress(walletAddress)) {
+      return res
+        .status(400)
+        .json({ error: "Connect a valid wallet before starting Daily Challenge." });
+    }
+
     const round = await getDynamicRound("medium");
+    const sessionId = makeId("daily");
+    const session = {
+      id: sessionId,
+      walletAddress,
+      round,
+      claimedWords: new Set(),
+      score: 0,
+      createdAt: new Date().toISOString(),
+      expiresAt: Date.now() + 15 * 60 * 1000,
+    };
+    dailyChallengeSessions.set(sessionId, session);
+
     return res.json({
       round: {
-        ...round,
-        validWords: undefined,
+        id: sessionId,
+        sourceWord: round.sourceWord,
+        difficulty: round.difficulty,
         validWordsCount: round.validWords?.length || 0,
       },
     });
@@ -660,6 +674,67 @@ app.get("/api/rounds/daily-challenge", async (_req, res) => {
         "Unable to generate a daily challenge round right now.",
     });
   }
+});
+
+app.post("/api/daily/submit", (req, res) => {
+  const walletAddress = String(req.body?.walletAddress || "").trim();
+  const sessionId = String(req.body?.sessionId || "").trim();
+  const rawWord = normalizeWord(req.body?.word || "");
+
+  if (!isWalletAddress(walletAddress)) {
+    return res.status(400).json({ error: "A valid wallet address is required." });
+  }
+
+  const session = dailyChallengeSessions.get(sessionId);
+  if (!session) {
+    return res.status(404).json({ error: "Daily Challenge session not found. Start a new round." });
+  }
+
+  if (session.walletAddress.toLowerCase() !== walletAddress.toLowerCase()) {
+    return res.status(403).json({ error: "This Daily Challenge session belongs to another wallet." });
+  }
+
+  if (Date.now() > session.expiresAt) {
+    dailyChallengeSessions.delete(sessionId);
+    return res.status(410).json({ error: "This Daily Challenge session expired. Start a new round." });
+  }
+
+  if (!rawWord) {
+    return res.status(400).json({ error: "Type a word before claiming it." });
+  }
+
+  if (!/^[a-z]+$/.test(rawWord)) {
+    return res.status(400).json({ error: "Only letters are allowed." });
+  }
+
+  if (rawWord.length < 3) {
+    return res.status(400).json({ error: "Words must be at least 3 letters." });
+  }
+
+  if (session.claimedWords.has(rawWord)) {
+    return res.status(409).json({ error: "Already claimed in this round." });
+  }
+
+  if (!canBuildFromSource(rawWord, session.round.sourceWord)) {
+    return res.status(400).json({ error: "That word uses letters outside the source word." });
+  }
+
+  if (!session.round.validWords.includes(rawWord)) {
+    return res.status(400).json({ error: "That word is not valid for this round." });
+  }
+
+  const points = getWordScore(rawWord);
+  session.claimedWords.add(rawWord);
+  session.score += points;
+
+  return res.json({
+    ok: true,
+    word: rawWord,
+    score: points,
+    totalScore: session.score,
+    wordsFound: session.claimedWords.size,
+    message: `Locked in ${rawWord} for +${points} points.`,
+  });
 });
 
 app.post("/api/reward-claims", async (req, res) => {
@@ -764,7 +839,7 @@ app.post("/api/reward-claims", async (req, res) => {
 app.post("/api/daily/claim", async (req, res) => {
   const walletAddress = String(req.body?.walletAddress || "").trim();
   const signature = String(req.body?.signature || "").trim();
-  const score = Number(req.body?.score || 0);
+  const sessionId = String(req.body?.sessionId || "").trim();
 
   if (!isWalletAddress(walletAddress)) {
     return res
@@ -791,7 +866,20 @@ app.post("/api/daily/claim", async (req, res) => {
       });
   }
 
-  if (score < 40) {
+  const session = dailyChallengeSessions.get(sessionId);
+  if (!session) {
+    return res
+      .status(404)
+      .json({ error: "Daily Challenge session not found. Start a new round." });
+  }
+
+  if (session.walletAddress.toLowerCase() !== walletAddress.toLowerCase()) {
+    return res
+      .status(403)
+      .json({ error: "This Daily Challenge session belongs to another wallet." });
+  }
+
+  if (session.score < 40) {
     return res
       .status(400)
       .json({
@@ -825,13 +913,17 @@ app.post("/api/daily/claim", async (req, res) => {
     );
     dailyClaims.set(claimKey, {
       walletAddress,
+      sessionId,
+      score: session.score,
       claimedAt: new Date().toISOString(),
       txHash,
     });
+    dailyChallengeSessions.delete(sessionId);
     return res.json({
       ok: true,
       txHash,
       amount: "0.01 CELO",
+      score: session.score,
       explorerUrl: `https://celoscan.io/tx/${txHash}`,
     });
   } catch (error) {
@@ -846,31 +938,11 @@ app.post("/api/daily/claim", async (req, res) => {
 
 app.get("/api/daily/status", async (req, res) => {
   const walletAddress = String(req.query?.walletAddress || "").trim();
-  const signature = String(req.query?.signature || "").trim();
 
   if (!isWalletAddress(walletAddress)) {
     return res
       .status(400)
       .json({ error: "A valid wallet address is required." });
-  }
-
-  if (!signature) {
-    return res.status(400).json({ error: "Wallet signature is required." });
-  }
-
-  const authMessage = `${SIGNED_MESSAGE_PREFIX}daily-status:${walletAddress}`;
-  const validSig = await verifyWalletSignature(
-    walletAddress,
-    signature,
-    authMessage,
-  );
-  if (!validSig) {
-    return res
-      .status(403)
-      .json({
-        error:
-          "Wallet signature verification failed. Connect your wallet and try again.",
-      });
   }
 
   const claimKey = getTodayKey(walletAddress);

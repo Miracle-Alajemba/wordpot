@@ -34,6 +34,7 @@ const WORDPOT_ARENA_ABI = [
 ];
 const ROOM_FEED_LIMIT = 24;
 const ROOM_TX_LIMIT = 12;
+const SIGNED_MESSAGE_PREFIX = "wordpot-auth:";
 
 const PracticeScreen = lazy(() =>
   import("./components/screens/practice-screen.jsx").then((module) => ({
@@ -277,7 +278,19 @@ export default function App() {
     checkDailyStatus();
   }, [screen, walletAddress]);
 
-  async function claimDailyReward() {
+  async function signWalletMessage(message) {
+    const provider = getInjectedProvider();
+    if (!provider?.request) {
+      throw new Error("Open WordPot inside MiniPay or a wallet browser to sign.");
+    }
+
+    return provider.request({
+      method: "personal_sign",
+      params: [message, walletAddress.trim()],
+    });
+  }
+
+  async function claimDailyReward(sessionId) {
     setDailyClaimError("");
     setDailyClaimMessage("");
 
@@ -286,14 +299,23 @@ export default function App() {
       return;
     }
 
+    if (!sessionId) {
+      setDailyClaimError("Daily Challenge session is missing. Start a new round and try again.");
+      return;
+    }
+
     setDailyClaimBusy(true);
     try {
+      const signature = await signWalletMessage(
+        `${SIGNED_MESSAGE_PREFIX}daily-claim:${walletAddress.trim()}`,
+      );
       const response = await fetch(`${API_BASE_URL}/daily/claim`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           walletAddress: walletAddress.trim(),
-          score: dailyScore,
+          sessionId,
+          signature,
         }),
       });
       const data = await response.json();

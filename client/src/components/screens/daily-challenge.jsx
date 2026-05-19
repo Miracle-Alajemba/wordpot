@@ -1,9 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import {
-  evaluatePracticeSubmission,
-  getWordScore,
-  normalizeWord,
-} from "../../game.js";
+import { normalizeWord } from "../../game.js";
 
 const DAILY_TARGET_SCORE = 40;
 const DAILY_ROUND_SECONDS = 60;
@@ -65,7 +61,9 @@ export function DailyChallenge({
     setFeedbackTone("neutral");
 
     try {
-      const response = await fetch(`${apiBaseUrl}/rounds/daily-challenge`);
+      const response = await fetch(
+        `${apiBaseUrl}/rounds/daily-challenge?walletAddress=${encodeURIComponent(walletAddress.trim())}`,
+      );
       const data = await response.json();
 
       if (!response.ok) {
@@ -91,8 +89,9 @@ export function DailyChallenge({
   }
 
   useEffect(() => {
+    if (!walletConnected) return;
     loadDailyRound("idle");
-  }, []);
+  }, [walletConnected, walletAddress]);
 
   useEffect(() => {
     if (phase !== "playing") return undefined;
@@ -140,7 +139,7 @@ export function DailyChallenge({
     setSelectedIndexes([]);
   }
 
-  function handleSubmit(event) {
+  async function handleSubmit(event) {
     event.preventDefault();
     if (phase !== "playing" || !roundSeed) return;
 
@@ -148,31 +147,40 @@ export function DailyChallenge({
     setDraftWord("");
     setSelectedIndexes([]);
 
-    const evaluation = evaluatePracticeSubmission({
-      input: normalized,
-      sourceWord: roundSeed.sourceWord,
-      validWords: roundSeed.validWords,
-      claimedWords: claimedSet,
-    });
-
-    if (!evaluation.ok) {
-      setFeedback(evaluation.message);
+    if (claimedSet.has(normalized)) {
+      setFeedback("Already claimed in this round.");
       setFeedbackTone("error");
       return;
     }
 
-    const points = evaluation.score ?? getWordScore(evaluation.word);
-    setClaimedWords((current) => [
-      ...current,
-      { word: evaluation.word, score: points },
-    ]);
-    setScore((current) => {
-      const nextScore = current + points;
-      onScoreUpdate(nextScore);
-      return nextScore;
-    });
-    setFeedback(evaluation.message);
-    setFeedbackTone("success");
+    try {
+      const response = await fetch(`${apiBaseUrl}/daily/submit`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          walletAddress: walletAddress.trim(),
+          sessionId: roundSeed.id,
+          word: normalized,
+        }),
+      });
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Unable to claim this word.");
+      }
+
+      setClaimedWords((current) => [
+        ...current,
+        { word: data.word, score: data.score },
+      ]);
+      setScore(data.totalScore);
+      onScoreUpdate(data.totalScore);
+      setFeedback(data.message || `Locked in ${data.word} for +${data.score} points.`);
+      setFeedbackTone("success");
+    } catch (error) {
+      setFeedback(error.message || "Unable to claim this word.");
+      setFeedbackTone("error");
+    }
   }
 
   async function handleClaim() {
@@ -180,7 +188,7 @@ export function DailyChallenge({
       await onConnectWallet();
       return;
     }
-    await onClaimDaily();
+    await onClaimDaily(roundSeed?.id);
   }
 
   // Wallet gate — must be after all hooks
