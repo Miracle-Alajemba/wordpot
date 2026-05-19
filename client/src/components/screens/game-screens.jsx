@@ -157,7 +157,7 @@ export function HomeScreen({
             <div className="feature-pill">0.001 CELO entry</div>
             <div className="feature-pill">90% split by score</div>
             <div className="feature-pill">Live room chat</div>
-            <div className="feature-pill">Free practice arena</div>f
+            <div className="feature-pill">Free practice arena</div>
             <div className="feature-pill">Daily challenge mode</div>
           </div>
         </div>

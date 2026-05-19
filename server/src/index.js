@@ -1,4 +1,4 @@
-"import cors from \"cors\";
+import cors from \"cors\";
 import crypto from "crypto\";"
 import dotenv from "dotenv";
 import express from "express";
@@ -431,7 +431,22 @@ function buildSettlementPayload(room) {
   }));
 }
 
-function getValidatedPlayerOrError(room, playerId, walletAddress, res) {
+const SIGNED_MESSAGE_PREFIX = "wordpot-auth:";
+
+async function verifyWalletSignature(walletAddress, signature, message) {
+  if (!signature) return false;
+  try {
+    const recovered = await recoverMessageAddress({
+      message,
+      signature,
+    });
+    return recovered.toLowerCase() === String(walletAddress || "").trim().toLowerCase();
+  } catch {
+    return false;
+  }
+}
+
+async function getValidatedPlayerOrError(room, playerId, walletAddress, signature, res) {
   const normalizedWallet = String(walletAddress || "").trim();
 
   if (!playerId) {
@@ -454,6 +469,15 @@ function getValidatedPlayerOrError(room, playerId, walletAddress, res) {
   if (player.walletAddress.toLowerCase() !== normalizedWallet.toLowerCase()) {
     res.status(403).json({ error: "Wallet does not match this room player." });
     return null;
+  }
+
+  if (signature) {
+    const authMessage = `${SIGNED_MESSAGE_PREFIX}${playerId}:${normalizedWallet}`;
+    const valid = await verifyWalletSignature(normalizedWallet, signature, authMessage);
+    if (!valid) {
+      res.status(403).json({ error: "Wallet signature verification failed. Connect your wallet and try again." });
+      return null;
+    }
   }
 
   return player;
@@ -939,7 +963,8 @@ app.post("/api/rooms/:roomId/start", async (req, res) => {
 
   const playerId = String(req.body?.playerId || "").trim();
   const walletAddress = String(req.body?.walletAddress || "").trim();
-  const player = getValidatedPlayerOrError(room, playerId, walletAddress, res);
+  const signature = String(req.body?.signature || "").trim();
+  const player = await getValidatedPlayerOrError(room, playerId, walletAddress, signature, res);
   if (!player) return;
 
   if (room.status !== "waiting") {
@@ -983,7 +1008,7 @@ app.post("/api/rooms/:roomId/start", async (req, res) => {
   return res.json({ room: getRoomSummary(room) });
 });
 
-app.post("/api/rooms/:roomId/submit", (req, res) => {
+app.post("/api/rooms/:roomId/submit", async (req, res) => {
   const room = getRoomOr404(req.params.roomId, res);
   if (!room) return;
 
@@ -997,7 +1022,8 @@ app.post("/api/rooms/:roomId/submit", (req, res) => {
     return res.status(400).json({ error: "This room is not active." });
   }
 
-  const player = getValidatedPlayerOrError(room, playerId, walletAddress, res);
+  const signature = String(req.body?.signature || "").trim();
+  const player = await getValidatedPlayerOrError(room, playerId, walletAddress, signature, res);
   if (!player) return;
 
   function logEvent({ status, word, score = 0, reason = "" }) {
@@ -1069,7 +1095,7 @@ app.post("/api/rooms/:roomId/submit", (req, res) => {
   return res.status(201).json({ submission, room: getRoomSummary(room) });
 });
 
-app.post("/api/rooms/:roomId/join-tx", (req, res) => {
+app.post("/api/rooms/:roomId/join-tx", async (req, res) => {
   const room = getRoomOr404(req.params.roomId, res);
   if (!room) return;
 
@@ -1078,7 +1104,8 @@ app.post("/api/rooms/:roomId/join-tx", (req, res) => {
   const txHash = String(req.body?.txHash || "").trim();
   const amount = String(req.body?.amount || JOIN_PAYMENT_DISPLAY).trim();
   const mode = String(req.body?.mode || "contract_join").trim();
-  const player = getValidatedPlayerOrError(room, playerId, walletAddress, res);
+  const signature = String(req.body?.signature || "").trim();
+  const player = await getValidatedPlayerOrError(room, playerId, walletAddress, signature, res);
   if (!player) return;
 
   if (!isTxHash(txHash)) {
@@ -1108,7 +1135,7 @@ app.post("/api/rooms/:roomId/join-tx", (req, res) => {
   return res.status(201).json({ room: getRoomSummary(room) });
 });
 
-app.post("/api/rooms/:roomId/claim-tx", (req, res) => {
+app.post("/api/rooms/:roomId/claim-tx", async (req, res) => {
   const room = getRoomOr404(req.params.roomId, res);
   if (!room) return;
 
@@ -1116,7 +1143,8 @@ app.post("/api/rooms/:roomId/claim-tx", (req, res) => {
   const walletAddress = String(req.body?.walletAddress || "").trim();
   const txHash = String(req.body?.txHash || "").trim();
   const amount = String(req.body?.amount || "0").trim();
-  const player = getValidatedPlayerOrError(room, playerId, walletAddress, res);
+  const signature = String(req.body?.signature || "").trim();
+  const player = await getValidatedPlayerOrError(room, playerId, walletAddress, signature, res);
   if (!player) return;
 
   settleRoom(room);
@@ -1159,7 +1187,8 @@ app.post("/api/rooms/:roomId/settle", async (req, res) => {
 ated
   const playerId = String(req.body?.playerId || "").trim();
   const walletAddress = String(req.body?.walletAddress || "").trim();
-  const player = getValidatedPlayerOrError(room, playerId, walletAddress, res);
+  const signature = String(req.body?.signature || "").trim();
+  const player = await getValidatedPlayerOrError(room, playerId, walletAddress, signature, res);
   if (!player) return;
 
   settleRoom(room);
@@ -1224,7 +1253,8 @@ app.post("/api/rooms/:roomId/cancel", async (req, res) => {
 
   const playerId = String(req.body?.playerId || "").trim();
   const walletAddress = String(req.body?.walletAddress || "").trim();
-  const player = getValidatedPlayerOrError(room, playerId, walletAddress, res);
+  const signature = String(req.body?.signature || "").trim();
+  const player = await getValidatedPlayerOrError(room, playerId, walletAddress, signature, res);
   if (!player) return;
 
   if (room.hostPlayerId !== player.id) {
@@ -1258,7 +1288,8 @@ app.post("/api/rooms/:roomId/refund", async (req, res) => {
 
   const playerId = String(req.body?.playerId || "").trim();
   const walletAddress = String(req.body?.walletAddress || "").trim();
-  const player = getValidatedPlayerOrError(room, playerId, walletAddress, res);
+  const signature = String(req.body?.signature || "").trim();
+  const player = await getValidatedPlayerOrError(room, playerId, walletAddress, signature, res);
   if (!player) return;
 
   if (room.status !== "waiting" && room.status !== "cancelled") {
