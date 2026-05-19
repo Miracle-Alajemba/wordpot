@@ -1,6 +1,5 @@
-
 "import cors from \"cors\";
-import crypto from \"crypto\";"
+import crypto from "crypto\";"
 import dotenv from "dotenv";
 import express from "express";
 import zlib from "zlib";
