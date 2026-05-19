@@ -2,13 +2,11 @@ import cors from "cors";
 import crypto from "crypto";
 import dotenv from "dotenv";
 import express from "express";
+import fs from "fs";
 import zlib from "zlib";
 import { recoverMessageAddress } from "viem";
 import { canBuildFromSource, getDynamicRound } from "./rounds.js";
-import {
-  createCeloPayoutService,
-  createWordPotContractService,
-} from "./wordpot-contract.js";
+import { createWordPotContractService } from "./wordpot-contract.js";
 
 dotenv.config();
 
@@ -35,26 +33,16 @@ const REQUIRE_ONCHAIN_ROOM = process.env.REQUIRE_ONCHAIN_ROOM !== "false";
 const DEFAULT_FEED_LIMIT = 24;
 const DEFAULT_TX_LIMIT = 16;
 const DEFAULT_LEADERBOARD_LIMIT = 50;
-const FREE_REWARD_TARGET_SCORE = Number(
-  process.env.FREE_REWARD_TARGET_SCORE || 120,
-);
-const FREE_REWARD_PAYOUT_WEI = process.env.FREE_REWARD_PAYOUT_WEI || "0";
-const FREE_REWARD_PAYOUT_DISPLAY =
-  process.env.FREE_REWARD_PAYOUT_DISPLAY || "0 CELO";
+const DAILY_CLAIMS_FILE =
+  process.env.DAILY_CLAIMS_FILE || new URL("../daily-claims.json", import.meta.url);
 const rooms = new Map();
-const dailyClaims = new Map(); // key: "walletAddress:YYYY-MM-DD" -> claim entry
+const dailyClaims = loadDailyClaims(); // key: "walletAddress:YYYY-MM-DD" -> claim entry
 const dailyChallengeSessions = new Map();
-const freeRewardClaims = new Map();
 let roomStateVersion = 0;
 let leaderboardCache = null;
 
 const wordPotContract = createWordPotContractService({
   contractAddress: WORDPOT_CONTRACT_ADDRESS,
-  operatorPrivateKey: CONTRACT_OPERATOR_PRIVATE_KEY,
-  rpcUrl: CELO_MAINNET_RPC_URL,
-  chainId: CELO_CHAIN_ID,
-});
-const celoPayoutService = createCeloPayoutService({
   operatorPrivateKey: CONTRACT_OPERATOR_PRIVATE_KEY,
   rpcUrl: CELO_MAINNET_RPC_URL,
   chainId: CELO_CHAIN_ID,
@@ -75,6 +63,7 @@ setInterval(() => {
 }, 30_000);
 
 app.use(cors());
+app.use(rateLimiter);
 app.use(express.json({ limit: "32kb" }));
 app.use((req, res, next) => {
   const acceptEncoding = String(req.headers["accept-encoding"] || "");
@@ -108,6 +97,71 @@ app.use((req, res, next) => {
 });
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
+
+const rateLimitMap = new Map();
+const RATE_LIMIT_WINDOW_MS = 60_000;
+const DEFAULT_RATE_LIMIT_MAX = 120;
+const SENSITIVE_RATE_LIMIT_MAX = 20;
+
+function getRateLimitBucket(req) {
+  if (req.path.startsWith("/api/daily")) return "daily";
+  if (req.method !== "GET" && req.path.startsWith("/api/rooms")) return "rooms";
+  return "default";
+}
+
+function rateLimiter(req, res, next) {
+  if (!req.path.startsWith("/api/")) {
+    next();
+    return;
+  }
+
+  const bucket = getRateLimitBucket(req);
+  const maxRequests =
+    bucket === "default" ? DEFAULT_RATE_LIMIT_MAX : SENSITIVE_RATE_LIMIT_MAX;
+  const key = `${req.ip || req.socket?.remoteAddress || "unknown"}:${bucket}`;
+  const now = Date.now();
+  const windowStart = now - RATE_LIMIT_WINDOW_MS;
+  const timestamps = (rateLimitMap.get(key) || []).filter(
+    (entry) => entry > windowStart,
+  );
+
+  timestamps.push(now);
+  rateLimitMap.set(key, timestamps);
+
+  if (timestamps.length > maxRequests) {
+    return res
+      .status(429)
+      .json({ error: "Too many requests. Please slow down and try again." });
+  }
+
+  next();
+}
+
+function loadDailyClaims() {
+  try {
+    if (!fs.existsSync(DAILY_CLAIMS_FILE)) {
+      return new Map();
+    }
+
+    const raw = fs.readFileSync(DAILY_CLAIMS_FILE, "utf8");
+    const parsed = JSON.parse(raw);
+    return new Map(Object.entries(parsed || {}));
+  } catch (error) {
+    console.warn(`Unable to load daily claims: ${error.message}`);
+    return new Map();
+  }
+}
+
+function persistDailyClaims() {
+  try {
+    fs.writeFileSync(
+      DAILY_CLAIMS_FILE,
+      JSON.stringify(Object.fromEntries(dailyClaims), null, 2),
+    );
+  } catch (error) {
+    console.error(`Unable to persist daily claims: ${error.message}`);
+  }
+}
 
 function makeId(prefix) {
   return `${prefix}_${crypto.randomUUID().split("-")[0]}`;
@@ -737,105 +791,6 @@ app.post("/api/daily/submit", (req, res) => {
   });
 });
 
-app.post("/api/reward-claims", async (req, res) => {
-  const walletAddress = String(req.body?.walletAddress || "").trim();
-  const signature = String(req.body?.signature || "").trim();
-  const score = Number(req.body?.score || 0);
-  const difficulty = String(req.body?.difficulty || "practice").trim();
-  const wordsFound = Array.isArray(req.body?.wordsFound)
-    ? req.body.wordsFound
-    : [];
-  const payoutWei = BigInt(FREE_REWARD_PAYOUT_WEI || 0);
-
-  if (!isWalletAddress(walletAddress)) {
-    return res
-      .status(400)
-      .json({ error: "Connect a valid wallet before claiming." });
-  }
-
-  if (!signature) {
-    return res.status(400).json({ error: "Wallet signature is required." });
-  }
-
-  const authMessage = `${SIGNED_MESSAGE_PREFIX}reward-claim:${walletAddress}`;
-  const validSig = await verifyWalletSignature(
-    walletAddress,
-    signature,
-    authMessage,
-  );
-  if (!validSig) {
-    return res
-      .status(403)
-      .json({
-        error:
-          "Wallet signature verification failed. Connect your wallet and try again.",
-      });
-  }
-
-  if (score < FREE_REWARD_TARGET_SCORE) {
-    return res.status(400).json({
-      error: `Reach ${FREE_REWARD_TARGET_SCORE} points before claiming this reward.`,
-    });
-  }
-
-  const claimDay = new Date().toISOString().slice(0, 10);
-  const claimKey = `${claimDay}:${walletAddress.toLowerCase()}`;
-  const existingClaim = freeRewardClaims.get(claimKey);
-
-  if (existingClaim) {
-    return res.status(409).json({
-      error: "This wallet already claimed today's free reward.",
-      claim: existingClaim,
-    });
-  }
-
-  if (payoutWei > 0n && !celoPayoutService.enabled) {
-    return res.status(503).json({
-      error: "Reward payouts are not configured yet. Try again later.",
-    });
-  }
-
-  const claim = {
-    id: makeId("free_claim"),
-    walletAddress,
-    score,
-    difficulty,
-    wordsFound: wordsFound.slice(0, 30),
-    targetScore: FREE_REWARD_TARGET_SCORE,
-    payoutAmount: FREE_REWARD_PAYOUT_DISPLAY,
-    payoutWei: FREE_REWARD_PAYOUT_WEI,
-    payoutTxHash: null,
-    status: payoutWei > 0n ? "processing" : "recorded",
-    createdAt: new Date().toISOString(),
-  };
-
-  try {
-    if (payoutWei > 0n) {
-      const payout = await celoPayoutService.sendPayout({
-        to: walletAddress,
-        amountWei: payoutWei,
-      });
-      claim.payoutTxHash = payout?.hash || null;
-      claim.status = "paid";
-      claim.paidAt = new Date().toISOString();
-    }
-
-    freeRewardClaims.set(claimKey, claim);
-
-    return res.status(201).json({
-      claim,
-      message:
-        payoutWei > 0n
-          ? `Free reward paid: ${FREE_REWARD_PAYOUT_DISPLAY}.`
-          : "Free reward claim recorded. Payout review is queued.",
-    });
-  } catch (error) {
-    return res.status(502).json({
-      error: error.message || "Unable to send free reward payout.",
-    });
-  }
-});
-
 app.post("/api/daily/claim", async (req, res) => {
   const walletAddress = String(req.body?.walletAddress || "").trim();
   const signature = String(req.body?.signature || "").trim();
@@ -918,6 +873,7 @@ app.post("/api/daily/claim", async (req, res) => {
       claimedAt: new Date().toISOString(),
       txHash,
     });
+    persistDailyClaims();
     dailyChallengeSessions.delete(sessionId);
     return res.json({
       ok: true,
@@ -1511,76 +1467,39 @@ app.post("/api/rooms/:roomId/cancel", async (req, res) => {
       .json({ error: "This room has already been cancelled." });
   }
 
+  if (getPaidPlayerIds(room).size > 0) {
+    if (
+      !wordPotContract.enabled ||
+      !isWalletAddress(WORDPOT_CONTRACT_ADDRESS) ||
+      !room.contractRoomId
+    ) {
+      return res
+        .status(503)
+        .json({ error: "Contract refund is not available for this room." });
+    }
+
+    try {
+      const result = await processRoomRefund(room, player.walletAddress);
+      return res.status(200).json({
+        room: getRoomSummary(room),
+        txHash: result.hash,
+        explorerUrl: getCeloExplorerTxUrl(result.hash),
+      });
+    } catch (error) {
+      console.error("[cancel-room] refund failed:", error.message);
+      room.contractCancelError = error.message;
+      markRoomDirty(room);
+      return res
+        .status(502)
+        .json({ error: normalizeRefundErrorMessage(error.message) });
+    }
+  }
+
   room.status = "cancelled";
   room.cancelledAt = new Date().toISOString();
   pushSystemEvent(room, "Room cancelled by host.");
 
   return res.status(200).json({ room: getRoomSummary(room) });
-});
-
-app.post("/api/rooms/:roomId/refund", async (req, res) => {
-  const room = getRoomOr404(req.params.roomId, res);
-  if (!room) return;
-
-  const playerId = String(req.body?.playerId || "").trim();
-  const walletAddress = String(req.body?.walletAddress || "").trim();
-  const signature = String(req.body?.signature || "").trim();
-  const player = await getValidatedPlayerOrError(
-    room,
-    playerId,
-    walletAddress,
-    signature,
-    res,
-  );
-  if (!player) return;
-
-  if (room.status !== "waiting" && room.status !== "cancelled") {
-    return res.status(400).json({
-      error: "Refunds are only available while the room is still in the lobby.",
-    });
-  }
-
-  if (room.cancelledAt) {
-    return res.status(200).json({
-      ok: true,
-      txHash: room.contractCancelTx || null,
-      explorerUrl: getCeloExplorerTxUrl(room.contractCancelTx),
-      room: getRoomSummary(room),
-    });
-  }
-
-  if (!hasPlayerPaid(room, playerId)) {
-    return res
-      .status(400)
-      .json({ error: "No entry payment found for this player." });
-  }
-
-  if (
-    !wordPotContract.enabled ||
-    !isWalletAddress(WORDPOT_CONTRACT_ADDRESS) ||
-    !room.contractRoomId
-  ) {
-    return res
-      .status(503)
-      .json({ error: "Contract refund is not available for this room." });
-  }
-
-  try {
-    const result = await processRoomRefund(room, player.walletAddress);
-    return res.json({
-      ok: true,
-      txHash: result.hash,
-      explorerUrl: getCeloExplorerTxUrl(result.hash),
-      room: getRoomSummary(room),
-    });
-  } catch (error) {
-    console.error("[refund] failed:", error.message);
-    room.contractCancelError = error.message;
-    markRoomDirty(room);
-    return res
-      .status(502)
-      .json({ error: normalizeRefundErrorMessage(error.message) });
-  }
 });
 
 app.listen(port, () => {
