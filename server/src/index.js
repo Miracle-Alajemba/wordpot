@@ -1,5 +1,5 @@
-import cors from \"cors\";
-import crypto from "crypto\";"
+import cors from "cors";
+import crypto from "crypto";
 import dotenv from "dotenv";
 import express from "express";
 import zlib from "zlib";
@@ -35,9 +35,12 @@ const REQUIRE_ONCHAIN_ROOM = process.env.REQUIRE_ONCHAIN_ROOM !== "false";
 const DEFAULT_FEED_LIMIT = 24;
 const DEFAULT_TX_LIMIT = 16;
 const DEFAULT_LEADERBOARD_LIMIT = 50;
-const FREE_REWARD_TARGET_SCORE = Number(process.env.FREE_REWARD_TARGET_SCORE || 120);
+const FREE_REWARD_TARGET_SCORE = Number(
+  process.env.FREE_REWARD_TARGET_SCORE || 120,
+);
 const FREE_REWARD_PAYOUT_WEI = process.env.FREE_REWARD_PAYOUT_WEI || "0";
-const FREE_REWARD_PAYOUT_DISPLAY = process.env.FREE_REWARD_PAYOUT_DISPLAY || "0 CELO";
+const FREE_REWARD_PAYOUT_DISPLAY =
+  process.env.FREE_REWARD_PAYOUT_DISPLAY || "0 CELO";
 const rooms = new Map();
 const dailyClaims = new Map(); // key: "walletAddress:YYYY-MM-DD" -> claim entry
 const freeRewardClaims = new Map();
@@ -440,13 +443,24 @@ async function verifyWalletSignature(walletAddress, signature, message) {
       message,
       signature,
     });
-    return recovered.toLowerCase() === String(walletAddress || "").trim().toLowerCase();
+    return (
+      recovered.toLowerCase() ===
+      String(walletAddress || "")
+        .trim()
+        .toLowerCase()
+    );
   } catch {
     return false;
   }
 }
 
-async function getValidatedPlayerOrError(room, playerId, walletAddress, signature, res) {
+async function getValidatedPlayerOrError(
+  room,
+  playerId,
+  walletAddress,
+  signature,
+  res,
+) {
   const normalizedWallet = String(walletAddress || "").trim();
 
   if (!playerId) {
@@ -473,9 +487,18 @@ async function getValidatedPlayerOrError(room, playerId, walletAddress, signatur
 
   if (signature) {
     const authMessage = `${SIGNED_MESSAGE_PREFIX}${playerId}:${normalizedWallet}`;
-    const valid = await verifyWalletSignature(normalizedWallet, signature, authMessage);
+    const valid = await verifyWalletSignature(
+      normalizedWallet,
+      signature,
+      authMessage,
+    );
     if (!valid) {
-      res.status(403).json({ error: "Wallet signature verification failed. Connect your wallet and try again." });
+      res
+        .status(403)
+        .json({
+          error:
+            "Wallet signature verification failed. Connect your wallet and try again.",
+        });
       return null;
     }
   }
@@ -606,40 +629,72 @@ app.get("/api/rounds/practice", async (_req, res) => {
     const round = await getDynamicRound(difficulty);
     practiceRoundCache.set(difficulty, { round, cachedAt: now });
 
-    return res.json({ round: { ...round, validWords: undefined, validWordsCount: round.validWords?.length || 0 } });
+    return res.json({
+      round: {
+        ...round,
+        validWords: undefined,
+        validWordsCount: round.validWords?.length || 0,
+      },
+    });
   } catch (error) {
-    return res
-      .status(500)
-      .json({
-        error:
-          error.message || "Unable to generate a practice round right now.",
-      });
+    return res.status(500).json({
+      error: error.message || "Unable to generate a practice round right now.",
+    });
   }
 });
 
 app.get("/api/rounds/daily-challenge", async (_req, res) => {
   try {
     const round = await getDynamicRound("medium");
-    return res.json({ round: { ...round, validWords: undefined, validWordsCount: round.validWords?.length || 0 } });
+    return res.json({
+      round: {
+        ...round,
+        validWords: undefined,
+        validWordsCount: round.validWords?.length || 0,
+      },
+    });
   } catch (error) {
-    return res
-      .status(500)
-      .json({
-        error:
-          error.message || "Unable to generate a daily challenge round right now.",
-      });
+    return res.status(500).json({
+      error:
+        error.message ||
+        "Unable to generate a daily challenge round right now.",
+    });
   }
 });
 
 app.post("/api/reward-claims", async (req, res) => {
   const walletAddress = String(req.body?.walletAddress || "").trim();
+  const signature = String(req.body?.signature || "").trim();
   const score = Number(req.body?.score || 0);
   const difficulty = String(req.body?.difficulty || "practice").trim();
-  const wordsFound = Array.isArray(req.body?.wordsFound) ? req.body.wordsFound : [];
+  const wordsFound = Array.isArray(req.body?.wordsFound)
+    ? req.body.wordsFound
+    : [];
   const payoutWei = BigInt(FREE_REWARD_PAYOUT_WEI || 0);
 
   if (!isWalletAddress(walletAddress)) {
-    return res.status(400).json({ error: "Connect a valid wallet before claiming." });
+    return res
+      .status(400)
+      .json({ error: "Connect a valid wallet before claiming." });
+  }
+
+  if (!signature) {
+    return res.status(400).json({ error: "Wallet signature is required." });
+  }
+
+  const authMessage = `${SIGNED_MESSAGE_PREFIX}reward-claim:${walletAddress}`;
+  const validSig = await verifyWalletSignature(
+    walletAddress,
+    signature,
+    authMessage,
+  );
+  if (!validSig) {
+    return res
+      .status(403)
+      .json({
+        error:
+          "Wallet signature verification failed. Connect your wallet and try again.",
+      });
   }
 
   if (score < FREE_REWARD_TARGET_SCORE) {
@@ -708,28 +763,66 @@ app.post("/api/reward-claims", async (req, res) => {
 
 app.post("/api/daily/claim", async (req, res) => {
   const walletAddress = String(req.body?.walletAddress || "").trim();
+  const signature = String(req.body?.signature || "").trim();
   const score = Number(req.body?.score || 0);
 
   if (!isWalletAddress(walletAddress)) {
-    return res.status(400).json({ error: "A valid wallet address is required." });
+    return res
+      .status(400)
+      .json({ error: "A valid wallet address is required." });
+  }
+
+  if (!signature) {
+    return res.status(400).json({ error: "Wallet signature is required." });
+  }
+
+  const authMessage = `${SIGNED_MESSAGE_PREFIX}daily-claim:${walletAddress}`;
+  const validSig = await verifyWalletSignature(
+    walletAddress,
+    signature,
+    authMessage,
+  );
+  if (!validSig) {
+    return res
+      .status(403)
+      .json({
+        error:
+          "Wallet signature verification failed. Connect your wallet and try again.",
+      });
   }
 
   if (score < 40) {
-    return res.status(400).json({ error: "You need at least 40 points to claim the daily reward." });
+    return res
+      .status(400)
+      .json({
+        error: "You need at least 40 points to claim the daily reward.",
+      });
   }
 
   const claimKey = getTodayKey(walletAddress);
   if (dailyClaims.has(claimKey)) {
-    return res.status(409).json({ error: "You have already claimed your daily reward today. Come back tomorrow." });
+    return res
+      .status(409)
+      .json({
+        error:
+          "You have already claimed your daily reward today. Come back tomorrow.",
+      });
   }
 
   if (!wordPotContract.enabled || !isWalletAddress(WORDPOT_CONTRACT_ADDRESS)) {
-    return res.status(503).json({ error: "Daily rewards are not available right now. Try again later." });
+    return res
+      .status(503)
+      .json({
+        error: "Daily rewards are not available right now. Try again later.",
+      });
   }
 
   try {
     const DAILY_REWARD_WEI = "10000000000000000"; // 0.01 CELO
-    const txHash = await wordPotContract.sendReward(walletAddress, DAILY_REWARD_WEI);
+    const txHash = await wordPotContract.sendReward(
+      walletAddress,
+      DAILY_REWARD_WEI,
+    );
     dailyClaims.set(claimKey, {
       walletAddress,
       claimedAt: new Date().toISOString(),
@@ -743,15 +836,43 @@ app.post("/api/daily/claim", async (req, res) => {
     });
   } catch (error) {
     console.error("[daily-claim] failed:", error.message);
-    return res.status(502).json({ error: "Unable to send the daily reward right now. Please try again." });
+    return res
+      .status(502)
+      .json({
+        error: "Unable to send the daily reward right now. Please try again.",
+      });
   }
 });
 
-app.get("/api/daily/status", (req, res) => {
+app.get("/api/daily/status", async (req, res) => {
   const walletAddress = String(req.query?.walletAddress || "").trim();
+  const signature = String(req.query?.signature || "").trim();
+
   if (!isWalletAddress(walletAddress)) {
-    return res.status(400).json({ error: "A valid wallet address is required." });
+    return res
+      .status(400)
+      .json({ error: "A valid wallet address is required." });
   }
+
+  if (!signature) {
+    return res.status(400).json({ error: "Wallet signature is required." });
+  }
+
+  const authMessage = `${SIGNED_MESSAGE_PREFIX}daily-status:${walletAddress}`;
+  const validSig = await verifyWalletSignature(
+    walletAddress,
+    signature,
+    authMessage,
+  );
+  if (!validSig) {
+    return res
+      .status(403)
+      .json({
+        error:
+          "Wallet signature verification failed. Connect your wallet and try again.",
+      });
+  }
+
   const claimKey = getTodayKey(walletAddress);
   const claimed = dailyClaims.has(claimKey);
   const entry = claimed ? dailyClaims.get(claimKey) : null;
@@ -765,11 +886,22 @@ app.get("/api/daily/status", (req, res) => {
 // FIX: contract room created in background so player joins instantly
 app.post("/api/rooms/quick-match", async (req, res) => {
   const walletAddress = String(req.body?.walletAddress || "").trim();
+  const signature = String(req.body?.signature || "").trim();
 
   if (!isWalletAddress(walletAddress)) {
     return res
       .status(400)
       .json({ error: "A valid wallet address is required." });
+  }
+
+  if (!signature) {
+    return res.status(400).json({ error: "Wallet signature is required." });
+  }
+
+  const authMessage = `${SIGNED_MESSAGE_PREFIX}quick-match:${walletAddress}`;
+  const validSig = await verifyWalletSignature(walletAddress, signature, authMessage);
+  if (!validSig) {
+    return res.status(403).json({ error: "Wallet signature verification failed. Connect your wallet and try again." });
   }
 
   let room = getWaitingRoom();
@@ -851,13 +983,11 @@ app.post("/api/rooms/quick-match", async (req, res) => {
   );
 
   if (existingPlayer) {
-    return res
-      .status(200)
-      .json({
-        room: getRoomSummary(room),
-        playerId: existingPlayer.id,
-        restored: true,
-      });
+    return res.status(200).json({
+      room: getRoomSummary(room),
+      playerId: existingPlayer.id,
+      restored: true,
+    });
   }
 
   const player = {
@@ -877,11 +1007,12 @@ app.post("/api/rooms/quick-match", async (req, res) => {
     .json({ room: getRoomSummary(room), playerId: player.id });
 });
 
-app.post("/api/rooms/:roomId/join", (req, res) => {
+app.post("/api/rooms/:roomId/join", async (req, res) => {
   const room = getRoomOr404(req.params.roomId, res);
   if (!room) return;
 
   const walletAddress = String(req.body?.walletAddress || "").trim();
+  const signature = String(req.body?.signature || "").trim();
 
   if (!isWalletAddress(walletAddress)) {
     return res
@@ -889,12 +1020,20 @@ app.post("/api/rooms/:roomId/join", (req, res) => {
       .json({ error: "A valid wallet address is required." });
   }
 
+  if (!signature) {
+    return res.status(400).json({ error: "Wallet signature is required." });
+  }
+
+  const authMessage = `${SIGNED_MESSAGE_PREFIX}join:${walletAddress}`;
+  const validSig = await verifyWalletSignature(walletAddress, signature, authMessage);
+  if (!validSig) {
+    return res.status(403).json({ error: "Wallet signature verification failed. Connect your wallet and try again." });
+  }
+
   if (room.status === "expired") {
-    return res
-      .status(410)
-      .json({
-        error: "This room has expired. Ask your friend to create a new one.",
-      });
+    return res.status(410).json({
+      error: "This room has expired. Ask your friend to create a new one.",
+    });
   }
 
   if (room.status !== "waiting") {
@@ -913,13 +1052,11 @@ app.post("/api/rooms/:roomId/join", (req, res) => {
   );
 
   if (existingPlayer) {
-    return res
-      .status(200)
-      .json({
-        room: getRoomSummary(room),
-        playerId: existingPlayer.id,
-        restored: true,
-      });
+    return res.status(200).json({
+      room: getRoomSummary(room),
+      playerId: existingPlayer.id,
+      restored: true,
+    });
   }
 
   const player = {
@@ -964,7 +1101,13 @@ app.post("/api/rooms/:roomId/start", async (req, res) => {
   const playerId = String(req.body?.playerId || "").trim();
   const walletAddress = String(req.body?.walletAddress || "").trim();
   const signature = String(req.body?.signature || "").trim();
-  const player = await getValidatedPlayerOrError(room, playerId, walletAddress, signature, res);
+  const player = await getValidatedPlayerOrError(
+    room,
+    playerId,
+    walletAddress,
+    signature,
+    res,
+  );
   if (!player) return;
 
   if (room.status !== "waiting") {
@@ -978,11 +1121,9 @@ app.post("/api/rooms/:roomId/start", async (req, res) => {
   }
 
   if (room.players.length < MIN_PLAYERS) {
-    return res
-      .status(400)
-      .json({
-        error: `At least ${MIN_PLAYERS} players are needed before the room can start.`,
-      });
+    return res.status(400).json({
+      error: `At least ${MIN_PLAYERS} players are needed before the room can start.`,
+    });
   }
 
   const unpaidPlayers = room.players.filter(
@@ -1023,7 +1164,13 @@ app.post("/api/rooms/:roomId/submit", async (req, res) => {
   }
 
   const signature = String(req.body?.signature || "").trim();
-  const player = await getValidatedPlayerOrError(room, playerId, walletAddress, signature, res);
+  const player = await getValidatedPlayerOrError(
+    room,
+    playerId,
+    walletAddress,
+    signature,
+    res,
+  );
   if (!player) return;
 
   function logEvent({ status, word, score = 0, reason = "" }) {
@@ -1105,7 +1252,13 @@ app.post("/api/rooms/:roomId/join-tx", async (req, res) => {
   const amount = String(req.body?.amount || JOIN_PAYMENT_DISPLAY).trim();
   const mode = String(req.body?.mode || "contract_join").trim();
   const signature = String(req.body?.signature || "").trim();
-  const player = await getValidatedPlayerOrError(room, playerId, walletAddress, signature, res);
+  const player = await getValidatedPlayerOrError(
+    room,
+    playerId,
+    walletAddress,
+    signature,
+    res,
+  );
   if (!player) return;
 
   if (!isTxHash(txHash)) {
@@ -1144,7 +1297,13 @@ app.post("/api/rooms/:roomId/claim-tx", async (req, res) => {
   const txHash = String(req.body?.txHash || "").trim();
   const amount = String(req.body?.amount || "0").trim();
   const signature = String(req.body?.signature || "").trim();
-  const player = await getValidatedPlayerOrError(room, playerId, walletAddress, signature, res);
+  const player = await getValidatedPlayerOrError(
+    room,
+    playerId,
+    walletAddress,
+    signature,
+    res,
+  );
   if (!player) return;
 
   settleRoom(room);
@@ -1184,22 +1343,25 @@ app.post("/api/rooms/:roomId/claim-tx", async (req, res) => {
 app.post("/api/rooms/:roomId/settle", async (req, res) => {
   const room = getRoomOr404(req.params.roomId, res);
   if (!room) return;
-ated
+  ated;
   const playerId = String(req.body?.playerId || "").trim();
   const walletAddress = String(req.body?.walletAddress || "").trim();
   const signature = String(req.body?.signature || "").trim();
-  const player = await getValidatedPlayerOrError(room, playerId, walletAddress, signature, res);
+  const player = await getValidatedPlayerOrError(
+    room,
+    playerId,
+    walletAddress,
+    signature,
+    res,
+  );
   if (!player) return;
 
   settleRoom(room);
 
   if (room.status !== "finished") {
-    return res
-      .status(400)
-      .json({
-        error:
-          "This room is not finished yet, so it cannot be settled onchain.",
-      });
+    return res.status(400).json({
+      error: "This room is not finished yet, so it cannot be settled onchain.",
+    });
   }
 
   if (room.contractSettledAt) {
@@ -1211,11 +1373,9 @@ ated
     !isWalletAddress(WORDPOT_CONTRACT_ADDRESS) ||
     !room.contractRoomId
   ) {
-    return res
-      .status(503)
-      .json({
-        error: "Onchain settlement is not available for this room yet.",
-      });
+    return res.status(503).json({
+      error: "Onchain settlement is not available for this room yet.",
+    });
   }
 
   try {
@@ -1239,11 +1399,9 @@ ated
     console.error("Contract settle failed:", error.message);
     room.contractSettleError = error.message;
     markRoomDirty(room);
-    return res
-      .status(502)
-      .json({
-        error: error.message || "Unable to settle the room onchain right now.",
-      });
+    return res.status(502).json({
+      error: error.message || "Unable to settle the room onchain right now.",
+    });
   }
 });
 
@@ -1254,7 +1412,13 @@ app.post("/api/rooms/:roomId/cancel", async (req, res) => {
   const playerId = String(req.body?.playerId || "").trim();
   const walletAddress = String(req.body?.walletAddress || "").trim();
   const signature = String(req.body?.signature || "").trim();
-  const player = await getValidatedPlayerOrError(room, playerId, walletAddress, signature, res);
+  const player = await getValidatedPlayerOrError(
+    room,
+    playerId,
+    walletAddress,
+    signature,
+    res,
+  );
   if (!player) return;
 
   if (room.hostPlayerId !== player.id) {
@@ -1289,16 +1453,19 @@ app.post("/api/rooms/:roomId/refund", async (req, res) => {
   const playerId = String(req.body?.playerId || "").trim();
   const walletAddress = String(req.body?.walletAddress || "").trim();
   const signature = String(req.body?.signature || "").trim();
-  const player = await getValidatedPlayerOrError(room, playerId, walletAddress, signature, res);
+  const player = await getValidatedPlayerOrError(
+    room,
+    playerId,
+    walletAddress,
+    signature,
+    res,
+  );
   if (!player) return;
 
   if (room.status !== "waiting" && room.status !== "cancelled") {
-    return res
-      .status(400)
-      .json({
-        error:
-          "Refunds are only available while the room is still in the lobby.",
-      });
+    return res.status(400).json({
+      error: "Refunds are only available while the room is still in the lobby.",
+    });
   }
 
   if (room.cancelledAt) {
