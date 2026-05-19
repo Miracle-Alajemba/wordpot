@@ -61,8 +61,6 @@ export function HomeScreen({
   onDisconnectWallet,
   walletHint,
   roomError,
-  darkMode,
-  onToggleTheme,
 }) {
   const joinLabel = isMiniPay && hasInjectedProvider
     ? walletReady
@@ -80,17 +78,6 @@ export function HomeScreen({
         <div className="hero-copy">
           <div className="hero-copy__top">
             <p className="eyebrow">MiniPay Word Game</p>
-            <button
-              type="button"
-              className="theme-toggle hero-theme-toggle theme-toggle--icon-only"
-              onClick={onToggleTheme}
-              aria-label={`Switch to ${darkMode ? "light" : "dark"} mode`}
-              title={darkMode ? "Switch to light mode" : "Switch to dark mode"}
-            >
-              <span className="theme-toggle__icon" aria-hidden="true">
-                {darkMode ? "☀" : "☾"}
-              </span>
-            </button>
           </div>
           <h1>WordPot</h1>
           <p className="lede">

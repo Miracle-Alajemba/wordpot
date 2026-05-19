@@ -249,11 +249,6 @@ button:disabled {
   margin-bottom: 0.25rem;
 }
 
-.hero-theme-toggle {
-  margin-left: auto;
-  transform: translateY(-6px);
-}
-
 .wallet-panel {
   display: grid;
   gap: 0.8rem;
@@ -279,48 +274,6 @@ button:disabled {
   color: var(--gray-300, #a0a8b8);
   font-size: 0.84rem;
   font-weight: 600;
-}
-
-.theme-toggle {
-  align-items: center;
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(130, 152, 235, 0.18);
-  border-radius: 999px;
-  box-shadow: none;
-  color: var(--text-high, #f8fbff);
-  display: inline-flex;
-  gap: 0.2rem;
-  min-height: 38px;
-  padding: 0.24rem;
-}
-
-.theme-toggle:hover {
-  box-shadow: none;
-  transform: none;
-}
-
-.theme-toggle--icon-only {
-  justify-content: center;
-  min-height: 44px;
-  min-width: 44px;
-  padding: 0.2rem;
-}
-
-.theme-toggle--icon-only:hover {
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(130, 152, 235, 0.18);
-  box-shadow: none;
-  transform: translateY(0);
-}
-
-.theme-toggle__icon {
-  align-items: center;
-  display: inline-flex;
-  font-size: 1rem;
-  justify-content: center;
-  line-height: 1;
-  min-height: 36px;
-  min-width: 36px;
 }
 
 .theme-toggle__option {
@@ -2872,17 +2825,6 @@ button:hover {
     gap: 0.45rem;
   }
 
-  .hero-theme-toggle {
-    align-self: flex-end;
-    margin-left: 0;
-    transform: none;
-  }
-
-  .theme-toggle {
-    min-height: 34px;
-    padding: 0.18rem;
-  }
-
   .theme-toggle__option {
     font-size: 0.58rem;
     letter-spacing: 0.04em;
@@ -3232,7 +3174,6 @@ button:disabled,
 .button-secondary,
 .ghost-button,
 .bottom-nav__item,
-.theme-toggle,
 .theme-toggle__option,
 .submit-panel button:last-of-type,
 .submit-panel .button-secondary {
@@ -3410,153 +3351,4 @@ button:disabled,
   .page-shell {
     padding-bottom: 3rem;
   }
-}
-
-.app-light-mode {
-  background: #f5f5f7 !important;
-  color: #0c0c10 !important;
-  min-height: 100vh;
-}
-
-.app-light-mode .hero-copy,
-.app-light-mode .hero-card,
-.app-light-mode .panel,
-.app-light-mode .play-hero,
-.app-light-mode .results-sheet,
-.app-light-mode .room-topbar,
-.app-light-mode .room-live-header,
-.app-light-mode .room-panel,
-.app-light-mode .compact-board,
-.app-light-mode .claim-card,
-.app-light-mode .profile-panel,
-.app-light-mode .settings-row,
-.app-light-mode .submit-panel--sticky,
-.app-light-mode .bottom-nav {
-  background: #ffffff !important;
-  border: 1px solid rgba(0, 0, 0, 0.07) !important;
-  box-shadow: 0 4px 32px rgba(0, 0, 0, 0.08) !important;
-}
-
-.app-light-mode .lobby-readiness-card,
-.app-light-mode .lobby-stat-card,
-.app-light-mode .invite-link-card,
-.app-light-mode .room-player-card,
-.app-light-mode .player-row,
-.app-light-mode .score-badge,
-.app-light-mode .metric-card,
-.app-light-mode .rules-card,
-.app-light-mode .empty-card,
-.app-light-mode .word-chip,
-.app-light-mode .system-message,
-.app-light-mode .chat-bubble,
-.app-light-mode .leaderboard-table__row,
-.app-light-mode .tx-row,
-.app-light-mode .claim-meta-chip,
-.app-light-mode .featured-stats__item,
-.app-light-mode .achievement-chip,
-.app-light-mode .wallet-status,
-.app-light-mode .wallet-chip,
-.app-light-mode .feature-pill,
-.app-light-mode .hero-card__grid span,
-.app-light-mode .submit-panel__locked {
-  background: #f0f0f4 !important;
-  border: 1px solid rgba(0, 0, 0, 0.07) !important;
-  box-shadow: none !important;
-}
-
-.app-light-mode .hero-copy h1,
-.app-light-mode .play-hero h1,
-.app-light-mode .hero-card h2,
-.app-light-mode .panel h3,
-.app-light-mode .room-panel__header h3,
-.app-light-mode .room-topbar h1,
-.app-light-mode .room-live-header__meta strong,
-.app-light-mode .room-live-header__score strong,
-.app-light-mode .results-sheet h2,
-.app-light-mode .profile-title,
-.app-light-mode .claim-card__amount,
-.app-light-mode .lobby-readiness-card strong,
-.app-light-mode .lobby-stat-card strong,
-.app-light-mode .player-row strong,
-.app-light-mode .player-identity__copy strong,
-.app-light-mode .metric-card strong,
-.app-light-mode .rules-card h4,
-.app-light-mode .score-badge strong,
-.app-light-mode .system-message__body strong,
-.app-light-mode .system-message__body span,
-.app-light-mode .leaderboard-table__stats strong {
-  color: #0c0c10 !important;
-}
-
-.app-light-mode .lede,
-.app-light-mode .panel p,
-.app-light-mode .panel li,
-.app-light-mode .room-panel__header p,
-.app-light-mode .results-sheet p,
-.app-light-mode .profile-subtitle,
-.app-light-mode .claim-card__copy,
-.app-light-mode .tx-row p,
-.app-light-mode .metric-card p,
-.app-light-mode .field-hint,
-.app-light-mode .wallet-status,
-.app-light-mode .hero-card__grid,
-.app-light-mode .hero-card__grid span,
-.app-light-mode .room-player-card__meta,
-.app-light-mode .player-row p,
-.app-light-mode .player-identity__copy span,
-.app-light-mode .chat-bubble__reason,
-.app-light-mode .chat-bubble__time,
-.app-light-mode .system-message small,
-.app-light-mode .leaderboard-table__stats span,
-.app-light-mode .leaderboard-points small,
-.app-light-mode .room-live-header__meta span,
-.app-light-mode .room-live-header__score small,
-.app-light-mode .typing-indicator {
-  color: #55556a !important;
-}
-
-.app-light-mode button,
-.app-light-mode .submit-panel button:first-of-type {
-  background: #c9920a !important;
-  border-color: #c9920a !important;
-  box-shadow: none !important;
-  color: #0c0c10 !important;
-}
-
-.app-light-mode button:hover,
-.app-light-mode .submit-panel button:first-of-type:hover {
-  background: #b07d08 !important;
-  border-color: #b07d08 !important;
-}
-
-.app-light-mode .button-secondary,
-.app-light-mode .ghost-button,
-.app-light-mode .bottom-nav__item,
-.app-light-mode .theme-toggle,
-.app-light-mode .theme-toggle__option,
-.app-light-mode .submit-panel button:last-of-type,
-.app-light-mode .submit-panel .button-secondary {
-  background: transparent !important;
-  border-color: rgba(0, 0, 0, 0.1) !important;
-  color: #55556a !important;
-}
-
-.app-light-mode .button-secondary:hover,
-.app-light-mode .ghost-button:hover,
-.app-light-mode .bottom-nav__item:hover,
-.app-light-mode .bottom-nav__item:focus-visible,
-.app-light-mode .theme-toggle__option:hover,
-.app-light-mode .submit-panel button:last-of-type:hover,
-.app-light-mode .submit-panel .button-secondary:hover {
-  border-color: rgba(0, 0, 0, 0.2) !important;
-  color: #0c0c10 !important;
-}
-
-.app-light-mode .letter-tile,
-.app-light-mode .letter-tile--compact,
-.app-light-mode .submit-panel input,
-.app-light-mode .invite-link-card input {
-  background: #f0f0f4 !important;
-  border-color: rgba(0, 0, 0, 0.07) !important;
-  color: #0c0c10 !important;
 }

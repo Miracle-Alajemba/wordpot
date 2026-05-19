@@ -199,10 +199,6 @@ export function SettingsScreen({ settings, onToggle, onBack }) {
           <article className="panel profile-panel">
             <h3>Display</h3>
             <div className="settings-list">
-              <button type="button" className="settings-row" onClick={() => onToggle("darkMode")}>
-                <span>Theme mode</span>
-                <strong>{settings.darkMode ? "Dark" : "Light"}</strong>
-              </button>
               <button type="button" className="settings-row" onClick={() => onToggle("highContrast")}>
                 <span>High contrast mode</span>
                 <strong>{settings.highContrast ? "Enabled" : "Disabled"}</strong>

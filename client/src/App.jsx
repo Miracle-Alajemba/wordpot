@@ -124,7 +124,6 @@ export default function App() {
   const [settings, setSettings] = useState({
     sound: true,
     haptics: true,
-    darkMode: true,
     highContrast: false,
     largeText: false,
     showEarnings: true,
@@ -822,8 +821,6 @@ export default function App() {
       onDisconnectWallet={disconnectWallet}
       walletHint={walletHint}
       roomError={roomError}
-      darkMode={settings.darkMode}
-      onToggleTheme={() => toggleSetting("darkMode")}
     />
   );
 
@@ -929,7 +926,7 @@ export default function App() {
   return (
     <div
       className={[
-        settings.darkMode ? "app-dark-mode" : "app-light-mode",
+        "app-dark-mode",
         settings.largeText ? "app-text-scale" : "",
         settings.highContrast ? "app-high-contrast" : "",
       ].filter(Boolean).join(" ")}
