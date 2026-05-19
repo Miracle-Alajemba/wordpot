@@ -105,7 +105,7 @@ app.use((req, res, next) => {
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function makeId(prefix) {
-  return `${prefix}_${Math.random().toString(36).slice(2, 8)}`;
+  return `${prefix}_${crypto.randomUUID().split("-")[0]}`;
 }
 
 function getRewardPool(playerCount) {
@@ -975,6 +975,7 @@ app.post("/api/rooms/:roomId/start", async (req, res) => {
   room.validWords = roundSeed.validWords;
   room.submissions = [];
   room.events = [];
+  room._claimedWords = new Set();
   pushSystemEvent(room, "Game starting now");
 
   return res.json({ room: getRoomSummary(room) });
@@ -1026,7 +1027,8 @@ app.post("/api/rooms/:roomId/submit", (req, res) => {
     return res.status(400).json({ error: "Words must be at least 3 letters." });
   }
 
-  if (room.submissions.some((entry) => entry.word === rawWord)) {
+  room._claimedWords = room._claimedWords || new Set();
+  if (room._claimedWords.has(rawWord)) {
     logEvent({ status: "rejected", word: rawWord, reason: "Already used" });
     return res.status(409).json({ error: "Already used by another player." });
   }
