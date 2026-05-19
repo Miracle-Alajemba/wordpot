@@ -1005,34 +1005,86 @@ app.post("/api/rooms/quick-match", async (req, res) => {
     }
   }
 
-  const existingPlayer = room.players.find(
-    (player) =>
-      player.walletAddress.toLowerCase() === walletAddress.toLowerCase(),
-  );
 
-  if (existingPlayer) {
-    return res.status(200).json({
-      room: getRoomSummary(room),
-      playerId: existingPlayer.id,
-      restored: true,
-    });
+
+
+
+  // TOCTOU-safe join with per-room lock
+  const lowerWallet = walletAddress.toLowerCase();
+  const lockKey = `${room.id}:${lowerWallet}`;
+
+
+
+
+
+
+
+  if (!roomJoinLocks.has(room.id)) {
+    roomJoinLocks.set(room.id, new Set());
+  }
+  const activeJoins = roomJoinLocks.get(room.id);
+
+
+
+
+
+
+  if (activeJoins.has(lowerWallet)) {
+    return res.status(429).json({ error: "Join already in progress. Please wait." });
   }
 
-  const player = {
-    id: room.players.length === 0 ? room.hostPlayerId : makeId("player"),
-    walletAddress,
-    joinedAt: new Date().toISOString(),
-  };
 
-  room.players.push(player);
-  pushSystemEvent(
-    room,
-    `${shortenAddress(player.walletAddress)} joined the game`,
-  );
 
-  return res
-    .status(201)
-    .json({ room: getRoomSummary(room), playerId: player.id });
+
+
+
+  activeJoins.add(lowerWallet);
+
+
+
+
+  try {
+    const existingPlayer = room.players.find(
+      (player) =>
+        player.walletAddress.toLowerCase() === lowerWallet,
+    );
+
+    if (existingPlayer) {
+      activeJoins.delete(lowerWallet);
+      return res.status(200).json({
+        room: getRoomSummary(room),
+        playerId: existingPlayer.id,
+        restored: true,
+      });
+    }
+
+    const player = {
+      id: room.players.length === 0 ? room.hostPlayerId : makeId("player"),
+      walletAddress,
+      joinedAt: new Date().toISOString(),
+    };
+
+    room.players.push(player);
+    pushSystemEvent(
+      room,
+      `${shortenAddress(player.walletAddress)} joined the game`,
+    );
+
+    activeJoins.delete(lowerWallet);
+    if (activeJoins.size === 0) {
+      roomJoinLocks.delete(room.id);
+    }
+
+    return res
+      .status(201)
+      .json({ room: getRoomSummary(room), playerId: player.id });
+  } catch (error) {
+    activeJoins.delete(lowerWallet);
+    if (activeJoins.size === 0) {
+      roomJoinLocks.delete(room.id);
+    }
+    throw error;
+  }
 });
 
 app.post("/api/rooms/:roomId/join", async (req, res) => {
