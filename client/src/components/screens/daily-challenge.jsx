@@ -65,7 +65,7 @@ export function DailyChallenge({
     setFeedbackTone("neutral");
 
     try {
-      const response = await fetch(`${apiBaseUrl}/rounds/practice?difficulty=medium`);
+      const response = await fetch(`${apiBaseUrl}/rounds/daily-challenge`);
       const data = await response.json();
 
       if (!response.ok) {

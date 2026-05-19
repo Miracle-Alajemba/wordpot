@@ -590,6 +590,20 @@ app.get("/api/rounds/practice", async (_req, res) => {
   }
 });
 
+app.get("/api/rounds/daily-challenge", async (_req, res) => {
+  try {
+    const round = await getDynamicRound("medium");
+    return res.json({ round });
+  } catch (error) {
+    return res
+      .status(500)
+      .json({
+        error:
+          error.message || "Unable to generate a daily challenge round right now.",
+      });
+  }
+});
+
 app.post("/api/reward-claims", async (req, res) => {
   const walletAddress = String(req.body?.walletAddress || "").trim();
   const score = Number(req.body?.score || 0);
