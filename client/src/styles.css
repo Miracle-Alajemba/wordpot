@@ -2126,11 +2126,11 @@ button:hover {
   border-radius: 24px;
   bottom: 12px;
   box-shadow: 0 16px 36px rgba(44, 44, 44, 0.1);
-  display: grid;
+  display: flex;
   gap: 0.45rem;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
   left: 50%;
   max-width: 920px;
+  overflow: hidden;
   padding: 0.45rem;
   position: fixed;
   transform: translateX(-50%);
@@ -2145,10 +2145,15 @@ button:hover {
   border-radius: 18px;
   box-shadow: none;
   color: var(--muted);
-  display: grid;
+  display: flex;
+  flex: 1 1 0;
+  flex-direction: column;
   gap: 0.3rem;
+  justify-content: center;
   justify-items: center;
   min-height: 60px;
+  min-width: 0;
+  overflow: hidden;
   padding: 0.65rem 0.5rem;
   position: relative;
   transition:
@@ -2167,7 +2172,20 @@ button:hover {
   font-size: 0.72rem;
   font-weight: 700;
   line-height: 1.1;
+  max-width: 100%;
+  overflow: hidden;
   text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bottom-nav__label {
+  font-size: 0.65rem;
+  max-width: 100%;
+  overflow: hidden;
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .bottom-nav__item--active {

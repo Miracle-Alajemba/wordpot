@@ -55,7 +55,7 @@ export function AppBottomNav({ screen, onNavigate, walletAddress, onWalletAction
   const items = [
     { id: "home", label: "Home", icon: "home" },
     { id: "daily-challenge", label: "Daily", icon: "daily" },
-    { id: "leaderboard", label: "Leaderboard", icon: "leaderboard" },
+    { id: "leaderboard", label: "Board", icon: "leaderboard" },
     { id: "profile", label: "Profile", icon: "profile" },
   ];
   const walletLabel = walletAddress ? "Wallet" : "Wallet";
@@ -71,9 +71,20 @@ export function AppBottomNav({ screen, onNavigate, walletAddress, onWalletAction
           type="button"
           className={`bottom-nav__item ${screen === item.id ? "bottom-nav__item--active" : ""}`}
           onClick={() => onNavigate(item.id)}
+          style={{
+            flex: "1 1 0",
+            minWidth: 0,
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: "0.5rem 0.25rem",
+            fontSize: "0.65rem",
+            overflow: "hidden",
+          }}
         >
           <Icon name={item.icon} />
-          <span>{item.label}</span>
+          <span className="bottom-nav__label">{item.label}</span>
         </button>
       ))}
 
@@ -83,9 +94,20 @@ export function AppBottomNav({ screen, onNavigate, walletAddress, onWalletAction
         onClick={onWalletAction}
         aria-label={walletAriaLabel}
         title={walletAddress ? shortenWalletAddress(walletAddress) : "Wallet"}
+        style={{
+          flex: "1 1 0",
+          minWidth: 0,
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+          padding: "0.5rem 0.25rem",
+          fontSize: "0.65rem",
+          overflow: "hidden",
+        }}
       >
         <Icon name="wallet" />
-        <span>{walletLabel}</span>
+        <span className="bottom-nav__label">{walletLabel}</span>
       </button>
     </nav>
   );
