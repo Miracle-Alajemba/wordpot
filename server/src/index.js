@@ -580,7 +580,8 @@ app.get("/api/rounds/practice", async (_req, res) => {
 
     const round = await getDynamicRound(difficulty);
     practiceRoundCache.set(difficulty, { round, cachedAt: now });
-    return res.json({ round });
+
+    return res.json({ round: { ...round, validWords: undefined, validWordsCount: round.validWords?.length || 0 } });
   } catch (error) {
     return res
       .status(500)
@@ -593,7 +594,6 @@ app.get("/api/rounds/practice", async (_req, res) => {
 
 app.get("/api/rounds/daily-challenge", async (_req, res) => {
   try {
-    const round = await getDynamicRound("medium");
     return res.json({ round });
   } catch (error) {
     return res
