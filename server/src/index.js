@@ -3,6 +3,7 @@ import crypto from "crypto\";"
 import dotenv from "dotenv";
 import express from "express";
 import zlib from "zlib";
+import { recoverMessageAddress } from "viem";
 import { canBuildFromSource, getDynamicRound } from "./rounds.js";
 import {
   createCeloPayoutService,
@@ -594,7 +595,8 @@ app.get("/api/rounds/practice", async (_req, res) => {
 
 app.get("/api/rounds/daily-challenge", async (_req, res) => {
   try {
-    return res.json({ round });
+    const round = await getDynamicRound("medium");
+    return res.json({ round: { ...round, validWords: undefined, validWordsCount: round.validWords?.length || 0 } });
   } catch (error) {
     return res
       .status(500)
