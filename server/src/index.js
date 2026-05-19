@@ -34,10 +34,12 @@ const DEFAULT_FEED_LIMIT = 24;
 const DEFAULT_TX_LIMIT = 16;
 const DEFAULT_LEADERBOARD_LIMIT = 50;
 const DAILY_CLAIMS_FILE =
-  process.env.DAILY_CLAIMS_FILE || new URL("../daily-claims.json", import.meta.url);
+  process.env.DAILY_CLAIMS_FILE ||
+  new URL("../daily-claims.json", import.meta.url);
 const rooms = new Map();
 const dailyClaims = loadDailyClaims(); // key: "walletAddress:YYYY-MM-DD" -> claim entry
 const dailyChallengeSessions = new Map();
+const roomJoinLocks = new Map(); // roomId -> Set<walletAddress_lowercase> for concurrent join protection
 let roomStateVersion = 0;
 let leaderboardCache = null;
 
@@ -548,12 +550,10 @@ async function getValidatedPlayerOrError(
       authMessage,
     );
     if (!valid) {
-      res
-        .status(403)
-        .json({
-          error:
-            "Wallet signature verification failed. Connect your wallet and try again.",
-        });
+      res.status(403).json({
+        error:
+          "Wallet signature verification failed. Connect your wallet and try again.",
+      });
       return null;
     }
   }
@@ -697,7 +697,9 @@ app.get("/api/rounds/daily-challenge", async (_req, res) => {
     if (!isWalletAddress(walletAddress)) {
       return res
         .status(400)
-        .json({ error: "Connect a valid wallet before starting Daily Challenge." });
+        .json({
+          error: "Connect a valid wallet before starting Daily Challenge.",
+        });
     }
 
     const round = await getDynamicRound("medium");
@@ -736,21 +738,33 @@ app.post("/api/daily/submit", (req, res) => {
   const rawWord = normalizeWord(req.body?.word || "");
 
   if (!isWalletAddress(walletAddress)) {
-    return res.status(400).json({ error: "A valid wallet address is required." });
+    return res
+      .status(400)
+      .json({ error: "A valid wallet address is required." });
   }
 
   const session = dailyChallengeSessions.get(sessionId);
   if (!session) {
-    return res.status(404).json({ error: "Daily Challenge session not found. Start a new round." });
+    return res
+      .status(404)
+      .json({ error: "Daily Challenge session not found. Start a new round." });
   }
 
   if (session.walletAddress.toLowerCase() !== walletAddress.toLowerCase()) {
-    return res.status(403).json({ error: "This Daily Challenge session belongs to another wallet." });
+    return res
+      .status(403)
+      .json({
+        error: "This Daily Challenge session belongs to another wallet.",
+      });
   }
 
   if (Date.now() > session.expiresAt) {
     dailyChallengeSessions.delete(sessionId);
-    return res.status(410).json({ error: "This Daily Challenge session expired. Start a new round." });
+    return res
+      .status(410)
+      .json({
+        error: "This Daily Challenge session expired. Start a new round.",
+      });
   }
 
   if (!rawWord) {
@@ -770,11 +784,15 @@ app.post("/api/daily/submit", (req, res) => {
   }
 
   if (!canBuildFromSource(rawWord, session.round.sourceWord)) {
-    return res.status(400).json({ error: "That word uses letters outside the source word." });
+    return res
+      .status(400)
+      .json({ error: "That word uses letters outside the source word." });
   }
 
   if (!session.round.validWords.includes(rawWord)) {
-    return res.status(400).json({ error: "That word is not valid for this round." });
+    return res
+      .status(400)
+      .json({ error: "That word is not valid for this round." });
   }
 
   const points = getWordScore(rawWord);
@@ -813,12 +831,10 @@ app.post("/api/daily/claim", async (req, res) => {
     authMessage,
   );
   if (!validSig) {
-    return res
-      .status(403)
-      .json({
-        error:
-          "Wallet signature verification failed. Connect your wallet and try again.",
-      });
+    return res.status(403).json({
+      error:
+        "Wallet signature verification failed. Connect your wallet and try again.",
+    });
   }
 
   const session = dailyChallengeSessions.get(sessionId);
@@ -831,33 +847,29 @@ app.post("/api/daily/claim", async (req, res) => {
   if (session.walletAddress.toLowerCase() !== walletAddress.toLowerCase()) {
     return res
       .status(403)
-      .json({ error: "This Daily Challenge session belongs to another wallet." });
+      .json({
+        error: "This Daily Challenge session belongs to another wallet.",
+      });
   }
 
   if (session.score < 40) {
-    return res
-      .status(400)
-      .json({
-        error: "You need at least 40 points to claim the daily reward.",
-      });
+    return res.status(400).json({
+      error: "You need at least 40 points to claim the daily reward.",
+    });
   }
 
   const claimKey = getTodayKey(walletAddress);
   if (dailyClaims.has(claimKey)) {
-    return res
-      .status(409)
-      .json({
-        error:
-          "You have already claimed your daily reward today. Come back tomorrow.",
-      });
+    return res.status(409).json({
+      error:
+        "You have already claimed your daily reward today. Come back tomorrow.",
+    });
   }
 
   if (!wordPotContract.enabled || !isWalletAddress(WORDPOT_CONTRACT_ADDRESS)) {
-    return res
-      .status(503)
-      .json({
-        error: "Daily rewards are not available right now. Try again later.",
-      });
+    return res.status(503).json({
+      error: "Daily rewards are not available right now. Try again later.",
+    });
   }
 
   try {
@@ -884,11 +896,9 @@ app.post("/api/daily/claim", async (req, res) => {
     });
   } catch (error) {
     console.error("[daily-claim] failed:", error.message);
-    return res
-      .status(502)
-      .json({
-        error: "Unable to send the daily reward right now. Please try again.",
-      });
+    return res.status(502).json({
+      error: "Unable to send the daily reward right now. Please try again.",
+    });
   }
 });
 
@@ -927,9 +937,18 @@ app.post("/api/rooms/quick-match", async (req, res) => {
   }
 
   const authMessage = `${SIGNED_MESSAGE_PREFIX}quick-match:${walletAddress}`;
-  const validSig = await verifyWalletSignature(walletAddress, signature, authMessage);
+  const validSig = await verifyWalletSignature(
+    walletAddress,
+    signature,
+    authMessage,
+  );
   if (!validSig) {
-    return res.status(403).json({ error: "Wallet signature verification failed. Connect your wallet and try again." });
+    return res
+      .status(403)
+      .json({
+        error:
+          "Wallet signature verification failed. Connect your wallet and try again.",
+      });
   }
 
   let room = getWaitingRoom();
@@ -1005,48 +1024,26 @@ app.post("/api/rooms/quick-match", async (req, res) => {
     }
   }
 
-
-
-
-
   // TOCTOU-safe join with per-room lock
   const lowerWallet = walletAddress.toLowerCase();
   const lockKey = `${room.id}:${lowerWallet}`;
-
-
-
-
-
-
 
   if (!roomJoinLocks.has(room.id)) {
     roomJoinLocks.set(room.id, new Set());
   }
   const activeJoins = roomJoinLocks.get(room.id);
 
-
-
-
-
-
   if (activeJoins.has(lowerWallet)) {
-    return res.status(429).json({ error: "Join already in progress. Please wait." });
+    return res
+      .status(429)
+      .json({ error: "Join already in progress. Please wait." });
   }
-
-
-
-
-
 
   activeJoins.add(lowerWallet);
 
-
-
-
   try {
     const existingPlayer = room.players.find(
-      (player) =>
-        player.walletAddress.toLowerCase() === lowerWallet,
+      (player) => player.walletAddress.toLowerCase() === lowerWallet,
     );
 
     if (existingPlayer) {
@@ -1105,9 +1102,18 @@ app.post("/api/rooms/:roomId/join", async (req, res) => {
   }
 
   const authMessage = `${SIGNED_MESSAGE_PREFIX}join:${walletAddress}`;
-  const validSig = await verifyWalletSignature(walletAddress, signature, authMessage);
+  const validSig = await verifyWalletSignature(
+    walletAddress,
+    signature,
+    authMessage,
+  );
   if (!validSig) {
-    return res.status(403).json({ error: "Wallet signature verification failed. Connect your wallet and try again." });
+    return res
+      .status(403)
+      .json({
+        error:
+          "Wallet signature verification failed. Connect your wallet and try again.",
+      });
   }
 
   if (room.status === "expired") {
@@ -1126,34 +1132,67 @@ app.post("/api/rooms/:roomId/join", async (req, res) => {
     return res.status(400).json({ error: "This room is already full." });
   }
 
-  const existingPlayer = room.players.find(
-    (player) =>
-      player.walletAddress.toLowerCase() === walletAddress.toLowerCase(),
-  );
+  // TOCTOU-safe join with per-room lock
+  const lowerWallet = walletAddress.toLowerCase();
+  const lockKey = `${room.id}:${lowerWallet}`;
 
-  if (existingPlayer) {
-    return res.status(200).json({
-      room: getRoomSummary(room),
-      playerId: existingPlayer.id,
-      restored: true,
-    });
+  if (!roomJoinLocks.has(room.id)) {
+    roomJoinLocks.set(room.id, new Set());
+  }
+  const activeJoins = roomJoinLocks.get(room.id);
+
+  if (activeJoins.has(lowerWallet)) {
+    return res
+      .status(429)
+      .json({ error: "Join already in progress. Please wait." });
   }
 
-  const player = {
-    id: makeId("player"),
-    walletAddress,
-    joinedAt: new Date().toISOString(),
-  };
+  activeJoins.add(lowerWallet);
 
-  room.players.push(player);
-  pushSystemEvent(
-    room,
-    `${shortenAddress(player.walletAddress)} joined the game`,
-  );
+  try {
+    const existingPlayer = room.players.find(
+      (player) => player.walletAddress.toLowerCase() === lowerWallet,
+    );
 
-  return res
-    .status(201)
-    .json({ room: getRoomSummary(room), playerId: player.id });
+    if (existingPlayer) {
+      activeJoins.delete(lowerWallet);
+      if (activeJoins.size === 0) {
+        roomJoinLocks.delete(room.id);
+      }
+      return res.status(200).json({
+        room: getRoomSummary(room),
+        playerId: existingPlayer.id,
+        restored: true,
+      });
+    }
+
+    const player = {
+      id: makeId("player"),
+      walletAddress,
+      joinedAt: new Date().toISOString(),
+    };
+
+    room.players.push(player);
+    pushSystemEvent(
+      room,
+      `${shortenAddress(player.walletAddress)} joined the game`,
+    );
+
+    activeJoins.delete(lowerWallet);
+    if (activeJoins.size === 0) {
+      roomJoinLocks.delete(room.id);
+    }
+
+    return res
+      .status(201)
+      .json({ room: getRoomSummary(room), playerId: player.id });
+  } catch (error) {
+    activeJoins.delete(lowerWallet);
+    if (activeJoins.size === 0) {
+      roomJoinLocks.delete(room.id);
+    }
+    throw error;
+  }
 });
 
 app.get("/api/rooms/:roomId", (req, res) => {

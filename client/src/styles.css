@@ -3141,7 +3141,7 @@ body::after {
 .appearance-row__label,
 .wallet-panel__copy label,
 .leaderboard-table__rank {
-  color: #55556a !important;
+  color: #d4d4e2  !important;
   font-weight: 700 !important;
 }
 
