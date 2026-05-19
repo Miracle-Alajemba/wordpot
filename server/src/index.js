@@ -1043,6 +1043,7 @@ app.post("/api/rooms/:roomId/submit", (req, res) => {
   };
 
   room.submissions.push(submission);
+  room._claimedWords.add(rawWord);
   markRoomDirty(room);
   logEvent({ status: "accepted", word: rawWord, score: submission.score });
 
@@ -1136,7 +1137,7 @@ app.post("/api/rooms/:roomId/claim-tx", (req, res) => {
 app.post("/api/rooms/:roomId/settle", async (req, res) => {
   const room = getRoomOr404(req.params.roomId, res);
   if (!room) return;
-
+ated
   const playerId = String(req.body?.playerId || "").trim();
   const walletAddress = String(req.body?.walletAddress || "").trim();
   const player = getValidatedPlayerOrError(room, playerId, walletAddress, res);
