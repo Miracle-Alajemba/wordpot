@@ -4,7 +4,6 @@ import {
   getWordScore,
   normalizeWord,
 } from "../../game.js";
-import { isWalletAddress, shortenWalletAddress } from "../../utils/index.js";
 import { MetricCard, ScoreBadge } from "../ui/game-ui.jsx";
 
 const PRACTICE_DIFFICULTIES = [
@@ -18,8 +17,6 @@ const PRACTICE_DIFFICULTY_NOTES = {
   medium: "Standard balances speed and challenge with a tighter but still fair word pool.",
   hard: "Expert gives tighter, trickier rounds with fewer obvious words to find.",
 };
-const FREE_REWARD_TARGET_SCORE = 120;
-
 function getDifficultyLabel(difficulty) {
   return (
     PRACTICE_DIFFICULTIES.find((entry) => entry.id === difficulty)?.label ||
@@ -35,19 +32,9 @@ function buildWordFromSelection(sourceWord, selectedIndexes) {
 function PracticeResults({
   score,
   wordsFound,
-  difficulty,
-  walletAddress,
-  rewardClaimBusy,
-  rewardClaimStatus,
-  rewardClaimError,
-  rewardClaim,
-  onClaimReward,
   onReplay,
   onExit,
 }) {
-  const canClaimReward = score >= FREE_REWARD_TARGET_SCORE;
-  const walletConnected = isWalletAddress(walletAddress);
-
   return (
     <div className="results-sheet">
       <p className="eyebrow">Practice Complete</p>
@@ -72,66 +59,6 @@ function PracticeResults({
         )}
       </div>
 
-      <div className="claim-card">
-        <div className="claim-card__top">
-          <div>
-            <span className="claim-card__label">Daily Challenge</span>
-            <strong className="claim-card__amount">
-              {canClaimReward ? "Unlocked" : `${Math.max(FREE_REWARD_TARGET_SCORE - score, 0)} pts away`}
-            </strong>
-          </div>
-          <span className={`claim-card__status ${rewardClaim ? "claim-card__status--success" : canClaimReward ? "claim-card__status--ready" : ""}`}>
-            {rewardClaim ? "Claim recorded" : canClaimReward ? "Ready to claim" : "Keep practicing"}
-          </span>
-        </div>
-        <p className="claim-card__copy">
-          Reach {FREE_REWARD_TARGET_SCORE} points today, connect your wallet, and claim your daily CELO reward. No entry payment required.
-        </p>
-        <div className="claim-card__meta">
-          <div className="claim-meta-chip">
-            <span>Wallet</span>
-            <strong>{walletConnected ? shortenWalletAddress(walletAddress) : "Not connected"}</strong>
-          </div>
-          <div className="claim-meta-chip">
-            <span>Target</span>
-            <strong>{FREE_REWARD_TARGET_SCORE} pts</strong>
-          </div>
-          <div className="claim-meta-chip">
-            <span>Claim</span>
-            <strong>{rewardClaim?.status || "Not recorded"}</strong>
-          </div>
-          <div className="claim-meta-chip">
-            <span>Payout</span>
-            <strong>{rewardClaim?.payoutAmount || "Pending"}</strong>
-          </div>
-          <div className="claim-meta-chip">
-            <span>TX</span>
-            <strong>{rewardClaim?.payoutTxHash ? `${rewardClaim.payoutTxHash.slice(0, 10)}...` : "Not sent"}</strong>
-          </div>
-        </div>
-        {rewardClaimStatus ? (
-          <div className="notice-strip notice-strip--success">{rewardClaimStatus}</div>
-        ) : null}
-        {rewardClaimError ? (
-          <div className="notice-strip notice-strip--error">{rewardClaimError}</div>
-        ) : null}
-        <div className="hero-actions">
-          <button
-            type="button"
-            onClick={() => onClaimReward({ score, wordsFound, difficulty })}
-            disabled={!canClaimReward || rewardClaimBusy || Boolean(rewardClaim)}
-          >
-            {rewardClaimBusy
-              ? "Claiming..."
-              : rewardClaim
-                ? "Claim Recorded"
-                : walletConnected
-                  ? "Claim Free Reward"
-                  : "Connect Wallet to Claim"}
-          </button>
-        </div>
-      </div>
-
       <div className="hero-actions">
         <button type="button" onClick={onReplay}>
           Play Again
@@ -148,8 +75,6 @@ export function PracticeScreen({
   onExit,
   apiBaseUrl,
   roundSeconds = 60,
-  walletAddress = "",
-  connectWallet,
 }) {
   const [roundSeed, setRoundSeed] = useState(null);
   const [difficulty, setDifficulty] = useState("medium");
@@ -164,10 +89,6 @@ export function PracticeScreen({
   const [bestWord, setBestWord] = useState("");
   const [streak, setStreak] = useState(0);
   const [loadingRound, setLoadingRound] = useState(true);
-  const [rewardClaimBusy, setRewardClaimBusy] = useState(false);
-  const [rewardClaimStatus, setRewardClaimStatus] = useState("");
-  const [rewardClaimError, setRewardClaimError] = useState("");
-  const [rewardClaim, setRewardClaim] = useState(null);
   const sourceLetters = String(roundSeed?.sourceWord || "").split("");
   const selectedWord = draftWord;
   const difficultyNote =
@@ -198,9 +119,6 @@ export function PracticeScreen({
       setIsFinished(false);
       setBestWord("");
       setStreak(0);
-      setRewardClaimStatus("");
-      setRewardClaimError("");
-      setRewardClaim(null);
       setFeedback(nextFeedback);
       setFeedbackTone("neutral");
     } catch (error) {
@@ -308,47 +226,6 @@ export function PracticeScreen({
     setSelectedIndexes([]);
   }
 
-  async function handleClaimFreeReward({ score: finalScore, wordsFound, difficulty }) {
-    setRewardClaimStatus("");
-    setRewardClaimError("");
-
-    if (!isWalletAddress(walletAddress)) {
-      if (typeof connectWallet === "function") {
-        await connectWallet();
-        setRewardClaimStatus("Wallet connection opened. After it connects, tap claim again.");
-      } else {
-        setRewardClaimError("Connect your wallet before claiming.");
-      }
-      return;
-    }
-
-    setRewardClaimBusy(true);
-    try {
-      const response = await fetch(`${apiBaseUrl}/reward-claims`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          walletAddress,
-          score: finalScore,
-          difficulty,
-          wordsFound,
-        }),
-      });
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || "Unable to record reward claim.");
-      }
-
-      setRewardClaim(data.claim);
-      setRewardClaimStatus(data.message || "Free reward claim recorded.");
-    } catch (error) {
-      setRewardClaimError(error.message || "Unable to record reward claim.");
-    } finally {
-      setRewardClaimBusy(false);
-    }
-  }
-
   return (
     <main className="page-shell">
       <section className="play-shell">
@@ -439,13 +316,6 @@ export function PracticeScreen({
           <PracticeResults
             score={score}
             wordsFound={claimedWords}
-            difficulty={difficulty}
-            walletAddress={walletAddress}
-            rewardClaimBusy={rewardClaimBusy}
-            rewardClaimStatus={rewardClaimStatus}
-            rewardClaimError={rewardClaimError}
-            rewardClaim={rewardClaim}
-            onClaimReward={handleClaimFreeReward}
             onReplay={resetRound}
             onExit={onExit}
           />
