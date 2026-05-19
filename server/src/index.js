@@ -561,12 +561,24 @@ app.get("/api/leaderboard", (_req, res) => {
   });
 });
 
+const practiceRoundCache = new Map();
+const PRACTICE_CACHE_MS = 10 * 60 * 1000;
+
 app.get("/api/rounds/practice", async (_req, res) => {
   try {
     const difficulty = String(_req.query?.difficulty || "medium")
       .trim()
       .toLowerCase();
+
+    const cached = practiceRoundCache.get(difficulty);
+    const now = Date.now();
+
+    if (cached && now - cached.cachedAt < PRACTICE_CACHE_MS) {
+      return res.json({ round: cached.round });
+    }
+
     const round = await getDynamicRound(difficulty);
+    practiceRoundCache.set(difficulty, { round, cachedAt: now });
     return res.json({ round });
   } catch (error) {
     return res
