@@ -232,7 +232,10 @@ function getRoomFeed(room, limit = DEFAULT_FEED_LIMIT) {
   const normalizedLimit = Math.max(1, Number(limit) || DEFAULT_FEED_LIMIT);
   return (room.events || [])
     .slice()
-    .sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt))
+    .sort(
+      (a, b) =>
+        new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
+    )
     .slice(-normalizedLimit)
     .map((entry) => ({ ...entry }));
 }
