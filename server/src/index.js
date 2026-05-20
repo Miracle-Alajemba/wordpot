@@ -695,11 +695,9 @@ app.get("/api/rounds/daily-challenge", async (_req, res) => {
   try {
     const walletAddress = String(_req.query?.walletAddress || "").trim();
     if (!isWalletAddress(walletAddress)) {
-      return res
-        .status(400)
-        .json({
-          error: "Connect a valid wallet before starting Daily Challenge.",
-        });
+      return res.status(400).json({
+        error: "Connect a valid wallet before starting Daily Challenge.",
+      });
     }
 
     const round = await getDynamicRound("medium");
@@ -751,20 +749,16 @@ app.post("/api/daily/submit", (req, res) => {
   }
 
   if (session.walletAddress.toLowerCase() !== walletAddress.toLowerCase()) {
-    return res
-      .status(403)
-      .json({
-        error: "This Daily Challenge session belongs to another wallet.",
-      });
+    return res.status(403).json({
+      error: "This Daily Challenge session belongs to another wallet.",
+    });
   }
 
   if (Date.now() > session.expiresAt) {
     dailyChallengeSessions.delete(sessionId);
-    return res
-      .status(410)
-      .json({
-        error: "This Daily Challenge session expired. Start a new round.",
-      });
+    return res.status(410).json({
+      error: "This Daily Challenge session expired. Start a new round.",
+    });
   }
 
   if (!rawWord) {
@@ -845,11 +839,9 @@ app.post("/api/daily/claim", async (req, res) => {
   }
 
   if (session.walletAddress.toLowerCase() !== walletAddress.toLowerCase()) {
-    return res
-      .status(403)
-      .json({
-        error: "This Daily Challenge session belongs to another wallet.",
-      });
+    return res.status(403).json({
+      error: "This Daily Challenge session belongs to another wallet.",
+    });
   }
 
   if (session.score < 40) {
@@ -943,12 +935,10 @@ app.post("/api/rooms/quick-match", async (req, res) => {
     authMessage,
   );
   if (!validSig) {
-    return res
-      .status(403)
-      .json({
-        error:
-          "Wallet signature verification failed. Connect your wallet and try again.",
-      });
+    return res.status(403).json({
+      error:
+        "Wallet signature verification failed. Connect your wallet and try again.",
+    });
   }
 
   let room = getWaitingRoom();
@@ -1108,12 +1098,10 @@ app.post("/api/rooms/:roomId/join", async (req, res) => {
     authMessage,
   );
   if (!validSig) {
-    return res
-      .status(403)
-      .json({
-        error:
-          "Wallet signature verification failed. Connect your wallet and try again.",
-      });
+    return res.status(403).json({
+      error:
+        "Wallet signature verification failed. Connect your wallet and try again.",
+    });
   }
 
   if (room.status === "expired") {
@@ -1462,7 +1450,6 @@ app.post("/api/rooms/:roomId/claim-tx", async (req, res) => {
 app.post("/api/rooms/:roomId/settle", async (req, res) => {
   const room = getRoomOr404(req.params.roomId, res);
   if (!room) return;
-  ated;
   const playerId = String(req.body?.playerId || "").trim();
   const walletAddress = String(req.body?.walletAddress || "").trim();
   const signature = String(req.body?.signature || "").trim();
