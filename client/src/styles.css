@@ -1,6 +1,6 @@
 :root {
   color: #f5f7ff;
-  font-family: "Inter", system-ui, sans-serif;
+  font-family: "Rajdhani", "Oxanium", sans-serif;
   background:
     radial-gradient(circle at 16% 12%, rgba(255, 191, 92, 0.2), transparent 18%),
     radial-gradient(circle at 84% 14%, rgba(99, 244, 202, 0.16), transparent 18%),
@@ -10,7 +10,7 @@
 
 * {
   box-sizing: border-box;
-  font-family: "Inter", system-ui, sans-serif;
+  font-family: "Rajdhani", "Oxanium", sans-serif;
   padding: 0;
 }
 
@@ -39,7 +39,7 @@ body {
 
 body,
 * {
-  font-family: "Inter", system-ui, sans-serif;
+  font-family: "Rajdhani", "Oxanium", sans-serif;
 }
 
 body::before,
@@ -83,15 +83,15 @@ input {
 }
 
 button {
-  font-family: "Inter", system-ui, sans-serif;
+  font-family: "Oxanium", "Rajdhani", sans-serif;
   background: linear-gradient(135deg, #ffad33 0%, #ff7a18 100%);
   border: 0;
   border-radius: 999px;
   box-shadow: 0 14px 30px rgba(255, 138, 51, 0.26);
   color: #111827;
   cursor: pointer;
-  font-weight: 700;
-  letter-spacing: 0.02em;
+  font-weight: 800;
+  letter-spacing: 0.015em;
   padding: 0.9rem 1.3rem;
   transition: transform 140ms ease, box-shadow 140ms ease;
 }
@@ -126,9 +126,9 @@ button:disabled {
   --charcoal: #2c2c2c;
   --muted: #6f7680;
   --line-soft: rgba(44, 44, 44, 0.08);
-  --font-ui: "Inter", system-ui, sans-serif;
-  --font-display: "Bebas Neue", system-ui, sans-serif;
-  --font-mono: "Inter", system-ui, sans-serif;
+  --font-ui: "Rajdhani", "Oxanium", sans-serif;
+  --font-display: "Oxanium", "Rajdhani", sans-serif;
+  --font-mono: "Space Mono", monospace;
 }
 
 .page-shell {
@@ -295,9 +295,9 @@ button:disabled {
 
 .hero-logo__name {
   color: #f0f0f5;
-  font-family: "Bebas Neue", system-ui, sans-serif;
+  font-family: "Oxanium", "Rajdhani", sans-serif;
   font-size: 3.5rem;
-  font-weight: 400;
+  font-weight: 800;
   letter-spacing: 0.06em;
   line-height: 1;
   margin: 0;
@@ -1160,7 +1160,7 @@ button:disabled {
 
 .player-identity__copy span {
   color: var(--muted);
-  font-family: "Inter", system-ui, sans-serif;
+  font-family: "Space Mono", monospace;
   font-size: 0.74rem;
 }
 
@@ -3425,14 +3425,15 @@ h3,
 .lobby-stat-card strong,
 .hero-logo__name,
 .timer-tone {
-  font-family: "Bebas Neue", system-ui, sans-serif;
-  letter-spacing: 0.04em;
+  font-family: "Oxanium", "Rajdhani", sans-serif;
+  font-weight: 800;
+  letter-spacing: 0.02em;
 }
 
 button {
-  font-family: "Inter", system-ui, sans-serif;
-  font-weight: 600;
-  letter-spacing: 0.02em;
+  font-family: "Oxanium", "Rajdhani", sans-serif;
+  font-weight: 800;
+  letter-spacing: 0.015em;
 }
 
 p,
@@ -3446,7 +3447,7 @@ small,
 .chat-feed,
 .player-row p,
 .room-panel__header p {
-  font-family: "Inter", system-ui, sans-serif;
+  font-family: "Rajdhani", "Oxanium", sans-serif;
 }
 
 .lede {
@@ -3458,7 +3459,7 @@ small,
 
 .lede--tagline {
   color: #c9920a !important;
-  font-family: "Bebas Neue", system-ui, sans-serif;
+  font-family: "Oxanium", "Rajdhani", sans-serif;
   font-size: 1.25rem !important;
   letter-spacing: 0.08em !important;
   margin-bottom: 1.5rem !important;
