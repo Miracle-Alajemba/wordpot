@@ -249,6 +249,29 @@ button:disabled {
   margin-bottom: 0.25rem;
 }
 
+.brand-lockup {
+  align-items: center;
+  display: inline-flex;
+  gap: 0.8rem;
+}
+
+.brand-lockup__logo {
+  aspect-ratio: 1;
+  border: 1px solid rgba(201, 146, 10, 0.26);
+  border-radius: 18px;
+  box-shadow:
+    0 16px 36px rgba(0, 0, 0, 0.42),
+    0 0 26px rgba(201, 146, 10, 0.18);
+  display: block;
+  height: clamp(64px, 9vw, 104px);
+  object-fit: cover;
+  width: clamp(64px, 9vw, 104px);
+}
+
+.brand-lockup .eyebrow {
+  margin: 0;
+}
+
 .wallet-panel {
   display: grid;
   gap: 0.8rem;

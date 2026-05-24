@@ -77,7 +77,10 @@ export function HomeScreen({
       <section className="hero">
         <div className="hero-copy">
           <div className="hero-copy__top">
-            <p className="eyebrow">MiniPay Word Game</p>
+            <div className="brand-lockup" aria-label="WordPot">
+              <img src="/wordpot-logo.png" alt="WordPot logo" className="brand-lockup__logo" />
+              <p className="eyebrow">MiniPay Word Game</p>
+            </div>
           </div>
           <h1>WordPot</h1>
           <p className="lede">
