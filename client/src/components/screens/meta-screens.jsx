@@ -115,7 +115,6 @@ export function LeaderboardScreen({ room, onQuickMatch, onBack, apiBaseUrl }) {
 export function ProfileScreen({ walletAddress, onConnectWallet, onBack }) {
   const connected = isWalletAddress(walletAddress);
   const alias = connected ? getPlayerAlias(walletAddress) : "Guest Player";
-  const achievements = ["First Win", "Clean Streak", "Sharp Eye", "Fast Fingers", "Word Artist", "Night Owl"];
 
   return (
     <main className="page-shell">
@@ -150,22 +149,6 @@ export function ProfileScreen({ walletAddress, onConnectWallet, onBack }) {
             </div>
           </article>
 
-          <article className="panel profile-panel">
-            <div className="room-panel__header">
-              <div>
-                <h3>Achievements</h3>
-                <p>Soft milestones that unlock as you keep playing.</p>
-              </div>
-            </div>
-            <div className="achievement-grid">
-              {achievements.map((item, index) => (
-                <div key={item} className={`achievement-chip ${index > 3 ? "achievement-chip--locked" : ""}`}>
-                  <span>{index > 3 ? "◌" : "✦"}</span>
-                  <strong>{item}</strong>
-                </div>
-              ))}
-            </div>
-          </article>
         </section>
       </section>
     </main>
