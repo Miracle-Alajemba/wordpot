@@ -1,6 +1,6 @@
 :root {
   color: #f5f7ff;
-  font-family: "Rajdhani", "Oxanium", sans-serif;
+  font-family: "Outfit", system-ui, sans-serif;
   background:
     radial-gradient(circle at 16% 12%, rgba(255, 191, 92, 0.2), transparent 18%),
     radial-gradient(circle at 84% 14%, rgba(99, 244, 202, 0.16), transparent 18%),
@@ -10,6 +10,7 @@
 
 * {
   box-sizing: border-box;
+  font-family: "Outfit", system-ui, sans-serif;
   padding: 0;
 }
 
@@ -34,6 +35,11 @@ body {
   min-width: 320px;
   overflow-x: hidden;
   position: relative;
+}
+
+body,
+* {
+  font-family: "Outfit", system-ui, sans-serif;
 }
 
 body::before,
@@ -77,15 +83,15 @@ input {
 }
 
 button {
-  font-family: "Oxanium", "Rajdhani", sans-serif;
+  font-family: "Rajdhani", system-ui, sans-serif;
   background: linear-gradient(135deg, #ffad33 0%, #ff7a18 100%);
   border: 0;
   border-radius: 999px;
   box-shadow: 0 14px 30px rgba(255, 138, 51, 0.26);
   color: #111827;
   cursor: pointer;
-  font-weight: 800;
-  letter-spacing: 0.015em;
+  font-weight: 700;
+  letter-spacing: 0.05em;
   padding: 0.9rem 1.3rem;
   transition: transform 140ms ease, box-shadow 140ms ease;
 }
@@ -120,9 +126,9 @@ button:disabled {
   --charcoal: #2c2c2c;
   --muted: #6f7680;
   --line-soft: rgba(44, 44, 44, 0.08);
-  --font-ui: "Rajdhani", "Oxanium", sans-serif;
-  --font-display: "Oxanium", "Rajdhani", sans-serif;
-  --font-mono: "Space Mono", monospace;
+  --font-ui: "Outfit", system-ui, sans-serif;
+  --font-display: "Rajdhani", system-ui, sans-serif;
+  --font-mono: "Rajdhani", system-ui, sans-serif;
 }
 
 .page-shell {
@@ -1129,7 +1135,7 @@ button:disabled {
 
 .player-identity__copy span {
   color: var(--muted);
-  font-family: "Space Mono", monospace;
+  font-family: "Rajdhani", system-ui, sans-serif;
   font-size: 0.74rem;
 }
 
@@ -3374,4 +3380,47 @@ button:disabled,
   .page-shell {
     padding-bottom: 3rem;
   }
+}
+
+h1,
+h2,
+h3,
+.live-score,
+.claim-card__amount,
+.lobby-readiness-card__count,
+.room-topbar h1,
+.play-hero h1,
+.results-sheet h2,
+.score-badge strong,
+.self-pill,
+.leaderboard-points .live-score,
+.featured-stats__item strong,
+.hero-card h2,
+.timer-tone,
+.word-preview,
+.lobby-stat-card strong {
+  font-family: "Rajdhani", system-ui, sans-serif;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+button {
+  font-family: "Rajdhani", system-ui, sans-serif;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+p,
+label,
+small,
+.field-hint,
+.notice-strip,
+.eyebrow,
+.play-label,
+.lede,
+.chat-feed,
+.player-row p,
+.room-panel__header p {
+  font-family: "Outfit", system-ui, sans-serif;
 }
