@@ -1,6 +1,6 @@
 :root {
   color: #f5f7ff;
-  font-family: "Outfit", system-ui, sans-serif;
+  font-family: "Inter", system-ui, sans-serif;
   background:
     radial-gradient(circle at 16% 12%, rgba(255, 191, 92, 0.2), transparent 18%),
     radial-gradient(circle at 84% 14%, rgba(99, 244, 202, 0.16), transparent 18%),
@@ -10,7 +10,7 @@
 
 * {
   box-sizing: border-box;
-  font-family: "Outfit", system-ui, sans-serif;
+  font-family: "Inter", system-ui, sans-serif;
   padding: 0;
 }
 
@@ -39,7 +39,7 @@ body {
 
 body,
 * {
-  font-family: "Outfit", system-ui, sans-serif;
+  font-family: "Inter", system-ui, sans-serif;
 }
 
 body::before,
@@ -83,7 +83,7 @@ input {
 }
 
 button {
-  font-family: "Rajdhani", system-ui, sans-serif;
+  font-family: "Inter", system-ui, sans-serif;
   background: linear-gradient(135deg, #ffad33 0%, #ff7a18 100%);
   border: 0;
   border-radius: 999px;
@@ -91,7 +91,7 @@ button {
   color: #111827;
   cursor: pointer;
   font-weight: 700;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.02em;
   padding: 0.9rem 1.3rem;
   transition: transform 140ms ease, box-shadow 140ms ease;
 }
@@ -126,9 +126,9 @@ button:disabled {
   --charcoal: #2c2c2c;
   --muted: #6f7680;
   --line-soft: rgba(44, 44, 44, 0.08);
-  --font-ui: "Outfit", system-ui, sans-serif;
-  --font-display: "Rajdhani", system-ui, sans-serif;
-  --font-mono: "Rajdhani", system-ui, sans-serif;
+  --font-ui: "Inter", system-ui, sans-serif;
+  --font-display: "Bebas Neue", system-ui, sans-serif;
+  --font-mono: "Inter", system-ui, sans-serif;
 }
 
 .page-shell {
@@ -279,27 +279,28 @@ button:disabled {
 }
 
 .hero-logo {
-  align-items: flex-start;
+  align-items: center;
   display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-  margin-bottom: 0.75rem;
+  flex-direction: row;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
 }
 
 .hero-logo__img {
   display: block;
+  filter: drop-shadow(0 2px 12px rgba(201, 146, 10, 0.3));
   height: auto;
-  width: 180px;
+  width: 72px;
 }
 
 .hero-logo__name {
-  color: var(--color-text-primary, #f0f0f5);
-  font-family: "Rajdhani", system-ui, sans-serif;
-  font-size: 2.5rem;
-  font-weight: 700;
-  letter-spacing: 0.04em;
+  color: #f0f0f5;
+  font-family: "Bebas Neue", system-ui, sans-serif;
+  font-size: 3rem;
+  font-weight: 400;
+  letter-spacing: 0.06em;
+  line-height: 1;
   margin: 0;
-  text-transform: uppercase;
 }
 
 .wallet-panel {
@@ -1159,7 +1160,7 @@ button:disabled {
 
 .player-identity__copy span {
   color: var(--muted);
-  font-family: "Rajdhani", system-ui, sans-serif;
+  font-family: "Inter", system-ui, sans-serif;
   font-size: 0.74rem;
 }
 
@@ -3420,19 +3421,18 @@ h3,
 .leaderboard-points .live-score,
 .featured-stats__item strong,
 .hero-card h2,
-.timer-tone,
 .word-preview,
-.lobby-stat-card strong {
-  font-family: "Rajdhani", system-ui, sans-serif;
-  font-weight: 700;
-  letter-spacing: 0.02em;
+.lobby-stat-card strong,
+.hero-logo__name,
+.timer-tone {
+  font-family: "Bebas Neue", system-ui, sans-serif;
+  letter-spacing: 0.04em;
 }
 
 button {
-  font-family: "Rajdhani", system-ui, sans-serif;
-  font-weight: 700;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
+  font-family: "Inter", system-ui, sans-serif;
+  font-weight: 600;
+  letter-spacing: 0.02em;
 }
 
 p,
@@ -3446,5 +3446,5 @@ small,
 .chat-feed,
 .player-row p,
 .room-panel__header p {
-  font-family: "Outfit", system-ui, sans-serif;
+  font-family: "Inter", system-ui, sans-serif;
 }
