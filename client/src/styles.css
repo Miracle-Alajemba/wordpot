@@ -279,6 +279,10 @@ button:disabled {
 }
 
 .hero-logo {
+  align-items: flex-start;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
   margin-bottom: 0.75rem;
 }
 
@@ -286,6 +290,16 @@ button:disabled {
   display: block;
   height: auto;
   width: 180px;
+}
+
+.hero-logo__name {
+  color: var(--color-text-primary, #f0f0f5);
+  font-family: "Rajdhani", system-ui, sans-serif;
+  font-size: 2.5rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  margin: 0;
+  text-transform: uppercase;
 }
 
 .wallet-panel {

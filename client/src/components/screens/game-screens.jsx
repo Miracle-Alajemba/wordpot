@@ -86,6 +86,7 @@ export function HomeScreen({
               alt="WordPot"
               className="hero-logo__img"
             />
+            <h1 className="hero-logo__name">WordPot</h1>
           </div>
           <p className="lede">
             A fast multiplayer word challenge where players build words from a
