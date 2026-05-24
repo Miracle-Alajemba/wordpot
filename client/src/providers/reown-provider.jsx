@@ -30,9 +30,14 @@ createAppKit({
   metadata,
   features: {
     analytics: false,
+    email:false,
+    socials: false,
+    emailShowWallets: false,
+    swaps: false,
+    onramp: false,
+    history: false,
   },
 });
-
 export function ReownProvider({ children }) {
   return (
     <WagmiProvider config={wagmiAdapter.wagmiConfig}>
