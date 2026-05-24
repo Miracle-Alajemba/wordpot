@@ -927,21 +927,19 @@ app.post("/api/rooms/quick-match", async (req, res) => {
       .json({ error: "A valid wallet address is required." });
   }
 
-  if (!signature) {
-    return res.status(400).json({ error: "Wallet signature is required." });
-  }
-
-  const authMessage = `${SIGNED_MESSAGE_PREFIX}quick-match:${walletAddress}`;
-  const validSig = await verifyWalletSignature(
-    walletAddress,
-    signature,
-    authMessage,
-  );
-  if (!validSig) {
-    return res.status(403).json({
-      error:
-        "Wallet signature verification failed. Connect your wallet and try again.",
-    });
+  if (signature) {
+    const authMessage = `${SIGNED_MESSAGE_PREFIX}quick-match:${walletAddress}`;
+    const validSig = await verifyWalletSignature(
+      walletAddress,
+      signature,
+      authMessage,
+    );
+    if (!validSig) {
+      return res.status(403).json({
+        error:
+          "Wallet signature verification failed. Connect your wallet and try again.",
+      });
+    }
   }
 
   let room = getWaitingRoom();
@@ -1090,21 +1088,19 @@ app.post("/api/rooms/:roomId/join", async (req, res) => {
       .json({ error: "A valid wallet address is required." });
   }
 
-  if (!signature) {
-    return res.status(400).json({ error: "Wallet signature is required." });
-  }
-
-  const authMessage = `${SIGNED_MESSAGE_PREFIX}join:${walletAddress}`;
-  const validSig = await verifyWalletSignature(
-    walletAddress,
-    signature,
-    authMessage,
-  );
-  if (!validSig) {
-    return res.status(403).json({
-      error:
-        "Wallet signature verification failed. Connect your wallet and try again.",
-    });
+  if (signature) {
+    const authMessage = `${SIGNED_MESSAGE_PREFIX}join:${walletAddress}`;
+    const validSig = await verifyWalletSignature(
+      walletAddress,
+      signature,
+      authMessage,
+    );
+    if (!validSig) {
+      return res.status(403).json({
+        error:
+          "Wallet signature verification failed. Connect your wallet and try again.",
+      });
+    }
   }
 
   if (room.status === "expired") {
