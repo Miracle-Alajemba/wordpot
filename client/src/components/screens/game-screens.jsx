@@ -88,7 +88,14 @@ export function HomeScreen({
             />
             <h1 className="hero-logo__name">WordPot</h1>
           </div>
+
           <p className="lede">
+            A fast multiplayer word challenge where players build words from a
+            shared prompt, race the clock, and earn a share of the pot based on
+            how well they perform. Multiplayer rooms use wallet identity so
+            payouts can go straight back to players.
+          </p>
+          <p className="lede lede--tagline">
             Build words. Beat the clock. Earn CELO.
           </p>
 

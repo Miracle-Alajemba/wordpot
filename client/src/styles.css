@@ -282,21 +282,21 @@ button:disabled {
   align-items: center;
   display: flex;
   flex-direction: row;
-  gap: 0.75rem;
-  margin-bottom: 1rem;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
 }
 
 .hero-logo__img {
   display: block;
-  filter: drop-shadow(0 2px 12px rgba(201, 146, 10, 0.3));
+  filter: drop-shadow(0 4px 16px rgba(201, 146, 10, 0.3));
   height: auto;
-  width: 72px;
+  width: 120px;
 }
 
 .hero-logo__name {
   color: #f0f0f5;
   font-family: "Bebas Neue", system-ui, sans-serif;
-  font-size: 3rem;
+  font-size: 3.5rem;
   font-weight: 400;
   letter-spacing: 0.06em;
   line-height: 1;
@@ -3447,4 +3447,19 @@ small,
 .player-row p,
 .room-panel__header p {
   font-family: "Inter", system-ui, sans-serif;
+}
+
+.lede {
+  color: #9090a0 !important;
+  font-size: 1rem !important;
+  line-height: 1.6 !important;
+  margin-bottom: 0.75rem !important;
+}
+
+.lede--tagline {
+  color: #c9920a !important;
+  font-family: "Bebas Neue", system-ui, sans-serif;
+  font-size: 1.25rem !important;
+  letter-spacing: 0.08em !important;
+  margin-bottom: 1.5rem !important;
 }
