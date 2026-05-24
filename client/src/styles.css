@@ -3483,3 +3483,146 @@ small,
   letter-spacing: 0.08em !important;
   margin-bottom: 1.5rem !important;
 }
+
+/* Mobile home polish */
+@media (max-width: 640px) {
+  body {
+    overflow-x: hidden;
+  }
+
+  .page-shell {
+    padding: 0.75rem 0.75rem calc(7.5rem + env(safe-area-inset-bottom));
+  }
+
+  .hero {
+    gap: 0.9rem;
+  }
+
+  .hero-copy {
+    border-radius: 14px !important;
+    padding: 1.25rem !important;
+  }
+
+  .hero-logo {
+    gap: 0.7rem;
+    justify-content: center;
+    margin-bottom: 1.1rem;
+  }
+
+  .hero-logo__img {
+    width: clamp(58px, 18vw, 76px);
+  }
+
+  .hero-logo__name {
+    font-size: clamp(2.25rem, 11vw, 3.2rem);
+    letter-spacing: 0.04em;
+  }
+
+  .lede {
+    font-size: 0.9rem !important;
+    line-height: 1.5 !important;
+    margin-top: 0 !important;
+  }
+
+  .lede--tagline {
+    font-size: 0.95rem !important;
+    letter-spacing: 0.06em !important;
+    margin-bottom: 1rem !important;
+  }
+
+  .hero-actions--grid {
+    display: grid !important;
+    gap: 0.55rem !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    margin-bottom: 0.9rem;
+    margin-top: 1rem;
+  }
+
+  .hero-actions--grid button {
+    min-height: 42px;
+    padding: 0.68rem 0.45rem;
+    width: 100%;
+  }
+
+  .wallet-compact {
+    margin-bottom: 0.75rem;
+  }
+
+  .wallet-chip {
+    justify-content: center;
+    width: 100%;
+  }
+
+  .feature-strip {
+    display: grid !important;
+    gap: 0.55rem !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    margin-top: 0.8rem;
+  }
+
+  .feature-pill {
+    align-items: center;
+    display: flex;
+    font-size: 0.74rem;
+    justify-content: center;
+    min-height: 44px;
+    padding: 0.55rem 0.6rem;
+    text-align: center;
+  }
+
+  .content-grid {
+    margin-top: 0.85rem;
+  }
+
+  .panel {
+    border-radius: 14px !important;
+    padding: 1.15rem !important;
+  }
+
+  .bottom-nav {
+    border-radius: 16px;
+    bottom: calc(0.45rem + env(safe-area-inset-bottom));
+    gap: 0.25rem;
+    padding: 0.3rem;
+    width: calc(100% - 16px);
+  }
+
+  .bottom-nav__item {
+    border-radius: 12px;
+    min-height: 48px;
+    padding: 0.45rem 0.2rem;
+  }
+
+  .bottom-nav__item svg {
+    height: 17px;
+    width: 17px;
+  }
+
+  .bottom-nav__item span,
+  .bottom-nav__label {
+    font-size: 0.55rem;
+    letter-spacing: 0.04em;
+  }
+}
+
+@media (max-width: 380px) {
+  .hero-copy {
+    padding: 1rem !important;
+  }
+
+  .hero-logo__img {
+    width: 54px;
+  }
+
+  .hero-logo__name {
+    font-size: 2.15rem;
+  }
+
+  .hero-actions--grid {
+    gap: 0.45rem !important;
+  }
+
+  .feature-strip {
+    grid-template-columns: 1fr;
+  }
+}
