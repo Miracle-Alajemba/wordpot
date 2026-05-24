@@ -278,6 +278,16 @@ button:disabled {
   margin: 0;
 }
 
+.hero-logo {
+  margin-bottom: 1.5rem;
+}
+
+.hero-logo__img {
+  display: block;
+  height: auto;
+  width: 180px;
+}
+
 .wallet-panel {
   display: grid;
   gap: 0.8rem;

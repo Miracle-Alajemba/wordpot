@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="client/public/logo.png" alt="WordPot Logo" width="160" />
+</p>
+
 # WordPot
 
 > A Celo-powered word game where players race to form words, compete for points, join paid rooms, and earn rewards through wallet-based gameplay.
@@ -155,7 +159,6 @@ JOIN_PAYMENT_DISPLAY
 ```
 
 If `WORDPOT_CONTRACT_ADDRESS` is not set the lobby falls back to treasury beta join-payment mode while contract payout stays in preview.
-
 
 
 

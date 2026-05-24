@@ -78,11 +78,16 @@ export function HomeScreen({
         <div className="hero-copy">
           <div className="hero-copy__top">
             <div className="brand-lockup" aria-label="WordPot">
-              <img src="/wordpot-logo.png" alt="WordPot logo" className="brand-lockup__logo" />
               <p className="eyebrow">MiniPay Word Game</p>
             </div>
           </div>
-          <h1>WordPot</h1>
+          <div className="hero-logo">
+            <img
+              src="/logo.png"
+              alt="WordPot"
+              className="hero-logo__img"
+            />
+          </div>
           <p className="lede">
             A fast multiplayer word challenge where players build words from a
             shared prompt, race the clock, and earn a share of the pot based on
