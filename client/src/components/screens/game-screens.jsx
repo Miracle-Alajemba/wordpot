@@ -99,7 +99,7 @@ export function HomeScreen({
             Build words. Beat the clock. Earn CELO.
           </p>
 
-          <div className="hero-actions">
+          <div className="hero-actions hero-actions--grid">
             <button type="button" onClick={onQuickMatch}>
               {joinLabel}
             </button>
@@ -126,44 +126,25 @@ export function HomeScreen({
             </div>
           ) : null}
 
-          <div className="wallet-panel">
-            <div className="wallet-panel__copy">
-              <label>Wallet sign in</label>
-              <div className="wallet-state-strip">
-                <span className={`wallet-chip ${walletReady ? "wallet-chip--ok" : "wallet-chip--warn"}`}>
-                  {walletAddress
-                    ? walletReady
-                      ? "Wallet connected • Ready to play"
-                      : "Wallet connected • Setup needed"
-                    : "No wallet connected"}
-                </span>
-              </div>
-              <p className="field-hint">
-                {walletHint ||
-                  "Connect your MiniPay-compatible wallet so rooms use your real onchain identity."}
-              </p>
-            </div>
-            <div className="wallet-panel__actions">
-              {walletAddress ? (
-                <>
-                  <button type="button" onClick={onConnectWallet}>
-                    {walletReady ? "Reconnect Wallet" : "Switch to Celo"}
-                  </button>
-                  <button
-                    type="button"
-                    className="button-secondary"
-                    onClick={onDisconnectWallet}
-                  >
-                    Disconnect
-                  </button>
-                </>
-              ) : null}
-            </div>
-            {walletStatus ? (
-              <div className="wallet-status">
-                {walletStatus}
+          <div className="wallet-compact">
+            <span className={`wallet-chip ${walletReady ? "wallet-chip--ok" : "wallet-chip--warn"}`}>
+              {walletAddress
+                ? walletReady
+                  ? `● Connected · ${shortenWalletAddress(walletAddress)}`
+                  : "● Setup needed"
+                : "○ No wallet connected"}
+            </span>
+            {walletAddress ? (
+              <div className="wallet-compact__actions">
+                <button type="button" onClick={onConnectWallet}>
+                  {walletReady ? "Reconnect" : "Switch to Celo"}
+                </button>
+                <button type="button" className="button-secondary" onClick={onDisconnectWallet}>
+                  Disconnect
+                </button>
               </div>
             ) : null}
+            {walletStatus ? <p className="field-hint">{walletStatus}</p> : null}
           </div>
 
           <div className="feature-strip">

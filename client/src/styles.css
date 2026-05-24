@@ -290,17 +290,36 @@ button:disabled {
   display: block;
   filter: drop-shadow(0 4px 16px rgba(201, 146, 10, 0.3));
   height: auto;
-  width: 120px;
+  width: 160px;
 }
 
 .hero-logo__name {
   color: #f0f0f5;
   font-family: "Oxanium", "Rajdhani", sans-serif;
-  font-size: 3.5rem;
+  font-size: 4.5rem;
   font-weight: 800;
   letter-spacing: 0.06em;
   line-height: 1;
   margin: 0;
+}
+
+.hero-actions--grid {
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: 1fr 1fr;
+  margin-bottom: 1.5rem;
+}
+
+.wallet-compact {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.wallet-compact__actions {
+  display: flex;
+  gap: 0.5rem;
 }
 
 .wallet-panel {
