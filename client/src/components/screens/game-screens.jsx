@@ -78,7 +78,6 @@ export function HomeScreen({
         <div className="hero-copy">
           <div className="hero-copy__top">
             <div className="brand-lockup" aria-label="WordPot">
-              <p className="eyebrow">MiniPay Word Game</p>
             </div>
           </div>
           <div className="hero-logo">
@@ -140,17 +139,19 @@ export function HomeScreen({
               </p>
             </div>
             <div className="wallet-panel__actions">
-              <button type="button" onClick={onConnectWallet}>
-                {walletAddress ? (walletReady ? "Reconnect Wallet" : "Switch to Celo") : walletConnectLabel || "Connect Wallet"}
-              </button>
               {walletAddress ? (
-                <button
-                  type="button"
-                  className="button-secondary"
-                  onClick={onDisconnectWallet}
-                >
-                  Disconnect
-                </button>
+                <>
+                  <button type="button" onClick={onConnectWallet}>
+                    {walletReady ? "Reconnect Wallet" : "Switch to Celo"}
+                  </button>
+                  <button
+                    type="button"
+                    className="button-secondary"
+                    onClick={onDisconnectWallet}
+                  >
+                    Disconnect
+                  </button>
+                </>
               ) : null}
             </div>
             {walletStatus ? (
