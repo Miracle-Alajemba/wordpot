@@ -817,21 +817,19 @@ app.post("/api/daily/claim", async (req, res) => {
       .json({ error: "A valid wallet address is required." });
   }
 
-  if (!signature) {
-    return res.status(400).json({ error: "Wallet signature is required." });
-  }
-
-  const authMessage = `${SIGNED_MESSAGE_PREFIX}daily-claim:${walletAddress}`;
-  const validSig = await verifyWalletSignature(
-    walletAddress,
-    signature,
-    authMessage,
-  );
-  if (!validSig) {
-    return res.status(403).json({
-      error:
-        "Wallet signature verification failed. Connect your wallet and try again.",
-    });
+  if (signature) {
+    const authMessage = `${SIGNED_MESSAGE_PREFIX}daily-claim:${walletAddress}`;
+    const validSig = await verifyWalletSignature(
+      walletAddress,
+      signature,
+      authMessage,
+    );
+    if (!validSig) {
+      return res.status(403).json({
+        error:
+          "Wallet signature verification failed. Connect your wallet and try again.",
+      });
+    }
   }
 
   const session = dailyChallengeSessions.get(sessionId);
