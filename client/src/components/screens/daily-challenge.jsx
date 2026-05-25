@@ -139,11 +139,12 @@ export function DailyChallenge({
     setSelectedIndexes([]);
   }
 
-  async function handleSubmit(event) {
-    event.preventDefault();
+  async function submitSelectedWord() {
     if (phase !== "playing" || !roundSeed) return;
 
     const normalized = normalizeWord(selectedWord);
+    if (!normalized) return;
+
     setDraftWord("");
     setSelectedIndexes([]);
 
@@ -182,6 +183,71 @@ export function DailyChallenge({
       setFeedbackTone("error");
     }
   }
+
+  async function handleSubmit(event) {
+    event.preventDefault();
+    await submitSelectedWord();
+  }
+
+  useEffect(() => {
+    if (phase !== "playing" || !roundSeed) return undefined;
+
+    function handleKeyDown(event) {
+      if (event.ctrlKey || event.metaKey || event.altKey) return;
+
+      const target = event.target;
+      const isTypingField =
+        target instanceof HTMLInputElement ||
+        target instanceof HTMLTextAreaElement ||
+        target?.isContentEditable;
+
+      if (isTypingField) return;
+
+      if (event.key === "Enter") {
+        if (!selectedWord) return;
+        event.preventDefault();
+        submitSelectedWord();
+        return;
+      }
+
+      if (event.key === "Backspace") {
+        event.preventDefault();
+        setSelectedIndexes((current) => {
+          const nextIndexes = current.slice(0, -1);
+          setDraftWord(buildWordFromSelection(roundSeed.sourceWord, nextIndexes));
+          return nextIndexes;
+        });
+        return;
+      }
+
+      if (event.key === "Escape") {
+        event.preventDefault();
+        clearSelection();
+        return;
+      }
+
+      if (/^[a-zA-Z]$/.test(event.key)) {
+        const typedLetter = event.key.toLowerCase();
+        const letters = String(roundSeed.sourceWord || "").toLowerCase().split("");
+
+        setSelectedIndexes((current) => {
+          const nextIndex = letters.findIndex(
+            (letter, index) => letter === typedLetter && !current.includes(index),
+          );
+
+          if (nextIndex === -1) return current;
+
+          event.preventDefault();
+          const nextIndexes = [...current, nextIndex];
+          setDraftWord(buildWordFromSelection(roundSeed.sourceWord, nextIndexes));
+          return nextIndexes;
+        });
+      }
+    }
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [phase, roundSeed, selectedWord, selectedIndexes, claimedSet]);
 
   async function handleClaim() {
     if (!walletConnected) {
@@ -278,6 +344,7 @@ export function DailyChallenge({
           </div>
         ) : phase === "idle" ? (
           <div className="results-sheet">
+            <div style={{ fontSize: "2.5rem", marginBottom: "1rem", textAlign: "center" }}>🏆</div>
             <p className="eyebrow">Ready</p>
             <h2>Daily Challenge</h2>
             <p>

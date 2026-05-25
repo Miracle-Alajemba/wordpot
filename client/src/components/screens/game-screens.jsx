@@ -592,12 +592,16 @@ export function MatchRoomScreen({
     setPausedAutoScroll(!nearBottom);
   }
 
-  function handleSubmit(event) {
-    event.preventDefault();
+  function submitSelectedWord() {
     if (!selectedWord.trim()) return;
     onSubmitWord(selectedWord);
     setDraftWord("");
     setSelectedIndexes([]);
+  }
+
+  function handleSubmit(event) {
+    event.preventDefault();
+    submitSelectedWord();
   }
 
   function handleToggleTile(index) {
@@ -614,6 +618,66 @@ export function MatchRoomScreen({
     setDraftWord("");
     setSelectedIndexes([]);
   }
+
+  useEffect(() => {
+    if (isFinished || timeLeft === 0 || !room?.sourceWord) return undefined;
+
+    function handleKeyDown(event) {
+      if (event.ctrlKey || event.metaKey || event.altKey) return;
+
+      const target = event.target;
+      const isTypingField =
+        target instanceof HTMLInputElement ||
+        target instanceof HTMLTextAreaElement ||
+        target?.isContentEditable;
+
+      if (isTypingField) return;
+
+      if (event.key === "Enter") {
+        if (!selectedWord) return;
+        event.preventDefault();
+        submitSelectedWord();
+        return;
+      }
+
+      if (event.key === "Backspace") {
+        event.preventDefault();
+        setSelectedIndexes((current) => {
+          const nextIndexes = current.slice(0, -1);
+          setDraftWord(buildWordFromSelection(room.sourceWord, nextIndexes));
+          return nextIndexes;
+        });
+        return;
+      }
+
+      if (event.key === "Escape") {
+        event.preventDefault();
+        clearSelection();
+        return;
+      }
+
+      if (/^[a-zA-Z]$/.test(event.key)) {
+        const typedLetter = event.key.toLowerCase();
+        const letters = String(room.sourceWord || "").toLowerCase().split("");
+
+        setSelectedIndexes((current) => {
+          const nextIndex = letters.findIndex(
+            (letter, index) => letter === typedLetter && !current.includes(index),
+          );
+
+          if (nextIndex === -1) return current;
+
+          event.preventDefault();
+          const nextIndexes = [...current, nextIndex];
+          setDraftWord(buildWordFromSelection(room.sourceWord, nextIndexes));
+          return nextIndexes;
+        });
+      }
+    }
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isFinished, timeLeft, room?.sourceWord, selectedWord]);
 
   return (
     <main className="page-shell">
