@@ -39,6 +39,7 @@ const DAILY_CLAIMS_FILE =
 const rooms = new Map();
 const dailyClaims = loadDailyClaims(); // key: "walletAddress:YYYY-MM-DD" -> claim entry
 const dailyChallengeSessions = new Map();
+const recentDailySourceWords = [];
 const roomJoinLocks = new Map(); // roomId -> Set<walletAddress_lowercase> for concurrent join protection
 let roomStateVersion = 0;
 let leaderboardCache = null;
@@ -206,6 +207,39 @@ function getTreasuryOperatorMismatch() {
     treasuryWallet: TREASURY_WALLET,
     operatorWallet: wordPotContract.account,
   };
+}
+
+function rememberDailySourceWord(sourceWord) {
+  const normalized = String(sourceWord || "")
+    .trim()
+    .toUpperCase();
+  if (!normalized) return;
+
+  recentDailySourceWords.push(normalized);
+  while (recentDailySourceWords.length > 14) {
+    recentDailySourceWords.shift();
+  }
+}
+
+async function getDailyChallengeRound() {
+  let fallbackRound = null;
+
+  for (let attempt = 0; attempt < 10; attempt++) {
+    const round = await getDynamicRound("easy");
+    fallbackRound ||= round;
+
+    if (!recentDailySourceWords.includes(round.sourceWord)) {
+      rememberDailySourceWord(round.sourceWord);
+      return round;
+    }
+  }
+
+  if (fallbackRound) {
+    rememberDailySourceWord(fallbackRound.sourceWord);
+    return fallbackRound;
+  }
+
+  return getDynamicRound("easy");
 }
 
 function getTodayKey(walletAddress) {
@@ -717,7 +751,7 @@ app.get("/api/rounds/daily-challenge", async (_req, res) => {
       });
     }
 
-    const round = await getDynamicRound("medium");
+    const round = await getDailyChallengeRound();
     const sessionId = makeId("daily");
     const session = {
       id: sessionId,
