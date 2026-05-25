@@ -3504,17 +3504,17 @@ small,
   }
 
   .hero-logo {
-    gap: 0.7rem;
+    gap: 0.55rem;
     justify-content: center;
-    margin-bottom: 1.1rem;
+    margin-bottom: 0.9rem;
   }
 
   .hero-logo__img {
-    width: clamp(58px, 18vw, 76px);
+    width: clamp(42px, 13vw, 56px);
   }
 
   .hero-logo__name {
-    font-size: clamp(2.25rem, 11vw, 3.2rem);
+    font-size: clamp(1.9rem, 9vw, 2.65rem);
     letter-spacing: 0.04em;
   }
 
@@ -3611,11 +3611,11 @@ small,
   }
 
   .hero-logo__img {
-    width: 54px;
+    width: 42px;
   }
 
   .hero-logo__name {
-    font-size: 2.15rem;
+    font-size: 1.9rem;
   }
 
   .hero-actions--grid {
