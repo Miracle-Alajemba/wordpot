@@ -532,7 +532,9 @@ export function MatchRoomScreen({
   const [draftWord, setDraftWord] = useState("");
   const [selectedIndexes, setSelectedIndexes] = useState([]);
   const [pausedAutoScroll, setPausedAutoScroll] = useState(false);
+  const [submitBusy, setSubmitBusy] = useState(false);
   const chatFeedRef = useRef(null);
+  const submitBusyRef = useRef(false);
   const isFinished = room?.status === "finished";
   const myScore =
     room?.scoreboard?.find((entry) => entry.playerId === playerId)?.score || 0;
@@ -592,16 +594,26 @@ export function MatchRoomScreen({
     setPausedAutoScroll(!nearBottom);
   }
 
-  function submitSelectedWord() {
-    if (!selectedWord.trim()) return;
-    onSubmitWord(selectedWord);
+  async function submitSelectedWord() {
+    if (!selectedWord.trim() || submitBusyRef.current) return;
+
+    const wordToSubmit = selectedWord;
+    submitBusyRef.current = true;
+    setSubmitBusy(true);
     setDraftWord("");
     setSelectedIndexes([]);
+
+    try {
+      await onSubmitWord(wordToSubmit);
+    } finally {
+      submitBusyRef.current = false;
+      setSubmitBusy(false);
+    }
   }
 
-  function handleSubmit(event) {
+  async function handleSubmit(event) {
     event.preventDefault();
-    submitSelectedWord();
+    await submitSelectedWord();
   }
 
   function handleToggleTile(index) {
@@ -634,7 +646,7 @@ export function MatchRoomScreen({
       if (isTypingField) return;
 
       if (event.key === "Enter") {
-        if (!selectedWord) return;
+        if (!selectedWord || submitBusyRef.current) return;
         event.preventDefault();
         submitSelectedWord();
         return;
@@ -756,10 +768,10 @@ export function MatchRoomScreen({
                 <button
                   type="submit"
                   className="button-submit-soft"
-                  disabled={timeLeft === 0 || !selectedWord}
+                  disabled={timeLeft === 0 || !selectedWord || submitBusy}
                   style={{ flex: 1, padding: "0.875rem 1.5rem", fontSize: "1rem", fontWeight: "600" }}
                 >
-                  ✓ Submit Word
+                  {submitBusy ? "Submitting..." : "✓ Submit Word"}
                 </button>
               </div>
             </form>

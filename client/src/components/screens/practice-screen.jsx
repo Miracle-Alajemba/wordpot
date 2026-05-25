@@ -277,7 +277,11 @@ export function PracticeScreen({
             (letter, index) => letter === typedLetter && !current.includes(index),
           );
 
-          if (nextIndex === -1) return current;
+          if (nextIndex === -1) {
+            setFeedback(`No unused "${typedLetter.toUpperCase()}" tile is available.`);
+            setFeedbackTone("error");
+            return current;
+          }
 
           event.preventDefault();
           const nextIndexes = [...current, nextIndex];

@@ -114,7 +114,7 @@ export default function App() {
   const [paymentBusy, setPaymentBusy] = useState(false);
   const [inviteCopied, setInviteCopied] = useState(false);
   const [claimBusy, setClaimBusy] = useState(false);
-  const [dailyScore, setDailyScore] = useState(0);
+  const [, setDailyScore] = useState(0);
   const [dailyClaimed, setDailyClaimed] = useState(false);
   const [dailyClaimBusy, setDailyClaimBusy] = useState(false);
   const [dailyClaimTx, setDailyClaimTx] = useState("");
@@ -867,7 +867,6 @@ export default function App() {
             walletReady={walletReady}
             onConnectWallet={connectWallet}
             onBack={() => setScreen("home")}
-            dailyScore={dailyScore}
             onScoreUpdate={setDailyScore}
             dailyClaimed={dailyClaimed}
             dailyClaimBusy={dailyClaimBusy}

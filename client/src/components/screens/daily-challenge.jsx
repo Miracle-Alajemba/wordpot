@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { normalizeWord } from "../../game.js";
 
 const DAILY_TARGET_SCORE = 40;
@@ -27,7 +27,6 @@ export function DailyChallenge({
   walletAddress,
   onConnectWallet,
   onBack,
-  dailyScore,
   onScoreUpdate,
   dailyClaimed,
   dailyClaimBusy,
@@ -45,7 +44,9 @@ export function DailyChallenge({
   const [claimedWords, setClaimedWords] = useState([]);
   const [feedback, setFeedback] = useState("Start today's challenge when you are ready.");
   const [feedbackTone, setFeedbackTone] = useState("neutral");
-  const [loadingRound, setLoadingRound] = useState(true);
+  const [loadingRound, setLoadingRound] = useState(false);
+  const [wordSubmitBusy, setWordSubmitBusy] = useState(false);
+  const wordSubmitBusyRef = useRef(false);
 
   const sourceLetters = String(roundSeed?.sourceWord || "").split("");
   const claimedSet = useMemo(
@@ -55,7 +56,10 @@ export function DailyChallenge({
   const selectedWord = draftWord;
   const walletConnected = isWalletAddress(walletAddress);
 
-  async function loadDailyRound(nextPhase = "idle") {
+  async function loadDailyRound(
+    nextPhase = "idle",
+    nextFeedback = "Start today's challenge when you are ready.",
+  ) {
     setLoadingRound(true);
     setFeedback("Loading today's challenge word...");
     setFeedbackTone("neutral");
@@ -78,7 +82,7 @@ export function DailyChallenge({
       setDraftWord("");
       setSelectedIndexes([]);
       setClaimedWords([]);
-      setFeedback("Start today's challenge when you are ready.");
+      setFeedback(nextFeedback);
       setFeedbackTone("neutral");
     } catch (error) {
       setFeedback(error.message || "Unable to load Daily Challenge.");
@@ -89,11 +93,6 @@ export function DailyChallenge({
   }
 
   useEffect(() => {
-    if (!walletConnected) return;
-    loadDailyRound("idle");
-  }, [walletConnected, walletAddress]);
-
-  useEffect(() => {
     if (phase !== "playing") return undefined;
 
     const interval = window.setInterval(() => {
@@ -101,7 +100,6 @@ export function DailyChallenge({
         if (current <= 1) {
           window.clearInterval(interval);
           setPhase("finished");
-          onScoreUpdate(score);
           return 0;
         }
         return current - 1;
@@ -109,17 +107,28 @@ export function DailyChallenge({
     }, 1000);
 
     return () => window.clearInterval(interval);
-  }, [phase, score, onScoreUpdate]);
+  }, [phase]);
 
-  function startChallenge() {
-    setPhase("playing");
-    setTimeLeft(DAILY_ROUND_SECONDS);
-    setFeedback(`Build valid words fast. Reach ${DAILY_TARGET_SCORE} points to unlock today's reward.`);
-    setFeedbackTone("neutral");
+  async function startChallenge() {
+    if (loadingRound) return;
+
+    await loadDailyRound(
+      "playing",
+      `Build valid words fast. Reach ${DAILY_TARGET_SCORE} points to unlock today's reward.`,
+    );
   }
 
   function resetChallenge() {
-    loadDailyRound("idle");
+    setRoundSeed(null);
+    setPhase("idle");
+    setTimeLeft(DAILY_ROUND_SECONDS);
+    setScore(0);
+    onScoreUpdate(0);
+    setDraftWord("");
+    setSelectedIndexes([]);
+    setClaimedWords([]);
+    setFeedback("Start today's challenge when you are ready.");
+    setFeedbackTone("neutral");
   }
 
   function handleToggleTile(index) {
@@ -140,17 +149,21 @@ export function DailyChallenge({
   }
 
   async function submitSelectedWord() {
-    if (phase !== "playing" || !roundSeed) return;
+    if (phase !== "playing" || !roundSeed || wordSubmitBusyRef.current) return;
 
     const normalized = normalizeWord(selectedWord);
     if (!normalized) return;
 
+    wordSubmitBusyRef.current = true;
+    setWordSubmitBusy(true);
     setDraftWord("");
     setSelectedIndexes([]);
 
     if (claimedSet.has(normalized)) {
       setFeedback("Already claimed in this round.");
       setFeedbackTone("error");
+      wordSubmitBusyRef.current = false;
+      setWordSubmitBusy(false);
       return;
     }
 
@@ -181,6 +194,9 @@ export function DailyChallenge({
     } catch (error) {
       setFeedback(error.message || "Unable to claim this word.");
       setFeedbackTone("error");
+    } finally {
+      wordSubmitBusyRef.current = false;
+      setWordSubmitBusy(false);
     }
   }
 
@@ -204,7 +220,7 @@ export function DailyChallenge({
       if (isTypingField) return;
 
       if (event.key === "Enter") {
-        if (!selectedWord) return;
+        if (!selectedWord || wordSubmitBusyRef.current) return;
         event.preventDefault();
         submitSelectedWord();
         return;
@@ -235,7 +251,11 @@ export function DailyChallenge({
             (letter, index) => letter === typedLetter && !current.includes(index),
           );
 
-          if (nextIndex === -1) return current;
+          if (nextIndex === -1) {
+            setFeedback(`No unused "${typedLetter.toUpperCase()}" tile is available.`);
+            setFeedbackTone("error");
+            return current;
+          }
 
           event.preventDefault();
           const nextIndexes = [...current, nextIndex];
@@ -351,8 +371,8 @@ export function DailyChallenge({
               Start a free 60-second round. Reach {DAILY_TARGET_SCORE} points to unlock a once-per-day CELO reward.
             </p>
             <div className="hero-actions">
-              <button type="button" onClick={startChallenge}>
-                Start Daily Challenge
+              <button type="button" onClick={startChallenge} disabled={loadingRound}>
+                {loadingRound ? "Preparing..." : "Start Daily Challenge"}
               </button>
             </div>
           </div>
@@ -432,8 +452,8 @@ export function DailyChallenge({
               <button type="button" className="button-secondary" onClick={clearSelection}>
                 Clear
               </button>
-              <button type="submit" disabled={!selectedWord}>
-                Claim Word
+              <button type="submit" disabled={!selectedWord || wordSubmitBusy}>
+                {wordSubmitBusy ? "Claiming..." : "Claim Word"}
               </button>
             </form>
 
