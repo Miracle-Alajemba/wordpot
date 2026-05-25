@@ -281,7 +281,7 @@ export default function App() {
   async function signWalletMessage(message) {
     const provider = getInjectedProvider();
     if (!provider?.request) {
-      throw new Error("Open WordPot inside MiniPay or a wallet browser to sign.");
+      throw new Error("Reconnect your wallet in this browser, then claim again.");
     }
 
     return provider.request({
@@ -295,6 +295,11 @@ export default function App() {
     setDailyClaimMessage("");
 
     if (!isWalletAddress(walletAddress.trim())) {
+      await connectWallet();
+      return;
+    }
+
+    if (!walletReady) {
       await connectWallet();
       return;
     }

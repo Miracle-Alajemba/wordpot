@@ -25,6 +25,7 @@ function buildWordFromSelection(sourceWord, selectedIndexes) {
 export function DailyChallenge({
   apiBaseUrl,
   walletAddress,
+  walletReady,
   onConnectWallet,
   onBack,
   onScoreUpdate,
@@ -270,7 +271,7 @@ export function DailyChallenge({
   }, [phase, roundSeed, selectedWord, selectedIndexes, claimedSet]);
 
   async function handleClaim() {
-    if (!walletConnected) {
+    if (!walletConnected || !walletReady) {
       await onConnectWallet();
       return;
     }
@@ -427,9 +428,9 @@ export function DailyChallenge({
                   <button type="button" onClick={handleClaim} disabled={dailyClaimBusy}>
                     {dailyClaimBusy
                       ? "Sending reward..."
-                      : walletConnected
+                      : walletConnected && walletReady
                         ? "Claim 0.01 CELO"
-                        : "Connect Wallet to Claim"}
+                        : "Reconnect Wallet to Claim"}
                   </button>
                 </div>
               </>
