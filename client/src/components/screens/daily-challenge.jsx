@@ -232,41 +232,43 @@ export function DailyChallenge({
           <p className="eyebrow">Daily Challenge</p>
         </div>
 
-        <div className="play-hero">
-          <div>
-            <p className="play-label">Today's Word</p>
-            <h1>{roundSeed?.sourceWord || "LOADING"}</h1>
-            <p className="lede">
-              Score {DAILY_TARGET_SCORE} points in one free round to claim today's 0.01 CELO reward.
-            </p>
-            <div className="letter-rack letter-rack--play">
-              {sourceLetters.map((letter, index) => (
-                <button
-                  key={`${letter}-${index}`}
-                  type="button"
-                  className={`letter-tile letter-tile--play letter-tile--interactive ${selectedIndexes.includes(index) ? "letter-tile--selected" : ""}`}
-                  onClick={() => handleToggleTile(index)}
-                  disabled={phase !== "playing"}
-                  aria-label={`Select letter ${letter}`}
-                >
-                  {letter}
-                </button>
-              ))}
+        {!loadingRound && phase !== "idle" ? (
+          <div className="play-hero">
+            <div>
+              <p className="play-label">Today's Word</p>
+              <h1>{roundSeed?.sourceWord || "LOADING"}</h1>
+              <p className="lede">
+                Score {DAILY_TARGET_SCORE} points in one free round to claim today's 0.01 CELO reward.
+              </p>
+              <div className="letter-rack letter-rack--play">
+                {sourceLetters.map((letter, index) => (
+                  <button
+                    key={`${letter}-${index}`}
+                    type="button"
+                    className={`letter-tile letter-tile--play letter-tile--interactive ${selectedIndexes.includes(index) ? "letter-tile--selected" : ""}`}
+                    onClick={() => handleToggleTile(index)}
+                    disabled={phase !== "playing"}
+                    aria-label={`Select letter ${letter}`}
+                  >
+                    {letter}
+                  </button>
+                ))}
+              </div>
+              <div className="word-preview word-preview--practice">
+                {selectedWord
+                  ? selectedWord.toUpperCase().split("").join(" - ")
+                  : "Tap letters to form a word"}
+              </div>
             </div>
-            <div className="word-preview word-preview--practice">
-              {selectedWord
-                ? selectedWord.toUpperCase().split("").join(" - ")
-                : "Tap letters to form a word"}
-            </div>
-          </div>
 
-          <div className="score-row">
-            <ScoreBadge label="Target" value={`${DAILY_TARGET_SCORE} pts`} />
-            <ScoreBadge label="Time left" value={`${timeLeft}s`} />
-            <ScoreBadge label="Score" value={score} />
-            <ScoreBadge label="Words" value={claimedWords.length} />
+            <div className="score-row">
+              <ScoreBadge label="Target" value={`${DAILY_TARGET_SCORE} pts`} />
+              <ScoreBadge label="Time left" value={`${timeLeft}s`} />
+              <ScoreBadge label="Score" value={score} />
+              <ScoreBadge label="Words" value={claimedWords.length} />
+            </div>
           </div>
-        </div>
+        ) : null}
 
         {loadingRound ? (
           <div className="results-sheet">
