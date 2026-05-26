@@ -294,7 +294,9 @@ export default function App() {
   }
 
   useEffect(() => {
-    checkDailyStatus();
+    if (screen === "daily-challenge" && isWalletAddress(walletAddress.trim())) {
+      checkDailyStatus();
+    }
   }, [screen, walletAddress]);
 
   async function signWalletMessage(message) {

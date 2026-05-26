@@ -309,6 +309,48 @@ export function DailyChallenge({
     );
   }
 
+  if (dailyClaimed) {
+    return (
+      <main className="page-shell">
+        <section className="play-shell">
+          <div className="play-header">
+            <button type="button" className="ghost-button" onClick={onBack}>
+              Back
+            </button>
+            <p className="eyebrow">Daily Challenge</p>
+          </div>
+          <div className="results-sheet" style={{ textAlign: "center", padding: "3rem 1.5rem" }}>
+            <div style={{ fontSize: "2.5rem", marginBottom: "1rem" }}>🏆</div>
+            <h2>Already Claimed Today</h2>
+            <p style={{ marginBottom: "0.5rem" }}>
+              You have already claimed your 0.01 CELO reward today.
+            </p>
+            <p style={{ marginBottom: "1.5rem" }}>
+              Come back tomorrow for your next reward.
+            </p>
+            {dailyClaimTx ? (
+              <div className="notice-strip notice-strip--success" style={{ marginBottom: "1.5rem" }}>
+                Today's claim TX:{" "}
+                <a
+                  href={`https://celoscan.io/tx/${dailyClaimTx}`}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  {dailyClaimTx.slice(0, 10)}...{dailyClaimTx.slice(-8)}
+                </a>
+              </div>
+            ) : null}
+            <div className="hero-actions" style={{ justifyContent: "center" }}>
+              <button type="button" className="button-secondary" onClick={onBack}>
+                Back to Home
+              </button>
+            </div>
+          </div>
+        </section>
+      </main>
+    );
+  }
+
   return (
     <main className="page-shell">
       <section className="play-shell">
