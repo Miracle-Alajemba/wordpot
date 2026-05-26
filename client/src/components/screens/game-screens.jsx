@@ -62,6 +62,29 @@ export function HomeScreen({
   walletHint,
   roomError,
 }) {
+  const [stats, setStats] = useState({ prizePool: "--", playersOnline: 0, activeRooms: 0 });
+
+  useEffect(() => {
+    let mounted = true;
+    async function fetchStats() {
+      try {
+        const res = await fetch(`${API_BASE_URL.replace(/\/$/, "")}/stats`);
+        if (!res.ok) return;
+        const json = await res.json();
+        if (!mounted) return;
+        setStats({ prizePool: json.prizePool || "--", playersOnline: json.playersOnline || 0, activeRooms: json.activeRooms || 0 });
+      } catch (err) {
+        // ignore
+      }
+    }
+
+    fetchStats();
+    const id = setInterval(fetchStats, 30_000);
+    return () => {
+      mounted = false;
+      clearInterval(id);
+    };
+  }, []);
   const joinLabel = isMiniPay && hasInjectedProvider
     ? walletReady
       ? "Join Game"
@@ -231,11 +254,11 @@ export function HomeScreen({
           <div className="featured-stats">
             <div className="featured-stats__item">
               <span>Prize Pool</span>
-              <strong>$248</strong>
+              <strong>{stats.prizePool}</strong>
             </div>
             <div className="featured-stats__item">
               <span>Players Online</span>
-              <strong>124</strong>
+              <strong>{stats.playersOnline}</strong>
             </div>
             <div className="featured-stats__item">
               <span>Connected Wallet</span>

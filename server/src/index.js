@@ -708,6 +708,31 @@ app.get("/api/leaderboard", (_req, res) => {
   });
 });
 
+app.get("/api/stats", (_req, res) => {
+  try {
+    let totalPrize = 0;
+    let playersOnline = 0;
+    let activeRooms = 0;
+
+    for (const room of rooms.values()) {
+      if (room.status === "waiting" || room.status === "active") {
+        activeRooms += 1;
+        playersOnline += (room.players || []).length;
+        totalPrize += Number(getRewardPool((room.players || []).length));
+      }
+    }
+
+    return res.json({
+      prizePool: `${totalPrize.toFixed(4)} CELO`,
+      playersOnline,
+      activeRooms,
+      updatedAt: new Date().toISOString(),
+    });
+  } catch (error) {
+    return res.status(500).json({ error: error.message || "Unable to compute stats" });
+  }
+});
+
 const practiceRoundCache = new Map();
 const PRACTICE_CACHE_MS = 10 * 60 * 1000;
 
