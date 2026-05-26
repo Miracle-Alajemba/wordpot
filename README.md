@@ -28,8 +28,8 @@ Players join with CELO, compete in a live room, and rewards are distributed base
 **Practice Arena**
 Play freely without paying. Full word validation, scoring, and source word mechanics are active. No wallet needed to start.
 
-**Daily Challenge** *(coming soon)*
-Score at least 120 points in Practice Arena, connect your wallet, and claim a daily CELO reward. One claim per wallet per day. Wallet-based claiming will be enabled in the next release.
+**Daily Challenge**
+Play one free timed round per wallet per day. Reach the target score, then claim a real `0.01 CELO` reward from the funded WordPot smart contract. Once a wallet has played or claimed for the day, it must wait until the next day.
 
 ---
 
@@ -87,15 +87,18 @@ The remaining 10% goes to the WordPot treasury.
 - Smart Contract: Solidity on Celo Mainnet
 - Wallet: MiniPay + injected wallets via viem
 - Network: Celo Mainnet
-- Contract Address: `0x764b3f8761CEB44e6FFA6480484b706C3c3A8284`
+- Room Contract Address: `0x764b3f8761CEB44e6FFA6480484b706C3c3A8284`
+- Daily Challenge Contract Address: `0x4302D510383C6be4a284759BB0616fc6ED57e9A1`
 
 ---
 
 ## Onchain
 
 - Live App: https://wordpot.vercel.app
-- Contract: `0x764b3f8761CEB44e6FFA6480484b706C3c3A8284`
-- Explorer: https://celoscan.io/address/0x764b3f8761CEB44e6FFA6480484b706C3c3A8284
+- Room Contract: `0x764b3f8761CEB44e6FFA6480484b706C3c3A8284`
+- Room Explorer: https://celoscan.io/address/0x764b3f8761CEB44e6FFA6480484b706C3c3A8284
+- Daily Challenge Contract: `0x4302D510383C6be4a284759BB0616fc6ED57e9A1`
+- Daily Challenge Explorer: https://celoscan.io/address/0x4302D510383C6be4a284759BB0616fc6ED57e9A1
 
 ---
 
@@ -151,15 +154,15 @@ npm run dev
 
 ```
 TREASURY_WALLET
-WORDPOT_CONTRACT_ADDRESS
+WORDPOT_CONTRACT_ADDRESS=0x4302D510383C6be4a284759BB0616fc6ED57e9A1
 CONTRACT_OPERATOR_PRIVATE_KEY
 CELO_CHAIN_ID
 JOIN_PAYMENT_WEI
 JOIN_PAYMENT_DISPLAY
 ```
 
+`WORDPOT_CONTRACT_ADDRESS=0x4302D510383C6be4a284759BB0616fc6ED57e9A1` is the current contract used for Daily Challenge rewards.
+
 If `WORDPOT_CONTRACT_ADDRESS` is not set the lobby falls back to treasury beta join-payment mode while contract payout stays in preview.
-
-
 
 
