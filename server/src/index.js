@@ -195,20 +195,6 @@ function isWalletAddress(value) {
   return /^0x[a-fA-F0-9]{40}$/.test(String(value || "").trim());
 }
 
-function getTreasuryOperatorMismatch() {
-  if (!isWalletAddress(TREASURY_WALLET)) return null;
-  if (!isWalletAddress(wordPotContract.account)) return null;
-
-  if (TREASURY_WALLET.toLowerCase() === wordPotContract.account.toLowerCase()) {
-    return null;
-  }
-
-  return {
-    treasuryWallet: TREASURY_WALLET,
-    operatorWallet: wordPotContract.account,
-  };
-}
-
 function rememberDailySourceWord(sourceWord) {
   const normalized = String(sourceWord || "")
     .trim()
@@ -910,15 +896,6 @@ app.post("/api/daily/claim", async (req, res) => {
   if (!wordPotContract.enabled || !isWalletAddress(WORDPOT_CONTRACT_ADDRESS)) {
     return res.status(503).json({
       error: "Daily rewards are not available right now. Try again later.",
-    });
-  }
-
-  const treasuryMismatch = getTreasuryOperatorMismatch();
-  if (treasuryMismatch) {
-    console.error("[daily-claim] treasury/operator mismatch:", treasuryMismatch);
-    return res.status(503).json({
-      error:
-        "Daily rewards are paused because the treasury wallet does not match the backend reward signer.",
     });
   }
 
