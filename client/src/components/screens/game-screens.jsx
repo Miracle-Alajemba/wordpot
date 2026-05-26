@@ -81,11 +81,32 @@ export function HomeScreen({
             </div>
           </div>
           <div className="hero-logo">
-            <img
-              src="/logo.png"
-              alt="WordPot"
+            <svg
               className="hero-logo__img"
-            />
+              role="img"
+              viewBox="0 0 160 160"
+              xmlns="http://www.w3.org/2000/svg"
+              aria-hidden={false}
+            >
+              <defs>
+                <linearGradient id="gp" x1="0" x2="1">
+                  <stop offset="0%" stopColor="#fff6e0" />
+                  <stop offset="45%" stopColor="#ffd27a" />
+                  <stop offset="100%" stopColor="#ffb84d" />
+                </linearGradient>
+                <filter id="softShadow" x="-50%" y="-50%" width="200%" height="200%">
+                  <feDropShadow dx="0" dy="6" stdDeviation="12" floodColor="#000" floodOpacity="0.35" />
+                </filter>
+              </defs>
+              <g filter="url(#softShadow)">
+                <rect x="8" y="8" width="144" height="144" rx="22" fill="url(#gp)" />
+                <rect x="12" y="12" width="136" height="136" rx="18" fill="#0b0f16" opacity="0.06" />
+              </g>
+              <g transform="translate(0,6)">
+                <text x="50%" y="60%" textAnchor="middle" fill="#0b0f16" fontFamily="Oxanium, Rajdhani, sans-serif" fontWeight="800" fontSize="56">WP</text>
+              </g>
+              <title>WordPot logo</title>
+            </svg>
             <h1 className="hero-logo__name">WordPot</h1>
           </div>
 
