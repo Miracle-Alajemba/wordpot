@@ -296,7 +296,7 @@ button:disabled {
 .hero-logo__name {
   color: #f0f0f5;
   font-family: "Oxanium", "Rajdhani", sans-serif;
-  font-size: 2.5rem;
+  font-size: 2rem;
   font-weight: 600;
   letter-spacing: 0.06em;
   line-height: 1;
@@ -3514,7 +3514,7 @@ small,
   }
 
   .hero-logo__name {
-    font-size: clamp(1.9rem, 9vw, 2.65rem);
+    font-size: clamp(1.6rem, 9vw, 2.2rem);
     letter-spacing: 0.04em;
   }
 
@@ -3615,7 +3615,7 @@ small,
   }
 
   .hero-logo__name {
-    font-size: 1.9rem;
+    font-size: 1.6rem;
   }
 
   .hero-actions--grid {
