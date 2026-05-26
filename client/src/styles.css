@@ -299,7 +299,7 @@ button:disabled {
   align-items: center;
   display: flex;
   flex-direction: row;
-  gap: 1rem;
+  gap: 0.5rem;
   margin-bottom: 1.5rem;
 }
 
@@ -3523,7 +3523,7 @@ small,
   }
 
   .hero-logo {
-    gap: 0.55rem;
+    gap: 0.35rem;
     justify-content: center;
     flex-direction: column;
     margin-bottom: 0.9rem;
