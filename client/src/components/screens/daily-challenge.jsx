@@ -30,10 +30,12 @@ export function DailyChallenge({
   onBack,
   onScoreUpdate,
   dailyClaimed,
+  dailyPlayed,
   dailyClaimBusy,
   dailyClaimTx,
   dailyClaimError,
   dailyClaimMessage,
+  onRecordPlay,
   onClaimDaily,
 }) {
   const [roundSeed, setRoundSeed] = useState(null);
@@ -47,6 +49,7 @@ export function DailyChallenge({
   const [feedbackTone, setFeedbackTone] = useState("neutral");
   const [loadingRound, setLoadingRound] = useState(false);
   const [wordSubmitBusy, setWordSubmitBusy] = useState(false);
+  const [currentPlayStarted, setCurrentPlayStarted] = useState(false);
   const wordSubmitBusyRef = useRef(false);
 
   const sourceLetters = String(roundSeed?.sourceWord || "").split("");
@@ -113,6 +116,13 @@ export function DailyChallenge({
   async function startChallenge() {
     if (loadingRound) return;
 
+    setCurrentPlayStarted(true);
+    const allowed = await onRecordPlay();
+    if (!allowed) {
+      setCurrentPlayStarted(false);
+      return;
+    }
+
     await loadDailyRound(
       "playing",
       `Build valid words fast. Reach ${DAILY_TARGET_SCORE} points to unlock today's reward.`,
@@ -128,6 +138,7 @@ export function DailyChallenge({
     setDraftWord("");
     setSelectedIndexes([]);
     setClaimedWords([]);
+    setCurrentPlayStarted(false);
     setFeedback("Start today's challenge when you are ready.");
     setFeedbackTone("neutral");
   }
@@ -301,6 +312,36 @@ export function DailyChallenge({
               </button>
               <button type="button" className="button-secondary" onClick={onBack}>
                 Go Back
+              </button>
+            </div>
+          </div>
+        </section>
+      </main>
+    );
+  }
+
+  if (dailyPlayed && !dailyClaimed && !currentPlayStarted) {
+    return (
+      <main className="page-shell">
+        <section className="play-shell">
+          <div className="play-header">
+            <button type="button" className="ghost-button" onClick={onBack}>
+              Back
+            </button>
+            <p className="eyebrow">Daily Challenge</p>
+          </div>
+          <div className="results-sheet" style={{ textAlign: "center", padding: "3rem 1.5rem" }}>
+            <div style={{ fontSize: "2.5rem", marginBottom: "1rem" }}>⏳</div>
+            <h2>Already Played Today</h2>
+            <p style={{ marginBottom: "0.5rem" }}>
+              You have already used your Daily Challenge for today.
+            </p>
+            <p style={{ marginBottom: "1.5rem" }}>
+              Come back tomorrow for a new round and another chance to claim 0.01 CELO.
+            </p>
+            <div className="hero-actions" style={{ justifyContent: "center" }}>
+              <button type="button" className="button-secondary" onClick={onBack}>
+                Back to Home
               </button>
             </div>
           </div>

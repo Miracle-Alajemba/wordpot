@@ -135,6 +135,7 @@ export default function App() {
   const [claimBusy, setClaimBusy] = useState(false);
   const [, setDailyScore] = useState(0);
   const [dailyClaimed, setDailyClaimed] = useState(false);
+  const [dailyPlayed, setDailyPlayed] = useState(false);
   const [dailyClaimBusy, setDailyClaimBusy] = useState(false);
   const [dailyClaimTx, setDailyClaimTx] = useState("");
   const [dailyClaimError, setDailyClaimError] = useState("");
@@ -273,7 +274,6 @@ export default function App() {
   }, [walletAddress, walletReady]);
 
   async function checkDailyStatus() {
-    if (screen !== "daily-challenge") return;
     if (!isWalletAddress(walletAddress.trim())) return;
 
     try {
@@ -283,13 +283,14 @@ export default function App() {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || "Unable to check daily claim status.");
+        throw new Error(data.error || "Unable to check daily status.");
       }
 
       setDailyClaimed(Boolean(data.claimed));
+      setDailyPlayed(Boolean(data.played));
       setDailyClaimTx(data.txHash || "");
     } catch (error) {
-      setDailyClaimError(error.message || "Unable to check daily claim status.");
+      setDailyClaimError(error.message || "Unable to check daily status.");
     }
   }
 
@@ -298,6 +299,33 @@ export default function App() {
       checkDailyStatus();
     }
   }, [screen, walletAddress]);
+
+  async function recordDailyPlay() {
+    if (!isWalletAddress(walletAddress.trim())) return false;
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/daily/play`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ walletAddress: walletAddress.trim() }),
+      });
+      const data = await response.json();
+
+      if (response.status === 409) {
+        setDailyPlayed(true);
+        return false;
+      }
+
+      if (!response.ok) {
+        throw new Error(data.error || "Unable to record play.");
+      }
+
+      setDailyPlayed(true);
+      return true;
+    } catch {
+      return false;
+    }
+  }
 
   async function signWalletMessage(message) {
     const provider = getInjectedProvider();
@@ -351,6 +379,7 @@ export default function App() {
       }
 
       setDailyClaimed(true);
+      setDailyPlayed(true);
       setDailyClaimTx(data.txHash || "");
       setDailyClaimMessage("Claimed! 0.01 CELO is on its way to your wallet.");
     } catch (error) {
@@ -895,10 +924,12 @@ export default function App() {
             onBack={() => setScreen("home")}
             onScoreUpdate={setDailyScore}
             dailyClaimed={dailyClaimed}
+            dailyPlayed={dailyPlayed}
             dailyClaimBusy={dailyClaimBusy}
             dailyClaimTx={dailyClaimTx}
             dailyClaimError={dailyClaimError}
             dailyClaimMessage={dailyClaimMessage}
+            onRecordPlay={recordDailyPlay}
             onClaimDaily={claimDailyReward}
           />
         </Suspense>

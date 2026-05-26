@@ -38,6 +38,7 @@ const DAILY_CLAIMS_FILE =
   new URL("../daily-claims.json", import.meta.url);
 const rooms = new Map();
 const dailyClaims = loadDailyClaims(); // key: "walletAddress:YYYY-MM-DD" -> claim entry
+const dailyPlays = new Map(); // key: "walletAddress:YYYY-MM-DD" -> play entry
 const dailyChallengeSessions = new Map();
 const recentDailySourceWords = [];
 const roomJoinLocks = new Map(); // roomId -> Set<walletAddress_lowercase> for concurrent join protection
@@ -229,6 +230,11 @@ async function getDailyChallengeRound() {
 }
 
 function getTodayKey(walletAddress) {
+  const today = new Date().toISOString().slice(0, 10);
+  return `${walletAddress.toLowerCase()}:${today}`;
+}
+
+function getTodayPlayKey(walletAddress) {
   const today = new Date().toISOString().slice(0, 10);
   return `${walletAddress.toLowerCase()}:${today}`;
 }
@@ -893,6 +899,14 @@ app.post("/api/daily/claim", async (req, res) => {
     });
   }
 
+  const playKey = getTodayPlayKey(walletAddress);
+  if (!dailyPlays.has(playKey)) {
+    dailyPlays.set(playKey, {
+      walletAddress: walletAddress.toLowerCase(),
+      playedAt: new Date().toISOString(),
+    });
+  }
+
   if (!wordPotContract.enabled || !isWalletAddress(WORDPOT_CONTRACT_ADDRESS)) {
     return res.status(503).json({
       error: "Daily rewards are not available right now. Try again later.",
@@ -939,7 +953,7 @@ app.post("/api/daily/claim", async (req, res) => {
   }
 });
 
-app.get("/api/daily/status", async (req, res) => {
+app.get("/api/daily/status", (req, res) => {
   const walletAddress = String(req.query?.walletAddress || "").trim();
 
   if (!isWalletAddress(walletAddress)) {
@@ -949,13 +963,40 @@ app.get("/api/daily/status", async (req, res) => {
   }
 
   const claimKey = getTodayKey(walletAddress);
+  const playKey = getTodayPlayKey(walletAddress);
   const claimed = dailyClaims.has(claimKey);
-  const entry = claimed ? dailyClaims.get(claimKey) : null;
+  const played = dailyPlays.has(playKey);
+  const claimEntry = claimed ? dailyClaims.get(claimKey) : null;
   return res.json({
     claimed,
-    claimedAt: entry?.claimedAt || null,
-    txHash: entry?.txHash || null,
+    played,
+    claimedAt: claimEntry?.claimedAt || null,
+    txHash: claimEntry?.txHash || null,
   });
+});
+
+app.post("/api/daily/play", (req, res) => {
+  const walletAddress = String(req.body?.walletAddress || "").trim();
+  if (!isWalletAddress(walletAddress)) {
+    return res
+      .status(400)
+      .json({ error: "A valid wallet address is required." });
+  }
+
+  const playKey = getTodayPlayKey(walletAddress);
+  if (dailyPlays.has(playKey)) {
+    return res.status(409).json({
+      error: "You have already played the Daily Challenge today. Come back tomorrow.",
+      played: true,
+    });
+  }
+
+  dailyPlays.set(playKey, {
+    walletAddress: walletAddress.toLowerCase(),
+    playedAt: new Date().toISOString(),
+  });
+
+  return res.json({ ok: true, played: true });
 });
 
 // FIX: contract room created in background so player joins instantly
