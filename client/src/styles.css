@@ -221,7 +221,9 @@ button:disabled {
   margin: 0;
   text-transform: uppercase;
   font-weight: 700;
-  color: transparent;
+  /* solid-color fallback for older browsers */
+  color: #ffffff;
+  /* premium gradient text effect */
   background: linear-gradient(90deg, #ffffff 0%, #ffe599 40%, #ffcc66 100%);
   -webkit-background-clip: text;
   background-clip: text;
@@ -231,6 +233,16 @@ button:disabled {
 
 .hero-copy h1 {
   font-size: clamp(2.2rem, 6vw, 4.2rem);
+}
+
+@media (max-width: 420px) {
+  .hero-copy h1,
+  .play-hero h1 {
+    font-size: clamp(1.6rem, 10vw, 2.6rem);
+    letter-spacing: 0.04em;
+    font-weight: 600;
+    text-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+  }
 }
 
 .play-hero h1 {
@@ -296,7 +308,7 @@ button:disabled {
   display: block;
   filter: drop-shadow(0 4px 16px rgba(201, 146, 10, 0.3));
   height: auto;
-  width: 160px;
+  width: clamp(64px, 12vw, 160px);
 }
 
 .hero-logo__name {
@@ -3512,6 +3524,7 @@ small,
   .hero-logo {
     gap: 0.55rem;
     justify-content: center;
+    flex-direction: column;
     margin-bottom: 0.9rem;
   }
 
