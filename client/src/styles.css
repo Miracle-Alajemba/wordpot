@@ -1827,6 +1827,28 @@ button:hover {
   font-size: 1rem;
 }
 
+.featured-stats__details {
+  width: 100%;
+  display: grid;
+  gap: 0.6rem;
+  grid-auto-flow: column;
+  align-items: center;
+  margin-top: 0.6rem;
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 220ms ease, opacity 200ms ease;
+  opacity: 0;
+}
+
+.featured-stats__details.is-open {
+  max-height: 160px;
+  opacity: 1;
+}
+
+.featured-stats__details .featured-stats__item {
+  min-width: 140px;
+}
+
 .letter-tile {
   background: rgba(255, 255, 255, 0.84);
   border: 1px solid rgba(122, 159, 181, 0.18);

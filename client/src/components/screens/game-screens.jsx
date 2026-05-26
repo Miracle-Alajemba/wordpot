@@ -63,6 +63,7 @@ export function HomeScreen({
   roomError,
 }) {
   const [stats, setStats] = useState({ prizePool: "--", playersOnline: 0, activeRooms: 0 });
+  const [detailsOpen, setDetailsOpen] = useState(false);
 
   useEffect(() => {
     let mounted = true;
@@ -253,16 +254,30 @@ export function HomeScreen({
         <article className="panel panel-wide">
           <div className="featured-stats">
             <div className="featured-stats__item">
-              <span>Prize Pool</span>
-              <strong>{stats.prizePool}</strong>
-            </div>
-            <div className="featured-stats__item">
               <span>Players Online</span>
               <strong>{stats.playersOnline}</strong>
             </div>
             <div className="featured-stats__item">
               <span>Connected Wallet</span>
               <strong>{walletAddress ? shortenWalletAddress(walletAddress) : "Not connected"}</strong>
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+              <button type="button" className="button-secondary" onClick={() => setDetailsOpen((v) => !v)}>
+                {detailsOpen ? "Hide Details" : "Details"}
+              </button>
+              <button type="button" onClick={onQuickMatch} style={{ minHeight: 48 }}>
+                Quick Join
+              </button>
+            </div>
+            <div className={`featured-stats__details ${detailsOpen ? "is-open" : ""}`}>
+              <div className="featured-stats__item">
+                <span>Prize Pool</span>
+                <strong>{stats.prizePool}</strong>
+              </div>
+              <div className="featured-stats__item">
+                <span>Active Rooms</span>
+                <strong>{stats.activeRooms}</strong>
+              </div>
             </div>
           </div>
         </article>
