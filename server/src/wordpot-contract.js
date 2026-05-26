@@ -157,14 +157,25 @@ export function createWordPotContractService(options) {
         throw new Error("Invalid reward wallet address.");
       }
 
-      const hash = await walletClient.sendTransaction({
-        account,
-        chain,
-        to: toAddress,
-        value: BigInt(amountWei),
-      });
-      await publicClient.waitForTransactionReceipt({ hash });
-      return hash;
+      try {
+        console.log("[daily-reward] contract_call_start", {
+          toAddress,
+          amountWei,
+          contractAddress,
+        });
+
+        const hash = await contract.write.sendDailyReward([
+          toAddress,
+          BigInt(amountWei),
+        ]);
+
+        console.log("[daily-reward] tx_hash", { hash });
+        await publicClient.waitForTransactionReceipt({ hash });
+        return hash;
+      } catch (error) {
+        console.error("[daily-reward] failed:", error.message);
+        throw error;
+      }
     },
     async createRoom(entryFeeWei) {
       const hash = await contract.write.createRoom([BigInt(entryFeeWei)]);

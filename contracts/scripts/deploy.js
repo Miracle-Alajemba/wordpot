@@ -24,6 +24,8 @@ async function main() {
 
   const address = await contract.getAddress();
   console.log(`WordPotArena deployed to: ${address}`);
+  console.log("WordPotArena deployed to:", contract.target || contract.address);
+  console.log("Update WORDPOT_CONTRACT_ADDRESS in server/.env with the address above");
   console.log("");
   console.log("Next steps:");
   console.log(`1. Put WORDPOT_CONTRACT_ADDRESS=${address} into server/.env`);

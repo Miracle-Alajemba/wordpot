@@ -31,6 +31,25 @@ const WORDPOT_ARENA_ABI = [
     stateMutability: "nonpayable",
     type: "function",
   },
+  {
+    inputs: [
+      { internalType: "address payable", name: "player", type: "address" },
+      { internalType: "uint256", name: "amount", type: "uint256" },
+    ],
+    name: "sendDailyReward",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+  {
+    inputs: [
+      { internalType: "address payable", name: "recipient", type: "address" },
+    ],
+    name: "withdrawTo",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
 ];
 const ROOM_FEED_LIMIT = 24;
 const ROOM_TX_LIMIT = 12;

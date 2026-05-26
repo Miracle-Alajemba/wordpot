@@ -42,6 +42,8 @@ contract WordPotArena {
     );
     event RewardClaimed(uint256 indexed roomId, address indexed player, uint256 amount);
     event RoomCancelled(uint256 indexed roomId);
+    event DailyRewardSent(address indexed player, uint256 amount);
+    event Withdrawn(address indexed recipient, uint256 amount);
 
     modifier onlyOwner() {
         require(msg.sender == owner, "WordPot: owner only");
@@ -58,6 +60,8 @@ contract WordPotArena {
         emit TreasuryUpdated(treasury_);
         emit TreasuryFeeUpdated(treasuryFeeBps_);
     }
+
+    receive() external payable {}
 
     function createRoom(uint256 entryFee) external onlyOwner returns (uint256 roomId) {
         require(entryFee > 0, "WordPot: entry fee required");
@@ -153,6 +157,30 @@ contract WordPotArena {
         }
 
         emit RoomCancelled(roomId);
+    }
+
+    function sendDailyReward(
+        address payable player,
+        uint256 amount
+    ) external onlyOwner {
+        require(player != address(0), "WordPot: invalid address");
+        require(amount > 0, "WordPot: amount required");
+        require(
+            address(this).balance >= amount,
+            "WordPot: insufficient balance for daily reward"
+        );
+        (bool ok, ) = player.call{value: amount}("");
+        require(ok, "WordPot: daily reward transfer failed");
+        emit DailyRewardSent(player, amount);
+    }
+
+    function withdrawTo(address payable recipient) external onlyOwner {
+        require(recipient != address(0), "WordPot: invalid recipient");
+        uint256 balance = address(this).balance;
+        require(balance > 0, "WordPot: nothing to withdraw");
+        (bool ok, ) = recipient.call{value: balance}("");
+        require(ok, "WordPot: withdraw failed");
+        emit Withdrawn(recipient, balance);
     }
 
     function payoutFor(uint256 roomId, address player) external view returns (uint256) {
