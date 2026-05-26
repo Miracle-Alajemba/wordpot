@@ -281,15 +281,14 @@ button:disabled {
 
 .brand-lockup__logo {
   aspect-ratio: 1;
-  border: 1px solid rgba(201, 146, 10, 0.26);
+  border: 1px solid rgba(201, 146, 10, 0.28);
   border-radius: 18px;
-  box-shadow:
-    0 16px 36px rgba(0, 0, 0, 0.42),
-    0 0 26px rgba(201, 146, 10, 0.18);
   display: block;
   height: clamp(64px, 9vw, 104px);
   object-fit: cover;
   width: clamp(64px, 9vw, 104px);
+  background: linear-gradient(180deg, rgba(255, 211, 115, 0.04), rgba(0,0,0,0));
+  box-shadow: 0 14px 36px rgba(0,0,0,0.42), inset 0 1px 0 rgba(255,255,255,0.02), 0 0 22px rgba(201,146,10,0.12);
 }
 
 .brand-lockup .eyebrow {
@@ -309,6 +308,8 @@ button:disabled {
   filter: drop-shadow(0 4px 16px rgba(201, 146, 10, 0.3));
   height: auto;
   width: clamp(64px, 12vw, 160px);
+  border-radius: 12px;
+  overflow: hidden;
 }
 
 .hero-logo__name {
@@ -3530,6 +3531,8 @@ small,
 
   .hero-logo__img {
     width: clamp(42px, 13vw, 56px);
+    filter: drop-shadow(0 2px 8px rgba(0,0,0,0.25));
+    border-radius: 10px;
   }
 
   .hero-logo__name {
@@ -3558,7 +3561,7 @@ small,
   }
 
   .hero-actions--grid button {
-    min-height: 42px;
+    min-height: 48px;
     padding: 0.68rem 0.45rem;
     width: 100%;
   }
@@ -3595,7 +3598,7 @@ small,
 
   .panel {
     border-radius: 14px !important;
-    padding: 1.15rem !important;
+    padding: 1rem 1rem 1rem !important;
   }
 
   .bottom-nav {
