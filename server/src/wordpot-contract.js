@@ -152,6 +152,19 @@ export function createWordPotContractService(options) {
     reason: "ready",
     address: contractAddress,
     account: account.address,
+    async getContractBalance() {
+      try {
+        const balance = await publicClient.getBalance({ address: contractAddress });
+        // balance is bigint in wei (18 decimals)
+        const WEI = 10n ** 18n;
+        const whole = balance / WEI;
+        const frac = balance % WEI;
+        const asNumber = Number(whole) + Number(frac) / 1e18;
+        return `${asNumber.toFixed(4)} CELO`;
+      } catch (error) {
+        return null;
+      }
+    },
     async sendReward(toAddress, amountWei) {
       if (!isAddress(toAddress)) {
         throw new Error("Invalid reward wallet address.");

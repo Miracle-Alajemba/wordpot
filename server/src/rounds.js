@@ -450,7 +450,11 @@ function pickFromRounds(rounds, difficulty) {
     (round) => round.sourceWord !== lastSourceWord,
   );
   const pool = candidates.length ? candidates : rounds;
+  if (!candidates.length) {
+    console.info(`[rounds] pickFromRounds: no candidates excluding lastSourceWord (${lastSourceWord}). Selecting from full pool.`);
+  }
   const nextRound = pool[Math.floor(Math.random() * pool.length)];
+  console.info(`[rounds] pickFromRounds selected: ${nextRound.sourceWord} (difficulty=${normalizedDifficulty}) previous=${lastSourceWord || 'none'}`);
   lastSourceWordByDifficulty.set(normalizedDifficulty, nextRound.sourceWord);
   return { ...nextRound, difficulty: normalizedDifficulty };
 }

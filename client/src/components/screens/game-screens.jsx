@@ -62,7 +62,7 @@ export function HomeScreen({
   walletHint,
   roomError,
 }) {
-  const [stats, setStats] = useState({ prizePool: "--", playersOnline: 0, activeRooms: 0 });
+  const [stats, setStats] = useState({ prizePool: "--", playersOnline: 0, activeRooms: 0, updatedAt: null });
   const [detailsOpen, setDetailsOpen] = useState(false);
 
   useEffect(() => {
@@ -73,7 +73,12 @@ export function HomeScreen({
         if (!res.ok) return;
         const json = await res.json();
         if (!mounted) return;
-        setStats({ prizePool: json.prizePool || "--", playersOnline: json.playersOnline || 0, activeRooms: json.activeRooms || 0 });
+        setStats({
+          prizePool: json.onChainBalance || json.prizePool || "--",
+          playersOnline: json.playersOnline || 0,
+          activeRooms: json.activeRooms || 0,
+          updatedAt: json.updatedAt || new Date().toISOString(),
+        });
       } catch (err) {
         // ignore
       }
@@ -86,6 +91,23 @@ export function HomeScreen({
       clearInterval(id);
     };
   }, []);
+
+  // manual refresh
+  async function refreshStats() {
+    try {
+      const res = await fetch(`${API_BASE_URL.replace(/\/$/, "")}/stats`);
+      if (!res.ok) return;
+      const json = await res.json();
+      setStats({
+        prizePool: json.onChainBalance || json.prizePool || "--",
+        playersOnline: json.playersOnline || 0,
+        activeRooms: json.activeRooms || 0,
+        updatedAt: json.updatedAt || new Date().toISOString(),
+      });
+    } catch (err) {
+      // ignore
+    }
+  }
   const joinLabel = isMiniPay && hasInjectedProvider
     ? walletReady
       ? "Join Game"
@@ -270,13 +292,19 @@ export function HomeScreen({
               </button>
             </div>
             <div className={`featured-stats__details ${detailsOpen ? "is-open" : ""}`}>
-              <div className="featured-stats__item">
-                <span>Prize Pool</span>
-                <strong>{stats.prizePool}</strong>
-              </div>
-              <div className="featured-stats__item">
-                <span>Active Rooms</span>
-                <strong>{stats.activeRooms}</strong>
+              <div style={{ display: "flex", alignItems: "center", gap: "0.6rem" }}>
+                <div className="featured-stats__item">
+                  <span>Prize Pool</span>
+                  <strong>{stats.prizePool}</strong>
+                </div>
+                <div className="featured-stats__item">
+                  <span>Active Rooms</span>
+                  <strong>{stats.activeRooms}</strong>
+                </div>
+                <div style={{ marginLeft: "auto", display: "flex", gap: "0.4rem", alignItems: "center" }}>
+                  <button type="button" className="button-secondary" onClick={refreshStats}>Refresh</button>
+                  <div style={{ color: "#9aa0b4", fontSize: "0.8rem" }}>{stats.updatedAt ? new Date(stats.updatedAt).toLocaleTimeString() : ""}</div>
+                </div>
               </div>
             </div>
           </div>

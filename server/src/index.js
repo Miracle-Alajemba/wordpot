@@ -36,11 +36,14 @@ const DEFAULT_LEADERBOARD_LIMIT = 50;
 const DAILY_CLAIMS_FILE =
   process.env.DAILY_CLAIMS_FILE ||
   new URL("../daily-claims.json", import.meta.url);
+const RECENT_DAILY_SOURCES_FILE =
+  process.env.RECENT_DAILY_SOURCES_FILE ||
+  new URL("../recent-daily-sources.json", import.meta.url);
 const rooms = new Map();
 const dailyClaims = loadDailyClaims(); // key: "walletAddress:YYYY-MM-DD" -> claim entry
 const dailyPlays = new Map(); // key: "walletAddress:YYYY-MM-DD" -> play entry
 const dailyChallengeSessions = new Map();
-const recentDailySourceWords = [];
+let recentDailySourceWords = loadRecentDailySources();
 const roomJoinLocks = new Map(); // roomId -> Set<walletAddress_lowercase> for concurrent join protection
 let roomStateVersion = 0;
 let leaderboardCache = null;
@@ -156,6 +159,27 @@ function loadDailyClaims() {
   }
 }
 
+function loadRecentDailySources() {
+  try {
+    if (!fs.existsSync(RECENT_DAILY_SOURCES_FILE)) return [];
+    const raw = fs.readFileSync(RECENT_DAILY_SOURCES_FILE, "utf8");
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    return parsed.map((s) => String(s || "").trim().toUpperCase()).filter(Boolean);
+  } catch (error) {
+    console.warn(`Unable to load recent daily sources: ${error.message}`);
+    return [];
+  }
+}
+
+function persistRecentDailySources() {
+  try {
+    fs.writeFileSync(RECENT_DAILY_SOURCES_FILE, JSON.stringify(recentDailySourceWords.slice(-100), null, 2));
+  } catch (error) {
+    console.error(`Unable to persist recent daily sources: ${error.message}`);
+  }
+}
+
 function persistDailyClaims() {
   try {
     fs.writeFileSync(
@@ -203,8 +227,13 @@ function rememberDailySourceWord(sourceWord) {
   if (!normalized) return;
 
   recentDailySourceWords.push(normalized);
-  while (recentDailySourceWords.length > 14) {
+  while (recentDailySourceWords.length > 100) {
     recentDailySourceWords.shift();
+  }
+  try {
+    persistRecentDailySources();
+  } catch (err) {
+    // ignore
   }
 }
 
@@ -217,12 +246,17 @@ async function getDailyChallengeRound() {
 
     if (!recentDailySourceWords.includes(round.sourceWord)) {
       rememberDailySourceWord(round.sourceWord);
+      console.info(`[daily-challenge] selected new source word: ${round.sourceWord} (attempt ${attempt + 1})`);
       return round;
     }
+
+    // Log when a candidate is skipped because it appeared recently
+    console.info(`[daily-challenge] skipped recent source word: ${round.sourceWord} (attempt ${attempt + 1})`);
   }
 
   if (fallbackRound) {
     rememberDailySourceWord(fallbackRound.sourceWord);
+    console.warn(`[daily-challenge] using fallback round: ${fallbackRound.sourceWord}`);
     return fallbackRound;
   }
 
@@ -722,12 +756,33 @@ app.get("/api/stats", (_req, res) => {
       }
     }
 
-    return res.json({
-      prizePool: `${totalPrize.toFixed(4)} CELO`,
-      playersOnline,
-      activeRooms,
-      updatedAt: new Date().toISOString(),
-    });
+    // Try to read on-chain contract balance when available; fall back to aggregated room total
+    (async () => {
+      try {
+        let onChain = null;
+        if (wordPotContract?.enabled && isWalletAddress(WORDPOT_CONTRACT_ADDRESS)) {
+          onChain = await wordPotContract.getContractBalance();
+        }
+
+        const prizePool = onChain || `${totalPrize.toFixed(4)} CELO`;
+
+        res.json({
+          prizePool,
+          onChainBalance: onChain || null,
+          playersOnline,
+          activeRooms,
+          updatedAt: new Date().toISOString(),
+        });
+      } catch (err) {
+        res.json({
+          prizePool: `${totalPrize.toFixed(4)} CELO`,
+          onChainBalance: null,
+          playersOnline,
+          activeRooms,
+          updatedAt: new Date().toISOString(),
+        });
+      }
+    })();
   } catch (error) {
     return res.status(500).json({ error: error.message || "Unable to compute stats" });
   }
