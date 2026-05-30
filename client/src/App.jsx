@@ -140,6 +140,7 @@ export default function App() {
   const [dailyClaimTx, setDailyClaimTx] = useState("");
   const [dailyClaimError, setDailyClaimError] = useState("");
   const [dailyClaimMessage, setDailyClaimMessage] = useState("");
+  const [dailyNextAvailableAt, setDailyNextAvailableAt] = useState(null);
   const [roomSyncStatus, setRoomSyncStatus] = useState("idle");
   const inviteRoomJoinAttemptedRef = useRef(false);
   const [settings, setSettings] = useState({
@@ -289,6 +290,7 @@ export default function App() {
       setDailyClaimed(Boolean(data.claimed));
       setDailyPlayed(Boolean(data.played));
       setDailyClaimTx(data.txHash || "");
+      setDailyNextAvailableAt(data.nextAvailableAt || null);
     } catch (error) {
       setDailyClaimError(error.message || "Unable to check daily status.");
     }
@@ -313,6 +315,7 @@ export default function App() {
 
       if (response.status === 409) {
         setDailyPlayed(true);
+        if (data.nextAvailableAt) setDailyNextAvailableAt(data.nextAvailableAt);
         return false;
       }
 
@@ -321,6 +324,8 @@ export default function App() {
       }
 
       setDailyPlayed(true);
+      if (data.nextAvailableAt) setDailyNextAvailableAt(data.nextAvailableAt);
+      else setDailyNextAvailableAt(new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString());
       return true;
     } catch {
       return false;
@@ -925,6 +930,7 @@ export default function App() {
             onScoreUpdate={setDailyScore}
             dailyClaimed={dailyClaimed}
             dailyPlayed={dailyPlayed}
+            dailyNextAvailableAt={dailyNextAvailableAt}
             dailyClaimBusy={dailyClaimBusy}
             dailyClaimTx={dailyClaimTx}
             dailyClaimError={dailyClaimError}

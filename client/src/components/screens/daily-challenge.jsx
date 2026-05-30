@@ -31,6 +31,7 @@ export function DailyChallenge({
   onScoreUpdate,
   dailyClaimed,
   dailyPlayed,
+  dailyNextAvailableAt,
   dailyClaimBusy,
   dailyClaimTx,
   dailyClaimError,
@@ -51,6 +52,8 @@ export function DailyChallenge({
   const [wordSubmitBusy, setWordSubmitBusy] = useState(false);
   const [currentPlayStarted, setCurrentPlayStarted] = useState(false);
   const wordSubmitBusyRef = useRef(false);
+  const [cooldownSeconds, setCooldownSeconds] = useState(0);
+  const cooldownRef = useRef(null);
 
   const sourceLetters = String(roundSeed?.sourceWord || "").split("");
   const claimedSet = useMemo(
@@ -332,12 +335,14 @@ export function DailyChallenge({
           </div>
           <div className="results-sheet" style={{ textAlign: "center", padding: "3rem 1.5rem" }}>
             <div style={{ fontSize: "2.5rem", marginBottom: "1rem" }}>⏳</div>
-            <h2>Already Played Today</h2>
+            <h2>Next Play Available In</h2>
             <p style={{ marginBottom: "0.5rem" }}>
-              You have already used your Daily Challenge for today.
+              {cooldownSeconds > 0
+                ? `${Math.floor(cooldownSeconds / 3600)}h ${Math.floor((cooldownSeconds % 3600) / 60)}m ${cooldownSeconds % 60}s`
+                : "Less than a minute"}
             </p>
             <p style={{ marginBottom: "1.5rem" }}>
-              Come back tomorrow for a new round and another chance to claim 0.01 CELO.
+              Come back when the timer expires to play again and try claiming another 0.01 CELO.
             </p>
             <div className="hero-actions" style={{ justifyContent: "center" }}>
               <button type="button" className="button-secondary" onClick={onBack}>
@@ -349,6 +354,22 @@ export function DailyChallenge({
       </main>
     );
   }
+
+  useEffect(() => {
+    if (!dailyNextAvailableAt) {
+      setCooldownSeconds(0);
+      return;
+    }
+
+    function update() {
+      const diff = Math.max(0, Math.ceil((new Date(dailyNextAvailableAt).getTime() - Date.now()) / 1000));
+      setCooldownSeconds(diff);
+    }
+
+    update();
+    cooldownRef.current = setInterval(update, 1000);
+    return () => clearInterval(cooldownRef.current);
+  }, [dailyNextAvailableAt]);
 
   if (dailyClaimed) {
     return (
