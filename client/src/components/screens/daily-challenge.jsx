@@ -284,6 +284,26 @@ export function DailyChallenge({
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [phase, roundSeed, selectedWord, selectedIndexes, claimedSet]);
 
+  useEffect(() => {
+    if (!dailyNextAvailableAt) {
+      setCooldownSeconds(0);
+      return undefined;
+    }
+
+    function update() {
+      const diff = Math.max(
+        0,
+        Math.ceil((new Date(dailyNextAvailableAt).getTime() - Date.now()) / 1000),
+      );
+      setCooldownSeconds(diff);
+    }
+
+    update();
+    const interval = window.setInterval(update, 1000);
+    cooldownRef.current = interval;
+    return () => window.clearInterval(interval);
+  }, [dailyNextAvailableAt]);
+
   async function handleClaim() {
     if (!walletConnected || !walletReady) {
       await onConnectWallet();
@@ -354,22 +374,6 @@ export function DailyChallenge({
       </main>
     );
   }
-
-  useEffect(() => {
-    if (!dailyNextAvailableAt) {
-      setCooldownSeconds(0);
-      return;
-    }
-
-    function update() {
-      const diff = Math.max(0, Math.ceil((new Date(dailyNextAvailableAt).getTime() - Date.now()) / 1000));
-      setCooldownSeconds(diff);
-    }
-
-    update();
-    cooldownRef.current = setInterval(update, 1000);
-    return () => clearInterval(cooldownRef.current);
-  }, [dailyNextAvailableAt]);
 
   if (dailyClaimed) {
     return (

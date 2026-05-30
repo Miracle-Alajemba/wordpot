@@ -39,9 +39,16 @@ const DAILY_CLAIMS_FILE =
 const RECENT_DAILY_SOURCES_FILE =
   process.env.RECENT_DAILY_SOURCES_FILE ||
   new URL("../recent-daily-sources.json", import.meta.url);
+const DAILY_PLAYS_FILE =
+  process.env.DAILY_PLAYS_FILE ||
+  new URL("../daily-plays.json", import.meta.url);
+const DAILY_RESET_HOUR = Math.max(
+  0,
+  Math.min(23, Number(process.env.DAILY_RESET_HOUR || 0)),
+);
 const rooms = new Map();
 const dailyClaims = loadDailyClaims(); // key: "walletAddress:YYYY-MM-DD" -> claim entry
-const dailyPlays = new Map(); // key: "walletAddress:YYYY-MM-DD" -> play entry
+const dailyPlays = loadDailyPlays(); // key: "walletAddress:YYYY-MM-DD" -> play entry
 const dailyChallengeSessions = new Map();
 let recentDailySourceWords = loadRecentDailySources();
 const roomJoinLocks = new Map(); // roomId -> Set<walletAddress_lowercase> for concurrent join protection
@@ -54,6 +61,14 @@ const wordPotContract = createWordPotContractService({
   rpcUrl: CELO_MAINNET_RPC_URL,
   chainId: CELO_CHAIN_ID,
 });
+
+const ADMIN_TOKEN = process.env.ADMIN_TOKEN || "";
+
+function isAdminRequest(req) {
+  if (!ADMIN_TOKEN) return false;
+  const token = String(req.headers["x-admin-token"] || "").trim();
+  return token && token === ADMIN_TOKEN;
+}
 
 // ─── Room expiry — runs every 30 seconds ──────────────────────────────────────
 setInterval(() => {
@@ -165,7 +180,13 @@ function loadRecentDailySources() {
     const raw = fs.readFileSync(RECENT_DAILY_SOURCES_FILE, "utf8");
     const parsed = JSON.parse(raw);
     if (!Array.isArray(parsed)) return [];
-    return parsed.map((s) => String(s || "").trim().toUpperCase()).filter(Boolean);
+    return parsed
+      .map((s) =>
+        String(s || "")
+          .trim()
+          .toUpperCase(),
+      )
+      .filter(Boolean);
   } catch (error) {
     console.warn(`Unable to load recent daily sources: ${error.message}`);
     return [];
@@ -174,10 +195,76 @@ function loadRecentDailySources() {
 
 function persistRecentDailySources() {
   try {
-    fs.writeFileSync(RECENT_DAILY_SOURCES_FILE, JSON.stringify(recentDailySourceWords.slice(-100), null, 2));
+    fs.writeFileSync(
+      RECENT_DAILY_SOURCES_FILE,
+      JSON.stringify(recentDailySourceWords.slice(-100), null, 2),
+    );
   } catch (error) {
     console.error(`Unable to persist recent daily sources: ${error.message}`);
   }
+}
+
+function loadDailyPlays() {
+  try {
+    if (!fs.existsSync(DAILY_PLAYS_FILE)) return new Map();
+    const raw = fs.readFileSync(DAILY_PLAYS_FILE, "utf8");
+    const parsed = JSON.parse(raw) || {};
+
+    // Support migration from old key format wallet:YYYY-MM-DD -> value
+    const out = new Map();
+    for (const [key, value] of Object.entries(parsed)) {
+      if (String(key).includes(":")) {
+        const wallet = String(key).split(":")[0].toLowerCase();
+        const playedAt = value?.playedAt || new Date().toISOString();
+        out.set(wallet, { playedAt });
+      } else {
+        const wallet = String(key).toLowerCase();
+        if (value && typeof value === "object" && value.playedAt) {
+          out.set(wallet, { playedAt: value.playedAt });
+        } else if (typeof value === "string" && value) {
+          out.set(wallet, { playedAt: value });
+        }
+      }
+    }
+
+    return out;
+  } catch (error) {
+    console.warn(`Unable to load daily plays: ${error.message}`);
+    return new Map();
+  }
+}
+
+function persistDailyPlays() {
+  try {
+    fs.writeFileSync(
+      DAILY_PLAYS_FILE,
+      JSON.stringify(Object.fromEntries(dailyPlays), null, 2),
+    );
+  } catch (error) {
+    console.error(`Unable to persist daily plays: ${error.message}`);
+  }
+}
+
+function getDayKeyFromTimestamp(ts = Date.now()) {
+  const offsetMs = Number(DAILY_RESET_HOUR || 0) * 60 * 60 * 1000;
+  const adjusted = new Date(ts - offsetMs);
+  return adjusted.toISOString().slice(0, 10);
+}
+
+function getNextResetTime(ts = Date.now()) {
+  const now = new Date(ts);
+  const year = now.getUTCFullYear();
+  const month = now.getUTCMonth();
+  const day = now.getUTCDate();
+
+  // Candidate reset for current UTC day at reset hour
+  const candidate = new Date(
+    Date.UTC(year, month, day, DAILY_RESET_HOUR, 0, 0),
+  );
+  if (candidate.getTime() <= now.getTime()) {
+    return new Date(candidate.getTime() + 24 * 60 * 60 * 1000).toISOString();
+  }
+  return candidate.toISOString();
 }
 
 function persistDailyClaims() {
@@ -238,25 +325,46 @@ function rememberDailySourceWord(sourceWord) {
 }
 
 async function getDailyChallengeRound() {
-  let fallbackRound = null;
+  try {
+    // Use rounds.pickNonRecentRound to avoid selecting recently used source words
+    const round = await import("./rounds.js").then((m) =>
+      m.pickNonRecentRound("easy", recentDailySourceWords),
+    );
+    if (round && round.sourceWord) {
+      rememberDailySourceWord(round.sourceWord);
+      console.info(
+        `[daily-challenge] selected new source word: ${round.sourceWord}`,
+      );
+      return round;
+    }
+  } catch (error) {
+    console.warn(
+      `[daily-challenge] pickNonRecentRound failed: ${error.message}`,
+    );
+  }
 
+  // Fallback: try up to 10 attempts with getDynamicRound (existing behavior)
+  let fallbackRound = null;
   for (let attempt = 0; attempt < 10; attempt++) {
     const round = await getDynamicRound("easy");
     fallbackRound ||= round;
-
     if (!recentDailySourceWords.includes(round.sourceWord)) {
       rememberDailySourceWord(round.sourceWord);
-      console.info(`[daily-challenge] selected new source word: ${round.sourceWord} (attempt ${attempt + 1})`);
+      console.info(
+        `[daily-challenge] fallback selected new source word: ${round.sourceWord} (attempt ${attempt + 1})`,
+      );
       return round;
     }
-
-    // Log when a candidate is skipped because it appeared recently
-    console.info(`[daily-challenge] skipped recent source word: ${round.sourceWord} (attempt ${attempt + 1})`);
+    console.info(
+      `[daily-challenge] fallback skipped recent source word: ${round.sourceWord} (attempt ${attempt + 1})`,
+    );
   }
 
   if (fallbackRound) {
     rememberDailySourceWord(fallbackRound.sourceWord);
-    console.warn(`[daily-challenge] using fallback round: ${fallbackRound.sourceWord}`);
+    console.warn(
+      `[daily-challenge] fallback using round: ${fallbackRound.sourceWord}`,
+    );
     return fallbackRound;
   }
 
@@ -264,12 +372,12 @@ async function getDailyChallengeRound() {
 }
 
 function getTodayKey(walletAddress) {
-  const today = new Date().toISOString().slice(0, 10);
+  const today = getDayKeyFromTimestamp();
   return `${walletAddress.toLowerCase()}:${today}`;
 }
 
 function getTodayPlayKey(walletAddress) {
-  const today = new Date().toISOString().slice(0, 10);
+  const today = getDayKeyFromTimestamp();
   return `${walletAddress.toLowerCase()}:${today}`;
 }
 
@@ -760,7 +868,10 @@ app.get("/api/stats", (_req, res) => {
     (async () => {
       try {
         let onChain = null;
-        if (wordPotContract?.enabled && isWalletAddress(WORDPOT_CONTRACT_ADDRESS)) {
+        if (
+          wordPotContract?.enabled &&
+          isWalletAddress(WORDPOT_CONTRACT_ADDRESS)
+        ) {
           onChain = await wordPotContract.getContractBalance();
         }
 
@@ -784,7 +895,9 @@ app.get("/api/stats", (_req, res) => {
       }
     })();
   } catch (error) {
-    return res.status(500).json({ error: error.message || "Unable to compute stats" });
+    return res
+      .status(500)
+      .json({ error: error.message || "Unable to compute stats" });
   }
 });
 
@@ -979,12 +1092,14 @@ app.post("/api/daily/claim", async (req, res) => {
     });
   }
 
-  const playKey = getTodayPlayKey(walletAddress);
-  if (!dailyPlays.has(playKey)) {
-    dailyPlays.set(playKey, {
-      walletAddress: walletAddress.toLowerCase(),
-      playedAt: new Date().toISOString(),
-    });
+  // Record that this wallet played now (used for 24h cooldown)
+  try {
+    const walletKey = walletAddress.toLowerCase();
+    const nowIso = new Date().toISOString();
+    dailyPlays.set(walletKey, { playedAt: nowIso });
+    persistDailyPlays();
+  } catch (err) {
+    // ignore
   }
 
   if (!wordPotContract.enabled || !isWalletAddress(WORDPOT_CONTRACT_ADDRESS)) {
@@ -1043,16 +1158,66 @@ app.get("/api/daily/status", (req, res) => {
   }
 
   const claimKey = getTodayKey(walletAddress);
-  const playKey = getTodayPlayKey(walletAddress);
   const claimed = dailyClaims.has(claimKey);
-  const played = dailyPlays.has(playKey);
   const claimEntry = claimed ? dailyClaims.get(claimKey) : null;
+
+  const walletKey = walletAddress.toLowerCase();
+  const playEntry = dailyPlays.get(walletKey);
+  let played = false;
+  let nextAvailableAt = null;
+  if (playEntry?.playedAt) {
+    const nextTs = new Date(playEntry.playedAt).getTime() + 24 * 60 * 60 * 1000;
+    nextAvailableAt = new Date(nextTs).toISOString();
+    played = Date.now() < nextTs;
+  }
+
   return res.json({
     claimed,
     played,
     claimedAt: claimEntry?.claimedAt || null,
     txHash: claimEntry?.txHash || null,
+    policy: "rolling-24h",
+    nextAvailableAt,
   });
+});
+
+// --- Admin debug endpoints for daily plays ---
+app.get("/api/debug/daily-plays", (req, res) => {
+  if (!isAdminRequest(req)) {
+    return res.status(403).json({ error: "Forbidden" });
+  }
+
+  const entries = Array.from(dailyPlays.entries()).map(([wallet, v]) => ({
+    walletAddress: wallet,
+    playedAt: v?.playedAt || null,
+  }));
+
+  return res.json({ entries });
+});
+
+app.post("/api/debug/daily-plays/clear", (req, res) => {
+  if (!isAdminRequest(req)) {
+    return res.status(403).json({ error: "Forbidden" });
+  }
+
+  const walletAddress = String(req.body?.walletAddress || "")
+    .trim()
+    .toLowerCase();
+  if (!isWalletAddress(walletAddress)) {
+    return res
+      .status(400)
+      .json({ error: "A valid wallet address is required." });
+  }
+
+  const key = walletAddress;
+  const existed = dailyPlays.delete(key);
+  try {
+    persistDailyPlays();
+  } catch (err) {
+    // ignore
+  }
+
+  return res.json({ ok: true, removed: !!existed });
 });
 
 app.post("/api/daily/play", (req, res) => {
@@ -1063,20 +1228,36 @@ app.post("/api/daily/play", (req, res) => {
       .json({ error: "A valid wallet address is required." });
   }
 
-  const playKey = getTodayPlayKey(walletAddress);
-  if (dailyPlays.has(playKey)) {
-    return res.status(409).json({
-      error: "You have already played the Daily Challenge today. Come back tomorrow.",
-      played: true,
-    });
+  const walletKey = walletAddress.toLowerCase();
+  const entry = dailyPlays.get(walletKey);
+  const now = Date.now();
+  if (entry?.playedAt) {
+    const nextTs = new Date(entry.playedAt).getTime() + 24 * 60 * 60 * 1000;
+    if (now < nextTs) {
+      return res.status(409).json({
+        error:
+          "You have already played the Daily Challenge within the last 24 hours.",
+        played: true,
+        nextAvailableAt: new Date(nextTs).toISOString(),
+      });
+    }
   }
 
-  dailyPlays.set(playKey, {
-    walletAddress: walletAddress.toLowerCase(),
-    playedAt: new Date().toISOString(),
-  });
+  dailyPlays.set(walletKey, { playedAt: new Date().toISOString() });
+  try {
+    persistDailyPlays();
+  } catch (err) {
+    // ignore
+  }
 
-  return res.json({ ok: true, played: true });
+  const nextTs =
+    new Date(dailyPlays.get(walletKey).playedAt).getTime() +
+    24 * 60 * 60 * 1000;
+  return res.json({
+    ok: true,
+    played: true,
+    nextAvailableAt: new Date(nextTs).toISOString(),
+  });
 });
 
 // FIX: contract room created in background so player joins instantly

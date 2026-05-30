@@ -405,8 +405,7 @@ function getFallbackRounds(difficulty) {
   const dictionaryRounds = shuffle(
     dictionary.filter(
       (word) =>
-        word.length >= profile.minLength &&
-        word.length <= profile.maxLength,
+        word.length >= profile.minLength && word.length <= profile.maxLength,
     ),
   )
     .slice(0, 500)
@@ -445,16 +444,21 @@ function pickFromRounds(rounds, difficulty) {
   }
 
   const normalizedDifficulty = normalizeDifficulty(difficulty);
-  const lastSourceWord = lastSourceWordByDifficulty.get(normalizedDifficulty) || "";
+  const lastSourceWord =
+    lastSourceWordByDifficulty.get(normalizedDifficulty) || "";
   const candidates = rounds.filter(
     (round) => round.sourceWord !== lastSourceWord,
   );
   const pool = candidates.length ? candidates : rounds;
   if (!candidates.length) {
-    console.info(`[rounds] pickFromRounds: no candidates excluding lastSourceWord (${lastSourceWord}). Selecting from full pool.`);
+    console.info(
+      `[rounds] pickFromRounds: no candidates excluding lastSourceWord (${lastSourceWord}). Selecting from full pool.`,
+    );
   }
   const nextRound = pool[Math.floor(Math.random() * pool.length)];
-  console.info(`[rounds] pickFromRounds selected: ${nextRound.sourceWord} (difficulty=${normalizedDifficulty}) previous=${lastSourceWord || 'none'}`);
+  console.info(
+    `[rounds] pickFromRounds selected: ${nextRound.sourceWord} (difficulty=${normalizedDifficulty}) previous=${lastSourceWord || "none"}`,
+  );
   lastSourceWordByDifficulty.set(normalizedDifficulty, nextRound.sourceWord);
   return { ...nextRound, difficulty: normalizedDifficulty };
 }
@@ -599,4 +603,50 @@ export async function getDynamicRound(difficulty = DEFAULT_DIFFICULTY) {
 
   const nextCache = roundCaches.get(normalizedDifficulty);
   return pickFromRounds(nextCache?.rounds || [], normalizedDifficulty);
+}
+
+// Pick a round while excluding recent source words (case-sensitive uppercase list expected)
+export async function pickNonRecentRound(
+  difficulty = DEFAULT_DIFFICULTY,
+  exclusions = [],
+) {
+  const normalizedDifficulty = normalizeDifficulty(difficulty);
+  const cache = roundCaches.get(normalizedDifficulty);
+  const isCacheValid =
+    cache?.rounds?.length > 0 && Date.now() <= cache.expiresAt;
+
+  if (!isCacheValid) {
+    await refillRoundCache(normalizedDifficulty);
+  }
+
+  const nextCache = roundCaches.get(normalizedDifficulty);
+  const pool = (
+    nextCache?.rounds || getFallbackRounds(normalizedDifficulty)
+  ).slice();
+
+  // filter out excluded recent source words
+  const filtered = pool.filter(
+    (r) => !exclusions.includes(String(r.sourceWord || "").toUpperCase()),
+  );
+  const finalPool = filtered.length ? filtered : pool;
+
+  if (!finalPool.length) {
+    console.warn(
+      `[rounds] pickNonRecentRound: finalPool empty for difficulty=${normalizedDifficulty}`,
+    );
+    const emergency = makeRound(
+      EMERGENCY_SOURCE_WORDS[
+        Math.floor(Math.random() * EMERGENCY_SOURCE_WORDS.length)
+      ],
+    );
+    lastSourceWordByDifficulty.set(normalizedDifficulty, emergency.sourceWord);
+    return { ...emergency, difficulty: normalizedDifficulty };
+  }
+
+  const nextRound = finalPool[Math.floor(Math.random() * finalPool.length)];
+  console.info(
+    `[rounds] pickNonRecentRound selected: ${nextRound.sourceWord} (difficulty=${normalizedDifficulty})`,
+  );
+  lastSourceWordByDifficulty.set(normalizedDifficulty, nextRound.sourceWord);
+  return { ...nextRound, difficulty: normalizedDifficulty };
 }

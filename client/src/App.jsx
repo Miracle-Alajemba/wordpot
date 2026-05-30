@@ -62,7 +62,7 @@ const PracticeScreen = lazy(() =>
 );
 const DailyChallenge = lazy(() =>
   import("./components/screens/daily-challenge.jsx").then((module) => ({
-    default: module.DailyChallenge,
+    default: module?.DailyChallenge || module?.default || module,
   })),
 );
 const LeaderboardScreen = lazy(() =>
