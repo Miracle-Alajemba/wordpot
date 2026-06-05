@@ -499,20 +499,30 @@ export function DailyChallenge({
                   display: "flex",
                   justifyContent: "space-between",
                   alignItems: "center",
-                  padding: "1rem 1.5rem",
-                  background: "rgba(255, 255, 255, 0.05)",
-                  border: "1px solid rgba(255, 255, 255, 0.1)",
-                  borderRadius: "12px",
+                  padding: "1.2rem 1.5rem",
+                  background: "rgba(255, 255, 255, 0.03)",
+                  border: "1px solid rgba(141, 163, 255, 0.12)",
+                  borderRadius: "16px",
                   textAlign: "left",
-                  color: "#fff",
-                  cursor: "pointer"
+                  color: "#f5f7ff",
+                  cursor: "pointer",
+                  transition: "all 0.2s ease",
+                  width: "100%"
+                }}
+                onMouseOver={(e) => {
+                  e.currentTarget.style.background = "rgba(255, 255, 255, 0.07)";
+                  e.currentTarget.style.borderColor = "rgba(141, 163, 255, 0.24)";
+                }}
+                onMouseOut={(e) => {
+                  e.currentTarget.style.background = "rgba(255, 255, 255, 0.03)";
+                  e.currentTarget.style.borderColor = "rgba(141, 163, 255, 0.12)";
                 }}
               >
                 <div>
-                  <strong style={{ fontSize: "1.1rem", display: "block" }}>🟢 Easy</strong>
-                  <span style={{ fontSize: "0.85rem", opacity: 0.7 }}>Target: 20 pts</span>
+                  <strong style={{ fontSize: "1.1rem", display: "block", color: "#ffffff", fontWeight: "700" }}>Easy</strong>
+                  <span style={{ fontSize: "0.85rem", color: "#8fa0ca" }}>Target: 20 pts</span>
                 </div>
-                <strong style={{ color: "#34d399" }}>0.005 CELO</strong>
+                <strong style={{ color: "#ffffff", fontSize: "1.1rem" }}>0.005 CELO</strong>
               </button>
 
               <button
@@ -524,20 +534,30 @@ export function DailyChallenge({
                   display: "flex",
                   justifyContent: "space-between",
                   alignItems: "center",
-                  padding: "1rem 1.5rem",
-                  background: "rgba(255, 255, 255, 0.05)",
-                  border: "1px solid rgba(255, 255, 255, 0.1)",
-                  borderRadius: "12px",
+                  padding: "1.2rem 1.5rem",
+                  background: "rgba(255, 255, 255, 0.03)",
+                  border: "1px solid rgba(141, 163, 255, 0.12)",
+                  borderRadius: "16px",
                   textAlign: "left",
-                  color: "#fff",
-                  cursor: "pointer"
+                  color: "#f5f7ff",
+                  cursor: "pointer",
+                  transition: "all 0.2s ease",
+                  width: "100%"
+                }}
+                onMouseOver={(e) => {
+                  e.currentTarget.style.background = "rgba(255, 255, 255, 0.07)";
+                  e.currentTarget.style.borderColor = "rgba(141, 163, 255, 0.24)";
+                }}
+                onMouseOut={(e) => {
+                  e.currentTarget.style.background = "rgba(255, 255, 255, 0.03)";
+                  e.currentTarget.style.borderColor = "rgba(141, 163, 255, 0.12)";
                 }}
               >
                 <div>
-                  <strong style={{ fontSize: "1.1rem", display: "block" }}>🟡 Medium</strong>
-                  <span style={{ fontSize: "0.85rem", opacity: 0.7 }}>Target: 40 pts</span>
+                  <strong style={{ fontSize: "1.1rem", display: "block", color: "#ffffff", fontWeight: "700" }}>Medium</strong>
+                  <span style={{ fontSize: "0.85rem", color: "#8fa0ca" }}>Target: 40 pts</span>
                 </div>
-                <strong style={{ color: "#34d399" }}>0.010 CELO</strong>
+                <strong style={{ color: "#ffffff", fontSize: "1.1rem" }}>0.010 CELO</strong>
               </button>
 
               <button
@@ -549,20 +569,30 @@ export function DailyChallenge({
                   display: "flex",
                   justifyContent: "space-between",
                   alignItems: "center",
-                  padding: "1rem 1.5rem",
-                  background: "rgba(255, 255, 255, 0.05)",
-                  border: "1px solid rgba(255, 255, 255, 0.1)",
-                  borderRadius: "12px",
+                  padding: "1.2rem 1.5rem",
+                  background: "rgba(255, 255, 255, 0.03)",
+                  border: "1px solid rgba(141, 163, 255, 0.12)",
+                  borderRadius: "16px",
                   textAlign: "left",
-                  color: "#fff",
-                  cursor: "pointer"
+                  color: "#f5f7ff",
+                  cursor: "pointer",
+                  transition: "all 0.2s ease",
+                  width: "100%"
+                }}
+                onMouseOver={(e) => {
+                  e.currentTarget.style.background = "rgba(255, 255, 255, 0.07)";
+                  e.currentTarget.style.borderColor = "rgba(141, 163, 255, 0.24)";
+                }}
+                onMouseOut={(e) => {
+                  e.currentTarget.style.background = "rgba(255, 255, 255, 0.03)";
+                  e.currentTarget.style.borderColor = "rgba(141, 163, 255, 0.12)";
                 }}
               >
                 <div>
-                  <strong style={{ fontSize: "1.1rem", display: "block" }}>🔴 Hard</strong>
-                  <span style={{ fontSize: "0.85rem", opacity: 0.7 }}>Target: 60 pts</span>
+                  <strong style={{ fontSize: "1.1rem", display: "block", color: "#ffffff", fontWeight: "700" }}>Hard</strong>
+                  <span style={{ fontSize: "0.85rem", color: "#8fa0ca" }}>Target: 60 pts</span>
                 </div>
-                <strong style={{ color: "#34d399" }}>0.020 CELO</strong>
+                <strong style={{ color: "#ffffff", fontSize: "1.1rem" }}>0.020 CELO</strong>
               </button>
             </div>
           </div>
