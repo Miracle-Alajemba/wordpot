@@ -520,7 +520,7 @@ export function DailyChallenge({
                 }}
               >
                 <div>
-                  <strong style={{ fontSize: "1.1rem", display: "block", color: "#ffffff", fontWeight: "700", marginBottom: "0.25rem" }}>Easy</strong>
+                  <strong style={{ fontSize: "1.1rem", display: "block", color: "#ffffff", fontWeight: "700", marginBottom: "0.25rem" }}>🎮 Easy</strong>
                   <span style={{ fontSize: "0.82rem", color: "#63f4ca", fontWeight: "700", letterSpacing: "0.06em", textTransform: "uppercase" }}>Target: 20 pts</span>
                 </div>
                 <strong style={{ color: "#ffffff", fontSize: "1.15rem", fontFamily: "var(--font-mono)", fontWeight: "700" }}>0.005 CELO</strong>
@@ -538,7 +538,7 @@ export function DailyChallenge({
                   padding: "1.2rem 1.5rem",
                   background: "rgba(255, 255, 255, 0.02)",
                   border: "1px solid rgba(141, 163, 255, 0.12)",
-                  borderLeft: "4px solid #ffad33",
+                  borderLeft: "4px solid #63f4ca",
                   borderRadius: "16px",
                   textAlign: "left",
                   color: "#f5f7ff",
@@ -556,8 +556,8 @@ export function DailyChallenge({
                 }}
               >
                 <div>
-                  <strong style={{ fontSize: "1.1rem", display: "block", color: "#ffffff", fontWeight: "700", marginBottom: "0.25rem" }}>Medium</strong>
-                  <span style={{ fontSize: "0.82rem", color: "#ffad33", fontWeight: "700", letterSpacing: "0.06em", textTransform: "uppercase" }}>Target: 40 pts</span>
+                  <strong style={{ fontSize: "1.1rem", display: "block", color: "#ffffff", fontWeight: "700", marginBottom: "0.25rem" }}>⚔️ Medium</strong>
+                  <span style={{ fontSize: "0.82rem", color: "#63f4ca", fontWeight: "700", letterSpacing: "0.06em", textTransform: "uppercase" }}>Target: 40 pts</span>
                 </div>
                 <strong style={{ color: "#ffffff", fontSize: "1.15rem", fontFamily: "var(--font-mono)", fontWeight: "700" }}>0.010 CELO</strong>
               </button>
@@ -574,7 +574,7 @@ export function DailyChallenge({
                   padding: "1.2rem 1.5rem",
                   background: "rgba(255, 255, 255, 0.02)",
                   border: "1px solid rgba(141, 163, 255, 0.12)",
-                  borderLeft: "4px solid #ff7a18",
+                  borderLeft: "4px solid #63f4ca",
                   borderRadius: "16px",
                   textAlign: "left",
                   color: "#f5f7ff",
@@ -592,8 +592,8 @@ export function DailyChallenge({
                 }}
               >
                 <div>
-                  <strong style={{ fontSize: "1.1rem", display: "block", color: "#ffffff", fontWeight: "700", marginBottom: "0.25rem" }}>Hard</strong>
-                  <span style={{ fontSize: "0.82rem", color: "#ff7a18", fontWeight: "700", letterSpacing: "0.06em", textTransform: "uppercase" }}>Target: 60 pts</span>
+                  <strong style={{ fontSize: "1.1rem", display: "block", color: "#ffffff", fontWeight: "700", marginBottom: "0.25rem" }}>👑 Hard</strong>
+                  <span style={{ fontSize: "0.82rem", color: "#63f4ca", fontWeight: "700", letterSpacing: "0.06em", textTransform: "uppercase" }}>Target: 60 pts</span>
                 </div>
                 <strong style={{ color: "#ffffff", fontSize: "1.15rem", fontFamily: "var(--font-mono)", fontWeight: "700" }}>0.020 CELO</strong>
               </button>

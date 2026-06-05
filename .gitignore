@@ -6,3 +6,4 @@ client/dist
 .DS_Store
 coverage
 server/daily-claims.json
+wordpot_growth_plan.md
