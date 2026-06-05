@@ -51,6 +51,7 @@ const dailyClaims = loadDailyClaims(); // key: "walletAddress:YYYY-MM-DD" -> cla
 const dailyPlays = loadDailyPlays(); // key: "walletAddress:YYYY-MM-DD" -> play entry
 const dailyChallengeSessions = new Map();
 let recentDailySourceWords = loadRecentDailySources();
+const recentUsedSourceWords = []; // rolling history of last 20 words used across rooms/practice
 const roomJoinLocks = new Map(); // roomId -> Set<walletAddress_lowercase> for concurrent join protection
 let roomStateVersion = 0;
 let leaderboardCache = null;
@@ -324,16 +325,17 @@ function rememberDailySourceWord(sourceWord) {
   }
 }
 
-async function getDailyChallengeRound() {
+async function getDailyChallengeRound(difficulty = "medium") {
+  const roundDiff = difficulty === "hard" ? "hard" : difficulty === "medium" ? "medium" : "easy";
   try {
     // Use rounds.pickNonRecentRound to avoid selecting recently used source words
     const round = await import("./rounds.js").then((m) =>
-      m.pickNonRecentRound("easy", recentDailySourceWords),
+      m.pickNonRecentRound(roundDiff, recentDailySourceWords),
     );
     if (round && round.sourceWord) {
       rememberDailySourceWord(round.sourceWord);
       console.info(
-        `[daily-challenge] selected new source word: ${round.sourceWord}`,
+        `[daily-challenge] selected new source word: ${round.sourceWord} (difficulty=${roundDiff})`,
       );
       return round;
     }
@@ -346,7 +348,7 @@ async function getDailyChallengeRound() {
   // Fallback: try up to 10 attempts with getDynamicRound (existing behavior)
   let fallbackRound = null;
   for (let attempt = 0; attempt < 10; attempt++) {
-    const round = await getDynamicRound("easy");
+    const round = await getDynamicRound(roundDiff);
     fallbackRound ||= round;
     if (!recentDailySourceWords.includes(round.sourceWord)) {
       rememberDailySourceWord(round.sourceWord);
@@ -368,7 +370,7 @@ async function getDailyChallengeRound() {
     return fallbackRound;
   }
 
-  return getDynamicRound("easy");
+  return getDynamicRound(roundDiff);
 }
 
 function getTodayKey(walletAddress) {
@@ -901,24 +903,22 @@ app.get("/api/stats", (_req, res) => {
   }
 });
 
-const practiceRoundCache = new Map();
-const PRACTICE_CACHE_MS = 10 * 60 * 1000;
-
 app.get("/api/rounds/practice", async (_req, res) => {
   try {
     const difficulty = String(_req.query?.difficulty || "medium")
       .trim()
       .toLowerCase();
 
-    const cached = practiceRoundCache.get(difficulty);
-    const now = Date.now();
+    const round = await getDynamicRound(difficulty, recentUsedSourceWords);
 
-    if (cached && now - cached.cachedAt < PRACTICE_CACHE_MS) {
-      return res.json({ round: cached.round });
+    // Add to recent used history to prevent duplicates
+    if (round && round.sourceWord) {
+      recentUsedSourceWords.push(String(round.sourceWord).toUpperCase());
+      while (recentUsedSourceWords.length > 20) {
+        recentUsedSourceWords.shift();
+      }
     }
 
-    const round = await getDynamicRound(difficulty);
-    practiceRoundCache.set(difficulty, { round, cachedAt: now });
     return res.json({ round });
   } catch (error) {
     return res.status(500).json({
@@ -930,13 +930,29 @@ app.get("/api/rounds/practice", async (_req, res) => {
 app.get("/api/rounds/daily-challenge", async (_req, res) => {
   try {
     const walletAddress = String(_req.query?.walletAddress || "").trim();
+    const difficulty = String(_req.query?.difficulty || "medium").trim().toLowerCase();
+
     if (!isWalletAddress(walletAddress)) {
       return res.status(400).json({
         error: "Connect a valid wallet before starting Daily Challenge.",
       });
     }
 
-    const round = await getDailyChallengeRound();
+    const allowedDifficulties = ["easy", "medium", "hard"];
+    if (!allowedDifficulties.includes(difficulty)) {
+      return res.status(400).json({
+        error: "Invalid difficulty level selected.",
+      });
+    }
+
+    const DIFFICULTY_RULES = {
+      easy: { targetScore: 20, rewardWei: "5000000000000000", rewardDisplay: "0.005 CELO" },
+      medium: { targetScore: 40, rewardWei: "10000000000000000", rewardDisplay: "0.01 CELO" },
+      hard: { targetScore: 60, rewardWei: "20000000000000000", rewardDisplay: "0.02 CELO" }
+    };
+
+    const rules = DIFFICULTY_RULES[difficulty];
+    const round = await getDailyChallengeRound(difficulty);
     const sessionId = makeId("daily");
     const session = {
       id: sessionId,
@@ -944,6 +960,9 @@ app.get("/api/rounds/daily-challenge", async (_req, res) => {
       round,
       claimedWords: new Set(),
       score: 0,
+      targetScore: rules.targetScore,
+      rewardWei: rules.rewardWei,
+      rewardDisplay: rules.rewardDisplay,
       createdAt: new Date().toISOString(),
       expiresAt: Date.now() + 15 * 60 * 1000,
     };
@@ -955,6 +974,8 @@ app.get("/api/rounds/daily-challenge", async (_req, res) => {
         sourceWord: round.sourceWord,
         difficulty: round.difficulty,
         validWordsCount: round.validWords?.length || 0,
+        targetScore: rules.targetScore,
+        rewardDisplay: rules.rewardDisplay,
       },
     });
   } catch (error) {
@@ -1078,9 +1099,10 @@ app.post("/api/daily/claim", async (req, res) => {
     });
   }
 
-  if (session.score < 40) {
+  const targetScore = session.targetScore || 40;
+  if (session.score < targetScore) {
     return res.status(400).json({
-      error: "You need at least 40 points to claim the daily reward.",
+      error: `You need at least ${targetScore} points to claim this daily reward.`,
     });
   }
 
@@ -1119,10 +1141,11 @@ app.post("/api/daily/claim", async (req, res) => {
   }
 
   try {
-    const DAILY_REWARD_WEI = "10000000000000000"; // 0.01 CELO
+    const rewardWei = session.rewardWei || "10000000000000000";
+    const rewardDisplay = session.rewardDisplay || "0.01 CELO";
     const txHash = await wordPotContract.sendReward(
       walletAddress,
-      DAILY_REWARD_WEI,
+      rewardWei,
     );
     dailyClaims.set(claimKey, {
       walletAddress,
@@ -1136,7 +1159,7 @@ app.post("/api/daily/claim", async (req, res) => {
     return res.json({
       ok: true,
       txHash,
-      amount: "0.01 CELO",
+      amount: rewardDisplay,
       score: session.score,
       explorerUrl: `https://celoscan.io/tx/${txHash}`,
     });
@@ -1585,7 +1608,13 @@ app.post("/api/rooms/:roomId/start", async (req, res) => {
     });
   }
 
-  const roundSeed = await getDynamicRound("hard");
+  const roundSeed = await getDynamicRound("hard", recentUsedSourceWords);
+  if (roundSeed && roundSeed.sourceWord) {
+    recentUsedSourceWords.push(String(roundSeed.sourceWord).toUpperCase());
+    while (recentUsedSourceWords.length > 20) {
+      recentUsedSourceWords.shift();
+    }
+  }
   room.status = "active";
   room.startedAt = new Date().toISOString();
   room.endsAt = Date.now() + ROUND_SECONDS * 1000;

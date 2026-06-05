@@ -428,7 +428,7 @@ function getFallbackRounds(difficulty) {
   );
 }
 
-function pickFromRounds(rounds, difficulty) {
+function pickFromRounds(rounds, difficulty, exclusions = []) {
   if (!rounds.length) {
     const emergencyRound = makeRound(
       EMERGENCY_SOURCE_WORDS[
@@ -447,12 +447,14 @@ function pickFromRounds(rounds, difficulty) {
   const lastSourceWord =
     lastSourceWordByDifficulty.get(normalizedDifficulty) || "";
   const candidates = rounds.filter(
-    (round) => round.sourceWord !== lastSourceWord,
+    (round) =>
+      round.sourceWord !== lastSourceWord &&
+      !exclusions.includes(String(round.sourceWord || "").toUpperCase())
   );
   const pool = candidates.length ? candidates : rounds;
   if (!candidates.length) {
     console.info(
-      `[rounds] pickFromRounds: no candidates excluding lastSourceWord (${lastSourceWord}). Selecting from full pool.`,
+      `[rounds] pickFromRounds: no candidates excluding lastSourceWord/exclusions. Selecting from full pool.`,
     );
   }
   const nextRound = pool[Math.floor(Math.random() * pool.length)];
@@ -591,7 +593,7 @@ async function refillRoundCache(difficulty) {
   }
 }
 
-export async function getDynamicRound(difficulty = DEFAULT_DIFFICULTY) {
+export async function getDynamicRound(difficulty = DEFAULT_DIFFICULTY, exclusions = []) {
   const normalizedDifficulty = normalizeDifficulty(difficulty);
   const cache = roundCaches.get(normalizedDifficulty);
   const isCacheValid =
@@ -602,7 +604,7 @@ export async function getDynamicRound(difficulty = DEFAULT_DIFFICULTY) {
   }
 
   const nextCache = roundCaches.get(normalizedDifficulty);
-  return pickFromRounds(nextCache?.rounds || [], normalizedDifficulty);
+  return pickFromRounds(nextCache?.rounds || [], normalizedDifficulty, exclusions);
 }
 
 // Pick a round while excluding recent source words (case-sensitive uppercase list expected)

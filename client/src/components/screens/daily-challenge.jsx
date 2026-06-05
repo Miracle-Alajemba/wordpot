@@ -64,6 +64,7 @@ export function DailyChallenge({
   const walletConnected = isWalletAddress(walletAddress);
 
   async function loadDailyRound(
+    difficulty = "medium",
     nextPhase = "idle",
     nextFeedback = "Start today's challenge when you are ready.",
   ) {
@@ -73,7 +74,7 @@ export function DailyChallenge({
 
     try {
       const response = await fetch(
-        `${apiBaseUrl}/rounds/daily-challenge?walletAddress=${encodeURIComponent(walletAddress.trim())}`,
+        `${apiBaseUrl}/rounds/daily-challenge?walletAddress=${encodeURIComponent(walletAddress.trim())}&difficulty=${encodeURIComponent(difficulty)}`,
       );
       const data = await response.json();
 
@@ -116,7 +117,7 @@ export function DailyChallenge({
     return () => window.clearInterval(interval);
   }, [phase]);
 
-  async function startChallenge() {
+  async function startChallenge(difficulty = "medium") {
     if (loadingRound) return;
 
     setCurrentPlayStarted(true);
@@ -126,9 +127,18 @@ export function DailyChallenge({
       return;
     }
 
+    const rules = {
+      easy: { target: 20, reward: "0.005 CELO" },
+      medium: { target: 40, reward: "0.01 CELO" },
+      hard: { target: 60, reward: "0.02 CELO" }
+    };
+    const target = rules[difficulty]?.target || 40;
+    const reward = rules[difficulty]?.reward || "0.01 CELO";
+
     await loadDailyRound(
+      difficulty,
       "playing",
-      `Build valid words fast. Reach ${DAILY_TARGET_SCORE} points to unlock today's reward.`,
+      `Build valid words fast. Reach ${target} points to unlock today's ${reward} reward.`,
     );
   }
 
@@ -433,7 +443,7 @@ export function DailyChallenge({
               <p className="play-label">Today's Word</p>
               <h1>{roundSeed?.sourceWord || "LOADING"}</h1>
               <p className="lede">
-                Score {DAILY_TARGET_SCORE} points in one free round to claim today's 0.01 CELO reward.
+                Score {roundSeed?.targetScore || 40} points in one free round to claim today's {roundSeed?.rewardDisplay || "0.01 CELO"} reward.
               </p>
               <div className="letter-rack letter-rack--play">
                 {sourceLetters.map((letter, index) => (
@@ -457,7 +467,7 @@ export function DailyChallenge({
             </div>
 
             <div className="score-row">
-              <ScoreBadge label="Target" value={`${DAILY_TARGET_SCORE} pts`} />
+              <ScoreBadge label="Target" value={`${roundSeed?.targetScore || 40} pts`} />
               <ScoreBadge label="Time left" value={`${timeLeft}s`} />
               <ScoreBadge label="Score" value={score} />
               <ScoreBadge label="Words" value={claimedWords.length} />
@@ -472,16 +482,87 @@ export function DailyChallenge({
             <p>Preparing today's Daily Challenge.</p>
           </div>
         ) : phase === "idle" ? (
-          <div className="results-sheet">
+          <div className="results-sheet" style={{ maxWidth: "500px", margin: "0 auto" }}>
             <div style={{ fontSize: "2.5rem", marginBottom: "1rem", textAlign: "center" }}>🏆</div>
             <p className="eyebrow">Ready</p>
             <h2>Daily Challenge</h2>
-            <p>
-              Start a free 60-second round. Reach {DAILY_TARGET_SCORE} points to unlock a once-per-day CELO reward.
+            <p style={{ marginBottom: "1.5rem" }}>
+              Select your difficulty level. Each level has a different score target and reward payout. You can play once per day.
             </p>
-            <div className="hero-actions">
-              <button type="button" onClick={startChallenge} disabled={loadingRound}>
-                {loadingRound ? "Preparing..." : "Start Daily Challenge"}
+            <div className="difficulty-choices" style={{ display: "flex", flexDirection: "column", gap: "1rem", width: "100%", marginBottom: "1.5rem" }}>
+              <button
+                type="button"
+                className="difficulty-card"
+                onClick={() => startChallenge("easy")}
+                disabled={loadingRound}
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  padding: "1rem 1.5rem",
+                  background: "rgba(255, 255, 255, 0.05)",
+                  border: "1px solid rgba(255, 255, 255, 0.1)",
+                  borderRadius: "12px",
+                  textAlign: "left",
+                  color: "#fff",
+                  cursor: "pointer"
+                }}
+              >
+                <div>
+                  <strong style={{ fontSize: "1.1rem", display: "block" }}>🟢 Easy</strong>
+                  <span style={{ fontSize: "0.85rem", opacity: 0.7 }}>Target: 20 pts</span>
+                </div>
+                <strong style={{ color: "#34d399" }}>0.005 CELO</strong>
+              </button>
+
+              <button
+                type="button"
+                className="difficulty-card"
+                onClick={() => startChallenge("medium")}
+                disabled={loadingRound}
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  padding: "1rem 1.5rem",
+                  background: "rgba(255, 255, 255, 0.05)",
+                  border: "1px solid rgba(255, 255, 255, 0.1)",
+                  borderRadius: "12px",
+                  textAlign: "left",
+                  color: "#fff",
+                  cursor: "pointer"
+                }}
+              >
+                <div>
+                  <strong style={{ fontSize: "1.1rem", display: "block" }}>🟡 Medium</strong>
+                  <span style={{ fontSize: "0.85rem", opacity: 0.7 }}>Target: 40 pts</span>
+                </div>
+                <strong style={{ color: "#34d399" }}>0.010 CELO</strong>
+              </button>
+
+              <button
+                type="button"
+                className="difficulty-card"
+                onClick={() => startChallenge("hard")}
+                disabled={loadingRound}
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  padding: "1rem 1.5rem",
+                  background: "rgba(255, 255, 255, 0.05)",
+                  border: "1px solid rgba(255, 255, 255, 0.1)",
+                  borderRadius: "12px",
+                  textAlign: "left",
+                  color: "#fff",
+                  cursor: "pointer"
+                }}
+              >
+                <div>
+                  <strong style={{ fontSize: "1.1rem", display: "block" }}>🔴 Hard</strong>
+                  <span style={{ fontSize: "0.85rem", opacity: 0.7 }}>Target: 60 pts</span>
+                </div>
+                <strong style={{ color: "#34d399" }}>0.020 CELO</strong>
               </button>
             </div>
           </div>
@@ -489,10 +570,10 @@ export function DailyChallenge({
           <div className="results-sheet">
             <p className="eyebrow">Daily Challenge Complete</p>
             <h2>{score} pts</h2>
-            {score < DAILY_TARGET_SCORE ? (
+            {score < (roundSeed?.targetScore || 40) ? (
               <>
                 <p>
-                  You scored {score} points. You need {DAILY_TARGET_SCORE} points to claim today's reward. Try again.
+                  You scored {score} points. You need {roundSeed?.targetScore || 40} points to claim today's reward. Try again.
                 </p>
                 <div className="hero-actions">
                   <button type="button" onClick={resetChallenge}>
@@ -525,7 +606,7 @@ export function DailyChallenge({
               </>
             ) : (
               <>
-                <p>You reached the target. Claim today's 0.01 CELO reward.</p>
+                <p>You reached the target. Claim today's {roundSeed?.rewardDisplay || "0.01 CELO"} reward.</p>
                 {dailyClaimMessage ? (
                   <div className="notice-strip notice-strip--success">{dailyClaimMessage}</div>
                 ) : null}
@@ -537,7 +618,7 @@ export function DailyChallenge({
                     {dailyClaimBusy
                       ? "Sending reward..."
                       : walletConnected && walletReady
-                        ? "Claim 0.01 CELO"
+                        ? `Claim ${roundSeed?.rewardDisplay || "0.01 CELO"}`
                         : "Reconnect Wallet to Claim"}
                   </button>
                 </div>
