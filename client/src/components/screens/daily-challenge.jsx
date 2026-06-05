@@ -507,16 +507,7 @@ export function DailyChallenge({
                   textAlign: "left",
                   color: "#f5f7ff",
                   cursor: "pointer",
-                  transition: "all 0.2s ease",
                   width: "100%"
-                }}
-                onMouseOver={(e) => {
-                  e.currentTarget.style.background = "rgba(255, 255, 255, 0.07)";
-                  e.currentTarget.style.borderColor = "rgba(141, 163, 255, 0.24)";
-                }}
-                onMouseOut={(e) => {
-                  e.currentTarget.style.background = "rgba(255, 255, 255, 0.02)";
-                  e.currentTarget.style.borderColor = "rgba(141, 163, 255, 0.12)";
                 }}
               >
                 <div>
@@ -543,16 +534,7 @@ export function DailyChallenge({
                   textAlign: "left",
                   color: "#f5f7ff",
                   cursor: "pointer",
-                  transition: "all 0.2s ease",
                   width: "100%"
-                }}
-                onMouseOver={(e) => {
-                  e.currentTarget.style.background = "rgba(255, 255, 255, 0.07)";
-                  e.currentTarget.style.borderColor = "rgba(141, 163, 255, 0.24)";
-                }}
-                onMouseOut={(e) => {
-                  e.currentTarget.style.background = "rgba(255, 255, 255, 0.02)";
-                  e.currentTarget.style.borderColor = "rgba(141, 163, 255, 0.12)";
                 }}
               >
                 <div>
@@ -579,16 +561,7 @@ export function DailyChallenge({
                   textAlign: "left",
                   color: "#f5f7ff",
                   cursor: "pointer",
-                  transition: "all 0.2s ease",
                   width: "100%"
-                }}
-                onMouseOver={(e) => {
-                  e.currentTarget.style.background = "rgba(255, 255, 255, 0.07)";
-                  e.currentTarget.style.borderColor = "rgba(141, 163, 255, 0.24)";
-                }}
-                onMouseOut={(e) => {
-                  e.currentTarget.style.background = "rgba(255, 255, 255, 0.02)";
-                  e.currentTarget.style.borderColor = "rgba(141, 163, 255, 0.12)";
                 }}
               >
                 <div>
