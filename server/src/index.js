@@ -42,6 +42,9 @@ const RECENT_DAILY_SOURCES_FILE =
 const DAILY_PLAYS_FILE =
   process.env.DAILY_PLAYS_FILE ||
   new URL("../daily-plays.json", import.meta.url);
+const LEADERBOARD_SEASONS_FILE =
+  process.env.LEADERBOARD_SEASONS_FILE ||
+  new URL("../leaderboard-seasons.json", import.meta.url);
 const DAILY_RESET_HOUR = Math.max(
   0,
   Math.min(23, Number(process.env.DAILY_RESET_HOUR || 0)),
@@ -49,6 +52,7 @@ const DAILY_RESET_HOUR = Math.max(
 const rooms = new Map();
 const dailyClaims = loadDailyClaims(); // key: "walletAddress:YYYY-MM-DD" -> claim entry
 const dailyPlays = loadDailyPlays(); // key: "walletAddress:YYYY-MM-DD" -> play entry
+const leaderboardSeasons = loadLeaderboardSeasons();
 const dailyChallengeSessions = new Map();
 let recentDailySourceWords = loadRecentDailySources();
 const recentUsedSourceWords = []; // rolling history of last 20 words used across rooms/practice
@@ -172,6 +176,95 @@ function loadDailyClaims() {
   } catch (error) {
     console.warn(`Unable to load daily claims: ${error.message}`);
     return new Map();
+  }
+}
+
+function loadLeaderboardSeasons() {
+  try {
+    if (!fs.existsSync(LEADERBOARD_SEASONS_FILE)) {
+      return { activeSeason: 1, seasonEndsAt: "2026-06-12T00:00:00Z", players: {} };
+    }
+    const raw = fs.readFileSync(LEADERBOARD_SEASONS_FILE, "utf8");
+    const parsed = JSON.parse(raw);
+    parsed.players = parsed.players || {};
+    return parsed;
+  } catch (error) {
+    console.warn(`Unable to load leaderboard seasons: ${error.message}`);
+    return { activeSeason: 1, seasonEndsAt: "2026-06-12T00:00:00Z", players: {} };
+  }
+}
+
+function persistLeaderboardSeasons() {
+  try {
+    fs.writeFileSync(
+      LEADERBOARD_SEASONS_FILE,
+      JSON.stringify(leaderboardSeasons, null, 2),
+    );
+  } catch (error) {
+    console.error(`Unable to persist leaderboard seasons: ${error.message}`);
+  }
+}
+
+function getSeasonalLeaderboard() {
+  const entries = Object.values(leaderboardSeasons.players)
+    .filter((player) => player.registered === true)
+    .sort((a, b) => {
+      if (b.score !== a.score) return b.score - a.score;
+      if (b.wins !== a.wins) return b.wins - a.wins;
+      return b.wordsFound - a.wordsFound;
+    })
+    .slice(0, DEFAULT_LEADERBOARD_LIMIT)
+    .map((entry, index) => ({ rank: index + 1, ...entry }));
+  return entries;
+}
+
+function updateSeasonalStatsForRoom(room) {
+  try {
+    const derived = getRoomDerived(room);
+    const scoreboard = derived.scoreboard;
+    if (!scoreboard || !scoreboard.length) return;
+
+    const winnerAddress = scoreboard[0]?.score > 0 ? scoreboard[0]?.walletAddress.toLowerCase() : null;
+
+    for (const entry of scoreboard) {
+      const addressLower = entry.walletAddress.toLowerCase();
+      
+      // Initialize player in database if not exist
+      if (!leaderboardSeasons.players[addressLower]) {
+        leaderboardSeasons.players[addressLower] = {
+          walletAddress: entry.walletAddress,
+          registered: false,
+          score: 0,
+          wordsFound: 0,
+          gamesPlayed: 0,
+          wins: 0,
+          boosterGamesRemaining: 0,
+        };
+      }
+
+      const playerRecord = leaderboardSeasons.players[addressLower];
+      
+      // Check if player has an active booster
+      let multiplier = 1;
+      if (playerRecord.boosterGamesRemaining > 0) {
+        multiplier = 2;
+        playerRecord.boosterGamesRemaining -= 1;
+        console.info(`[leaderboard] Applied 2x booster for ${entry.walletAddress}. Boosters remaining: ${playerRecord.boosterGamesRemaining}`);
+      }
+
+      // Add to stats
+      playerRecord.score += (entry.score * multiplier);
+      playerRecord.wordsFound += entry.wordsFound;
+      playerRecord.gamesPlayed += 1;
+      if (winnerAddress === addressLower) {
+        playerRecord.wins += 1;
+      }
+    }
+
+    persistLeaderboardSeasons();
+    console.info(`[leaderboard] Seasonal stats updated for room ${room.id}`);
+  } catch (error) {
+    console.error(`[leaderboard] Failed to update seasonal stats: ${error.message}`);
   }
 }
 
@@ -515,6 +608,7 @@ function settleRoom(room) {
     message: "Game over! Results are ready.",
     createdAt: new Date().toISOString(),
   });
+  updateSeasonalStatsForRoom(room);
   markRoomDirty(room);
 }
 
@@ -845,9 +939,24 @@ app.get("/api/meta", (_req, res) => {
   });
 });
 
-app.get("/api/leaderboard", (_req, res) => {
+app.get("/api/leaderboard", (req, res) => {
+  const walletAddress = String(req.query?.walletAddress || "").trim();
+  const addressLower = walletAddress.toLowerCase();
+  
+  let playerRecord = null;
+  if (isWalletAddress(walletAddress) && leaderboardSeasons.players[addressLower]) {
+    playerRecord = leaderboardSeasons.players[addressLower];
+  }
+
   res.json({
     entries: getCommunityLeaderboard(),
+    seasonalEntries: getSeasonalLeaderboard(),
+    seasonInfo: {
+      activeSeason: leaderboardSeasons.activeSeason,
+      seasonEndsAt: leaderboardSeasons.seasonEndsAt,
+    },
+    playerRecord,
+    treasuryWallet: TREASURY_WALLET,
     updatedAt: new Date().toISOString(),
   });
 });
@@ -1201,6 +1310,7 @@ app.get("/api/daily/status", (req, res) => {
     txHash: claimEntry?.txHash || null,
     policy: "rolling-24h",
     nextAvailableAt,
+    treasuryWallet: TREASURY_WALLET,
   });
 });
 
@@ -1950,6 +2060,111 @@ app.post("/api/rooms/:roomId/cancel", async (req, res) => {
   pushSystemEvent(room, "Room cancelled by host.");
 
   return res.status(200).json({ room: getRoomSummary(room) });
+});
+
+app.post("/api/leaderboard/season/register", (req, res) => {
+  const walletAddress = String(req.body?.walletAddress || "").trim();
+  const txHash = String(req.body?.txHash || "").trim();
+
+  if (!isWalletAddress(walletAddress)) {
+    return res.status(400).json({ error: "A valid wallet address is required." });
+  }
+
+  const addressLower = walletAddress.toLowerCase();
+  if (!leaderboardSeasons.players[addressLower]) {
+    leaderboardSeasons.players[addressLower] = {
+      walletAddress,
+      registered: false,
+      score: 0,
+      wordsFound: 0,
+      gamesPlayed: 0,
+      wins: 0,
+      boosterGamesRemaining: 0,
+    };
+  }
+
+  const record = leaderboardSeasons.players[addressLower];
+  record.registered = true;
+  if (txHash) {
+    record.txHash = txHash;
+  }
+  record.registeredAt = new Date().toISOString();
+
+  persistLeaderboardSeasons();
+
+  return res.json({
+    ok: true,
+    message: "Successfully registered for Season 1!",
+    player: record,
+  });
+});
+
+app.post("/api/leaderboard/booster/buy", (req, res) => {
+  const walletAddress = String(req.body?.walletAddress || "").trim();
+  const txHash = String(req.body?.txHash || "").trim();
+
+  if (!isWalletAddress(walletAddress)) {
+    return res.status(400).json({ error: "A valid wallet address is required." });
+  }
+
+  const addressLower = walletAddress.toLowerCase();
+  if (!leaderboardSeasons.players[addressLower]) {
+    leaderboardSeasons.players[addressLower] = {
+      walletAddress,
+      registered: false,
+      score: 0,
+      wordsFound: 0,
+      gamesPlayed: 0,
+      wins: 0,
+      boosterGamesRemaining: 0,
+    };
+  }
+
+  const record = leaderboardSeasons.players[addressLower];
+  record.boosterGamesRemaining = (record.boosterGamesRemaining || 0) + 3;
+  if (txHash) {
+    record.boosterTxHash = txHash;
+  }
+  record.boosterPurchasedAt = new Date().toISOString();
+
+  persistLeaderboardSeasons();
+
+  return res.json({
+    ok: true,
+    message: "Successfully purchased a 3-game 2x Score Booster!",
+    player: record,
+  });
+});
+
+app.post("/api/daily/retry-purchase", (req, res) => {
+  const walletAddress = String(req.body?.walletAddress || "").trim();
+
+  if (!isWalletAddress(walletAddress)) {
+    return res.status(400).json({ error: "A valid wallet address is required." });
+  }
+
+  const walletKey = walletAddress.toLowerCase();
+  let clearedCount = 0;
+  for (const key of dailyPlays.keys()) {
+    if (key.toLowerCase() === walletKey) {
+      dailyPlays.delete(key);
+      clearedCount++;
+    }
+  }
+
+  if (clearedCount > 0) {
+    try {
+      persistDailyPlays();
+    } catch (err) {
+      console.warn("Failed to persist daily plays:", err.message);
+    }
+  }
+
+  return res.json({
+    ok: true,
+    message: "Retry purchased! Daily Challenge cooldown cleared.",
+    cleared: clearedCount > 0,
+  });
 });
 
 app.listen(port, () => {

@@ -937,6 +937,11 @@ export default function App() {
             dailyClaimMessage={dailyClaimMessage}
             onRecordPlay={recordDailyPlay}
             onClaimDaily={claimDailyReward}
+            onRefreshStatus={checkDailyStatus}
+            getInjectedProvider={getInjectedProvider}
+            getWalletClient={getWalletClient}
+            getPublicClient={getPublicClient}
+            ensureCeloMainnet={ensureCeloMainnet}
           />
         </Suspense>
       </DailyChallengeErrorBoundary>
@@ -992,6 +997,14 @@ export default function App() {
           room={room}
           onQuickMatch={handleQuickMatch}
           onBack={backHome}
+          walletAddress={walletAddress}
+          walletReady={walletReady}
+          onConnectWallet={connectWallet}
+          getInjectedProvider={getInjectedProvider}
+          getWalletClient={getWalletClient}
+          getPublicClient={getPublicClient}
+          ensureCeloMainnet={ensureCeloMainnet}
+          isMiniPay={isMiniPay}
         />
       </Suspense>
     );

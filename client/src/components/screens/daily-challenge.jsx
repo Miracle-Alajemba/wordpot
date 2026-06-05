@@ -38,6 +38,11 @@ export function DailyChallenge({
   dailyClaimMessage,
   onRecordPlay,
   onClaimDaily,
+  onRefreshStatus,
+  getInjectedProvider,
+  getWalletClient,
+  getPublicClient,
+  ensureCeloMainnet,
 }) {
   const [roundSeed, setRoundSeed] = useState(null);
   const [phase, setPhase] = useState("idle");
@@ -53,6 +58,67 @@ export function DailyChallenge({
   const [currentPlayStarted, setCurrentPlayStarted] = useState(false);
   const wordSubmitBusyRef = useRef(false);
   const [cooldownSeconds, setCooldownSeconds] = useState(0);
+  const [treasuryWallet, setTreasuryWallet] = useState("");
+  const [isRetrying, setIsRetrying] = useState(false);
+  const [retryError, setRetryError] = useState("");
+
+  useEffect(() => {
+    if (walletAddress) {
+      fetch(`${apiBaseUrl}/daily/status?walletAddress=${encodeURIComponent(walletAddress.trim())}`)
+        .then((res) => res.json())
+        .then((data) => {
+          if (data.treasuryWallet) {
+            setTreasuryWallet(data.treasuryWallet);
+          }
+        })
+        .catch((err) => console.warn("Failed to load daily status details", err));
+    }
+  }, [apiBaseUrl, walletAddress]);
+
+  const handleBuyRetryTicket = async () => {
+    setRetryError("");
+    setIsRetrying(true);
+    try {
+      let txHash = "";
+      if (walletReady && getInjectedProvider && getWalletClient && getPublicClient && treasuryWallet) {
+        const provider = getInjectedProvider();
+        if (provider?.request) {
+          await ensureCeloMainnet(provider);
+          const walletClient = getWalletClient();
+          const publicClient = getPublicClient();
+          if (walletClient && publicClient) {
+            const [account] = await walletClient.getAddresses();
+            txHash = await walletClient.sendTransaction({
+              account,
+              chain: walletClient.chain,
+              to: treasuryWallet,
+              value: BigInt(50000000000000000), // 0.05 CELO
+            });
+            await publicClient.waitForTransactionReceipt({ hash: txHash });
+          }
+        }
+      }
+
+      const response = await fetch(`${apiBaseUrl}/daily/retry-purchase`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ walletAddress: walletAddress.trim(), txHash }),
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || "Unable to purchase retry ticket.");
+      }
+      
+      if (onRefreshStatus) {
+        await onRefreshStatus();
+      }
+      resetChallenge();
+    } catch (err) {
+      setRetryError(err.message || "Failed to buy retry ticket.");
+    } finally {
+      setIsRetrying(false);
+    }
+  };
   const cooldownRef = useRef(null);
 
   const sourceLetters = String(roundSeed?.sourceWord || "").split("");
@@ -372,12 +438,32 @@ export function DailyChallenge({
                 : "Less than a minute"}
             </p>
             <p style={{ marginBottom: "1.5rem" }}>
-              Come back when the timer expires to play again and try claiming another 0.01 CELO.
+              Come back when the timer expires to play again and try claiming another reward.
             </p>
-            <div className="hero-actions" style={{ justifyContent: "center" }}>
-              <button type="button" className="button-secondary" onClick={onBack}>
-                Back to Home
+
+            <div style={{ borderTop: "1px solid rgba(255,255,255,0.1)", paddingTop: "1.5rem", marginTop: "1rem", width: "100%" }}>
+              <h4 style={{ color: "var(--accent-mint)" }}>Can't wait? ⚡</h4>
+              <p style={{ fontSize: "0.85em", opacity: 0.8, marginBottom: "1.5rem" }}>
+                Skip the cooldown and play again immediately with a retry ticket.
+              </p>
+              <button
+                type="button"
+                onClick={handleBuyRetryTicket}
+                disabled={isRetrying}
+                className="primary-button"
+                style={{ background: "var(--accent-mint)", color: "#121212", padding: "0.75rem 1.5rem", borderRadius: "8px", fontWeight: "bold" }}
+              >
+                {isRetrying ? "Processing..." : "Buy Retry Ticket (0.05 CELO)"}
               </button>
+              {retryError ? (
+                <div className="notice-strip notice-strip--error" style={{ marginTop: "10px" }}>{retryError}</div>
+              ) : null}
+            </div>
+
+            <div className="hero-actions" style={{ justifyContent: "center", marginTop: "2rem" }}>
+               <button type="button" className="button-secondary" onClick={onBack}>
+                 Back to Home
+               </button>
             </div>
           </div>
         </section>
