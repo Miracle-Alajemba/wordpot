@@ -815,6 +815,7 @@ button:disabled {
 .score-badge strong {
   color: #fff;
   font-size: 1.45rem;
+  font-family: var(--font-mono);
 }
 
 .progress-shell {
@@ -1079,6 +1080,7 @@ button:disabled {
   color: #fff;
   font-size: 1.25rem;
   word-break: break-word;
+  font-family: var(--font-mono);
 }
 
 .metric-card p {

@@ -38,7 +38,7 @@ function PracticeResults({
   return (
     <div className="results-sheet">
       <p className="eyebrow">Practice Complete</p>
-      <h2>{score} pts</h2>
+      <h2 style={{ fontFamily: "var(--font-mono)" }}>{score} pts</h2>
       <p>
         You claimed <strong>{wordsFound.length}</strong>{" "}
         {wordsFound.length === 1 ? "word" : "words"} this round.
@@ -49,7 +49,7 @@ function PracticeResults({
           wordsFound.map((entry) => (
             <div key={entry.word} className="word-chip">
               <strong>{entry.word}</strong>
-              <span>+{entry.score}</span>
+              <span style={{ fontFamily: "var(--font-mono)" }}>+{entry.score}</span>
             </div>
           ))
         ) : (
@@ -77,7 +77,7 @@ export function PracticeScreen({
   roundSeconds = 60,
 }) {
   const [roundSeed, setRoundSeed] = useState(null);
-  const [difficulty, setDifficulty] = useState("medium");
+  const difficulty = "medium";
   const [timeLeft, setTimeLeft] = useState(roundSeconds);
   const [draftWord, setDraftWord] = useState("");
   const [selectedIndexes, setSelectedIndexes] = useState([]);
@@ -91,9 +91,6 @@ export function PracticeScreen({
   const [loadingRound, setLoadingRound] = useState(true);
   const sourceLetters = String(roundSeed?.sourceWord || "").split("");
   const selectedWord = draftWord;
-  const difficultyNote =
-    PRACTICE_DIFFICULTY_NOTES[difficulty] ||
-    PRACTICE_DIFFICULTY_NOTES.medium;
 
   async function loadPracticeRound(nextFeedback = "New round loaded. Go fast and go clean.") {
     setLoadingRound(true);
@@ -131,7 +128,7 @@ export function PracticeScreen({
 
   useEffect(() => {
     loadPracticeRound("Build as many valid words as you can.");
-  }, [difficulty]);
+  }, []);
 
   useEffect(() => {
     if (isFinished || !roundSeed) return undefined;
@@ -305,32 +302,7 @@ export function PracticeScreen({
           <p className="eyebrow">Practice Mode</p>
         </div>
 
-        <div className="practice-difficulty-bar">
-          <div>
-            <p className="play-label">Difficulty</p>
-            <p className="field-hint">
-              {difficultyNote}
-            </p>
-          </div>
-          <div
-            className="theme-toggle practice-difficulty-toggle"
-            role="tablist"
-            aria-label="Practice difficulty"
-          >
-            {PRACTICE_DIFFICULTIES.map((entry) => (
-              <button
-                key={entry.id}
-                type="button"
-                className={`theme-toggle__option practice-difficulty-toggle__option ${difficulty === entry.id ? "theme-toggle__option--active practice-difficulty-toggle__option--active" : ""}`}
-                onClick={() => setDifficulty(entry.id)}
-                disabled={loadingRound && difficulty === entry.id}
-                aria-pressed={difficulty === entry.id}
-              >
-                {entry.label}
-              </button>
-            ))}
-          </div>
-        </div>
+        {/* Difficulty level selector removed */}
 
         <div className="play-hero">
           <div>
@@ -358,7 +330,6 @@ export function PracticeScreen({
           </div>
 
           <div className="score-row">
-            <ScoreBadge label="Mode" value={getDifficultyLabel(difficulty)} />
             <ScoreBadge label="Time left" value={`${timeLeft}s`} />
             <ScoreBadge label="Score" value={score} />
             <ScoreBadge label="Claimed" value={claimedWords.length} />
@@ -423,7 +394,7 @@ export function PracticeScreen({
                       .map((entry) => (
                         <div key={entry.word} className="word-chip">
                           <strong>{entry.word}</strong>
-                          <span>+{entry.score}</span>
+                          <span style={{ fontFamily: "var(--font-mono)" }}>+{entry.score}</span>
                         </div>
                       ))
                   ) : (
