@@ -183,6 +183,24 @@ export function DailyChallenge({
     return () => window.clearInterval(interval);
   }, [phase]);
 
+  useEffect(() => {
+    if (phase === "finished" && roundSeed?.id && walletAddress) {
+      fetch(`${apiBaseUrl}/daily/finalize`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sessionId: roundSeed.id,
+          walletAddress: walletAddress.trim(),
+        }),
+      })
+        .then((res) => res.json())
+        .then((data) => {
+          console.log("Daily challenge finalized:", data);
+        })
+        .catch((err) => console.warn("Failed to finalize daily challenge", err));
+    }
+  }, [phase, roundSeed?.id, walletAddress, apiBaseUrl]);
+
   async function startChallenge(difficulty = "medium") {
     if (loadingRound) return;
 

@@ -45,6 +45,9 @@ const DAILY_PLAYS_FILE =
 const LEADERBOARD_SEASONS_FILE =
   process.env.LEADERBOARD_SEASONS_FILE ||
   new URL("../leaderboard-seasons.json", import.meta.url);
+const DAILY_LEADERBOARD_FILE =
+  process.env.DAILY_LEADERBOARD_FILE ||
+  new URL("../daily-challenge-leaderboard.json", import.meta.url);
 const DAILY_RESET_HOUR = Math.max(
   0,
   Math.min(23, Number(process.env.DAILY_RESET_HOUR || 0)),
@@ -53,6 +56,7 @@ const rooms = new Map();
 const dailyClaims = loadDailyClaims(); // key: "walletAddress:YYYY-MM-DD" -> claim entry
 const dailyPlays = loadDailyPlays(); // key: "walletAddress:YYYY-MM-DD" -> play entry
 const leaderboardSeasons = loadLeaderboardSeasons();
+const dailyLeaderboard = loadDailyLeaderboard();
 const dailyChallengeSessions = new Map();
 let recentDailySourceWords = loadRecentDailySources();
 const recentUsedSourceWords = []; // rolling history of last 20 words used across rooms/practice
@@ -203,6 +207,65 @@ function persistLeaderboardSeasons() {
   } catch (error) {
     console.error(`Unable to persist leaderboard seasons: ${error.message}`);
   }
+}
+
+function loadDailyLeaderboard() {
+  try {
+    if (!fs.existsSync(DAILY_LEADERBOARD_FILE)) {
+      return { players: {} };
+    }
+    const raw = fs.readFileSync(DAILY_LEADERBOARD_FILE, "utf8");
+    const parsed = JSON.parse(raw);
+    parsed.players = parsed.players || {};
+    return parsed;
+  } catch (error) {
+    console.warn(`Unable to load daily leaderboard: ${error.message}`);
+    return { players: {} };
+  }
+}
+
+function persistDailyLeaderboard() {
+  try {
+    fs.writeFileSync(
+      DAILY_LEADERBOARD_FILE,
+      JSON.stringify(dailyLeaderboard, null, 2),
+    );
+  } catch (error) {
+    console.error(`Unable to persist daily leaderboard: ${error.message}`);
+  }
+}
+
+function updateDailyLeaderboard(walletAddress, score) {
+  const addressKey = walletAddress.toLowerCase();
+  const player = dailyLeaderboard.players[addressKey] || {
+    walletAddress: walletAddress,
+    highScore: 0,
+    totalScore: 0,
+    roundsPlayed: 0
+  };
+
+  player.roundsPlayed += 1;
+  player.totalScore += score;
+  if (score > player.highScore) {
+    player.highScore = score;
+  }
+
+  dailyLeaderboard.players[addressKey] = player;
+  persistDailyLeaderboard();
+}
+
+function getDailyChallengeRankings() {
+  const list = Object.values(dailyLeaderboard.players);
+  return list
+    .sort((a, b) => b.highScore - a.highScore || b.totalScore - a.totalScore)
+    .slice(0, DEFAULT_LEADERBOARD_LIMIT)
+    .map((player, index) => ({
+      rank: index + 1,
+      walletAddress: player.walletAddress,
+      score: player.highScore,
+      totalScore: player.totalScore,
+      roundsPlayed: player.roundsPlayed
+    }));
 }
 
 function getSeasonalLeaderboard() {
@@ -951,6 +1014,7 @@ app.get("/api/leaderboard", (req, res) => {
   res.json({
     entries: getCommunityLeaderboard(),
     seasonalEntries: getSeasonalLeaderboard(),
+    dailyEntries: getDailyChallengeRankings(),
     seasonInfo: {
       activeSeason: leaderboardSeasons.activeSeason,
       seasonEndsAt: leaderboardSeasons.seasonEndsAt,
@@ -1166,6 +1230,40 @@ app.post("/api/daily/submit", (req, res) => {
     totalScore: session.score,
     wordsFound: session.claimedWords.size,
     message: `Locked in ${rawWord} for +${points} points.`,
+  });
+});
+
+app.post("/api/daily/finalize", (req, res) => {
+  const walletAddress = String(req.body?.walletAddress || "").trim();
+  const sessionId = String(req.body?.sessionId || "").trim();
+
+  if (!isWalletAddress(walletAddress)) {
+    return res.status(400).json({ error: "A valid wallet address is required." });
+  }
+
+  const session = dailyChallengeSessions.get(sessionId);
+  if (!session) {
+    return res.json({ ok: true, message: "Session not found." });
+  }
+
+  if (session.walletAddress.toLowerCase() !== walletAddress.toLowerCase()) {
+    return res.status(403).json({ error: "This session belongs to another wallet." });
+  }
+
+  if (session.finalized) {
+    return res.json({ ok: true, message: "Session already finalized." });
+  }
+
+  // Mark as finalized
+  session.finalized = true;
+
+  // Finalize score
+  updateDailyLeaderboard(walletAddress, session.score);
+
+  return res.json({
+    ok: true,
+    score: session.score,
+    message: "Daily challenge round finalized successfully."
   });
 });
 

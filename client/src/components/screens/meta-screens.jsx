@@ -9,7 +9,9 @@ import {
 } from "../../utils/ui-helpers.js";
 
 export function LeaderboardScreen({ room, onQuickMatch, onBack, apiBaseUrl }) {
+  const [activeTab, setActiveTab] = useState("arena"); // "arena" or "daily"
   const [entries, setEntries] = useState([]);
+  const [dailyEntries, setDailyEntries] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -26,6 +28,7 @@ export function LeaderboardScreen({ room, onQuickMatch, onBack, apiBaseUrl }) {
       }
 
       setEntries(data.entries || []);
+      setDailyEntries(data.dailyEntries || []);
     } catch (err) {
       console.error(err);
       setError(err.message || "Failed to load leaderboard");
@@ -38,6 +41,8 @@ export function LeaderboardScreen({ room, onQuickMatch, onBack, apiBaseUrl }) {
     loadLeaderboard();
   }, [apiBaseUrl]);
 
+  const activeEntries = activeTab === "arena" ? entries : dailyEntries;
+
   return (
     <main className="page-shell">
       <section className="play-shell">
@@ -48,10 +53,48 @@ export function LeaderboardScreen({ room, onQuickMatch, onBack, apiBaseUrl }) {
 
         <section className="profile-shell">
           <article className="panel profile-panel">
+            {/* Tab Controls */}
+            <div style={{ display: "flex", gap: "12px", borderBottom: "1px solid rgba(255,255,255,0.1)", paddingBottom: "12px", marginBottom: "16px" }}>
+              <button
+                type="button"
+                onClick={() => setActiveTab("arena")}
+                style={{
+                  background: "transparent",
+                  color: activeTab === "arena" ? "var(--accent-mint)" : "rgba(255,255,255,0.6)",
+                  border: "none",
+                  borderBottom: activeTab === "arena" ? "2px solid var(--accent-mint)" : "none",
+                  padding: "6px 12px",
+                  fontWeight: activeTab === "arena" ? "bold" : "normal",
+                  cursor: "pointer"
+                }}
+              >
+                Arena Matches
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab("daily")}
+                style={{
+                  background: "transparent",
+                  color: activeTab === "daily" ? "var(--accent-mint)" : "rgba(255,255,255,0.6)",
+                  border: "none",
+                  borderBottom: activeTab === "daily" ? "2px solid var(--accent-mint)" : "none",
+                  padding: "6px 12px",
+                  fontWeight: activeTab === "daily" ? "bold" : "normal",
+                  cursor: "pointer"
+                }}
+              >
+                Daily Challenge
+              </button>
+            </div>
+
             <div className="room-panel__header">
               <div>
-                <h3>Arena Rankings</h3>
-                <p>Global players ranked by the points they have achieved in live matches.</p>
+                <h3>{activeTab === "arena" ? "Arena Rankings" : "Daily Challenge Standings"}</h3>
+                <p>
+                  {activeTab === "arena"
+                    ? "Global players ranked by the points they have achieved in live matches."
+                    : "Top players ranked by their high score in the Daily Challenge."}
+                </p>
               </div>
             </div>
 
@@ -59,23 +102,30 @@ export function LeaderboardScreen({ room, onQuickMatch, onBack, apiBaseUrl }) {
             
             {loading ? (
               <div className="empty-card">Loading standings...</div>
-            ) : entries.length ? (
+            ) : activeEntries.length ? (
               <div className="leaderboard-table">
-                {entries.map((entry, index) => (
+                {activeEntries.map((entry, index) => (
                   <div key={`${entry.walletAddress}-${entry.rank || index}`} className={`leaderboard-table__row ${index === 0 ? "leaderboard-table__row--top" : ""}`}>
                     <div className="leaderboard-table__rank">#{entry.rank || index + 1}</div>
                     <PlayerIdentity walletAddress={entry.walletAddress} emphasis />
-                    <div className="leaderboard-table__stats">
+                    <div className="leaderboard-table__stats" style={{ textAlign: "right" }}>
                       <strong style={{ fontFamily: "var(--font-mono)", color: "var(--accent-mint)", fontSize: "1.1rem" }}>
                         {entry.score} pts
                       </strong>
+                      {activeTab === "daily" && (
+                        <span style={{ fontSize: "0.8em", opacity: 0.6, display: "block" }}>
+                          Total: {entry.totalScore} pts • {entry.roundsPlayed} play{entry.roundsPlayed === 1 ? "" : "s"}
+                        </span>
+                      )}
                     </div>
                   </div>
                 ))}
               </div>
             ) : (
               <div className="empty-card">
-                No player stats found. Finish a live match to start the leaderboard!
+                {activeTab === "arena"
+                  ? "No player stats found. Finish a live match to start the leaderboard!"
+                  : "No daily stats found. Play the Daily Challenge to start the leaderboard!"}
               </div>
             )}
           </article>
