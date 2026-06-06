@@ -30,6 +30,7 @@ export function DailyChallenge({
   onBack,
   onScoreUpdate,
   dailyClaimed,
+  dailyClaimAmount,
   dailyPlayed,
   dailyNextAvailableAt,
   dailyClaimBusy,
@@ -212,12 +213,12 @@ export function DailyChallenge({
     }
 
     const rules = {
-      easy: { target: 20, reward: "0.005 CELO" },
-      medium: { target: 40, reward: "0.01 CELO" },
-      hard: { target: 60, reward: "0.02 CELO" }
+      easy: { target: 40, reward: "0.05 CELO" },
+      medium: { target: 60, reward: "1 CELO" },
+      hard: { target: 80, reward: "2 CELO" }
     };
-    const target = rules[difficulty]?.target || 40;
-    const reward = rules[difficulty]?.reward || "0.01 CELO";
+    const target = rules[difficulty]?.target || 60;
+    const reward = rules[difficulty]?.reward || "1 CELO";
 
     await loadDailyRound(
       difficulty,
@@ -421,7 +422,7 @@ export function DailyChallenge({
             <div style={{ fontSize: "2.5rem", marginBottom: "1rem" }}>🏆</div>
             <h2>Sign In to Play</h2>
             <p style={{ marginBottom: "1.5rem" }}>
-              Connect your Celo wallet to play the Daily Challenge and claim your 0.01 CELO reward once per day.
+              Connect your Celo wallet to play the Daily Challenge and claim your reward (up to 2 CELO) once per day.
             </p>
             <div className="hero-actions">
               <button type="button" onClick={onConnectWallet}>
@@ -503,7 +504,7 @@ export function DailyChallenge({
             <div style={{ fontSize: "2.5rem", marginBottom: "1rem" }}>🏆</div>
             <h2>Already Claimed Today</h2>
             <p style={{ marginBottom: "0.5rem" }}>
-              You have already claimed your 0.01 CELO reward today.
+              You have already claimed your {dailyClaimAmount || "reward"} today.
             </p>
             <p style={{ marginBottom: "1.5rem" }}>
               Come back tomorrow for your next reward.
@@ -616,9 +617,9 @@ export function DailyChallenge({
               >
                 <div>
                   <strong style={{ fontSize: "1.1rem", display: "block", color: "#ffffff", fontWeight: "700", marginBottom: "0.25rem" }}>🎮 Easy</strong>
-                  <span style={{ fontSize: "0.82rem", color: "#63f4ca", fontWeight: "700", letterSpacing: "0.06em", textTransform: "uppercase" }}>Target: 20 pts</span>
+                  <span style={{ fontSize: "0.82rem", color: "#63f4ca", fontWeight: "700", letterSpacing: "0.06em", textTransform: "uppercase" }}>Target: 40 pts</span>
                 </div>
-                <strong style={{ color: "#ffffff", fontSize: "1.15rem", fontFamily: "var(--font-mono)", fontWeight: "700" }}>0.005 CELO</strong>
+                <strong style={{ color: "#ffffff", fontSize: "1.15rem", fontFamily: "var(--font-mono)", fontWeight: "700" }}>0.05 CELO</strong>
               </button>
 
               <button
@@ -643,9 +644,9 @@ export function DailyChallenge({
               >
                 <div>
                   <strong style={{ fontSize: "1.1rem", display: "block", color: "#ffffff", fontWeight: "700", marginBottom: "0.25rem" }}>⚔️ Medium</strong>
-                  <span style={{ fontSize: "0.82rem", color: "#63f4ca", fontWeight: "700", letterSpacing: "0.06em", textTransform: "uppercase" }}>Target: 40 pts</span>
+                  <span style={{ fontSize: "0.82rem", color: "#63f4ca", fontWeight: "700", letterSpacing: "0.06em", textTransform: "uppercase" }}>Target: 60 pts</span>
                 </div>
-                <strong style={{ color: "#ffffff", fontSize: "1.15rem", fontFamily: "var(--font-mono)", fontWeight: "700" }}>0.010 CELO</strong>
+                <strong style={{ color: "#ffffff", fontSize: "1.15rem", fontFamily: "var(--font-mono)", fontWeight: "700" }}>1 CELO</strong>
               </button>
 
               <button
@@ -670,9 +671,9 @@ export function DailyChallenge({
               >
                 <div>
                   <strong style={{ fontSize: "1.1rem", display: "block", color: "#ffffff", fontWeight: "700", marginBottom: "0.25rem" }}>👑 Hard</strong>
-                  <span style={{ fontSize: "0.82rem", color: "#63f4ca", fontWeight: "700", letterSpacing: "0.06em", textTransform: "uppercase" }}>Target: 60 pts</span>
+                  <span style={{ fontSize: "0.82rem", color: "#63f4ca", fontWeight: "700", letterSpacing: "0.06em", textTransform: "uppercase" }}>Target: 80 pts</span>
                 </div>
-                <strong style={{ color: "#ffffff", fontSize: "1.15rem", fontFamily: "var(--font-mono)", fontWeight: "700" }}>0.020 CELO</strong>
+                <strong style={{ color: "#ffffff", fontSize: "1.15rem", fontFamily: "var(--font-mono)", fontWeight: "700" }}>2 CELO</strong>
               </button>
             </div>
           </div>
@@ -712,7 +713,7 @@ export function DailyChallenge({
             ) : dailyClaimed ? (
               <>
                 <div className="notice-strip notice-strip--success">
-                  Claimed Today ✓ Come back tomorrow for your next reward.
+                  {dailyClaimMessage || `Claimed Today ✓ ${dailyClaimAmount || "Your reward"} is on its way to your wallet.`}
                 </div>
                 {dailyClaimTx ? (
                   <p>

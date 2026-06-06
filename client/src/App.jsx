@@ -140,6 +140,7 @@ export default function App() {
   const [dailyClaimTx, setDailyClaimTx] = useState("");
   const [dailyClaimError, setDailyClaimError] = useState("");
   const [dailyClaimMessage, setDailyClaimMessage] = useState("");
+  const [dailyClaimAmount, setDailyClaimAmount] = useState("");
   const [dailyNextAvailableAt, setDailyNextAvailableAt] = useState(null);
   const [roomSyncStatus, setRoomSyncStatus] = useState("idle");
   const inviteRoomJoinAttemptedRef = useRef(false);
@@ -290,6 +291,7 @@ export default function App() {
       setDailyClaimed(Boolean(data.claimed));
       setDailyPlayed(Boolean(data.played));
       setDailyClaimTx(data.txHash || "");
+      setDailyClaimAmount(data.amount || "");
       setDailyNextAvailableAt(data.nextAvailableAt || null);
     } catch (error) {
       setDailyClaimError(error.message || "Unable to check daily status.");
@@ -386,7 +388,8 @@ export default function App() {
       setDailyClaimed(true);
       setDailyPlayed(true);
       setDailyClaimTx(data.txHash || "");
-      setDailyClaimMessage("Claimed! 0.01 CELO is on its way to your wallet.");
+      setDailyClaimAmount(data.amount || "");
+      setDailyClaimMessage(`Claimed! ${data.amount || "Your reward"} is on its way to your wallet.`);
     } catch (error) {
       setDailyClaimError(error.message || "Unable to claim daily reward.");
     } finally {
@@ -929,6 +932,7 @@ export default function App() {
             onBack={() => setScreen("home")}
             onScoreUpdate={setDailyScore}
             dailyClaimed={dailyClaimed}
+            dailyClaimAmount={dailyClaimAmount}
             dailyPlayed={dailyPlayed}
             dailyNextAvailableAt={dailyNextAvailableAt}
             dailyClaimBusy={dailyClaimBusy}

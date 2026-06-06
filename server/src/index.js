@@ -1126,9 +1126,9 @@ app.get("/api/rounds/daily-challenge", async (_req, res) => {
     }
 
     const DIFFICULTY_RULES = {
-      easy: { targetScore: 20, rewardWei: "5000000000000000", rewardDisplay: "0.005 CELO" },
-      medium: { targetScore: 40, rewardWei: "10000000000000000", rewardDisplay: "0.01 CELO" },
-      hard: { targetScore: 60, rewardWei: "20000000000000000", rewardDisplay: "0.02 CELO" }
+      easy: { targetScore: 40, rewardWei: "50000000000000000", rewardDisplay: "0.05 CELO" },
+      medium: { targetScore: 60, rewardWei: "1000000000000000000", rewardDisplay: "1 CELO" },
+      hard: { targetScore: 80, rewardWei: "2000000000000000000", rewardDisplay: "2 CELO" }
     };
 
     const rules = DIFFICULTY_RULES[difficulty];
@@ -1367,6 +1367,7 @@ app.post("/api/daily/claim", async (req, res) => {
       score: session.score,
       claimedAt: new Date().toISOString(),
       txHash,
+      amount: rewardDisplay,
     });
     persistDailyClaims();
     dailyChallengeSessions.delete(sessionId);
@@ -1413,6 +1414,7 @@ app.get("/api/daily/status", (req, res) => {
     played,
     claimedAt: claimEntry?.claimedAt || null,
     txHash: claimEntry?.txHash || null,
+    amount: claimEntry?.amount || null,
     policy: "rolling-24h",
     nextAvailableAt,
     treasuryWallet: TREASURY_WALLET,

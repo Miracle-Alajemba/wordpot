@@ -159,29 +159,55 @@ const EMERGENCY_SOURCE_WORDS = [
   "ZENITH",
 ];
 
+const EASY_SOURCE_WORDS = [
+  "COMMUNITY", "EDUCATION", "FOUNDATION", "GENERATION", "MIGRATION",
+  "REMITTANCE", "SOLUTION", "TOGETHER", "VOLUNTEER", "YESTERDAY",
+  "CELEBRATION", "UNDERSTAND", "BEAUTIFUL", "EXPERIENCE", "GOVERNMENT",
+  "DIFFERENCE", "INFORMATION", "DEVELOPMENT", "ENVIRONMENT", "ASSOCIATION",
+  "ORGANIZATION", "PARTICULAR", "EVERYTHING", "BACKGROUND", "TECHNOLOGY",
+  "MANAGEMENT", "CONSTRUCTION", "REVOLUTION", "COMMUNICATION", "TRANSPORTATION"
+];
+
+const MEDIUM_SOURCE_WORDS = [
+  "ALGORITHM", "MILESTONE", "LANDMARK", "ORCHESTRA", "BROADCAST",
+  "TREASURY", "HORIZON", "FREQUENT", "JOURNAL", "KEYSTONE",
+  "MONUMENT", "NETWORK", "PASSWORD", "QUESTION", "DATABASE",
+  "FEEDBACK", "SECURITY", "CREATIVE", "CAMPAIGN", "DOCUMENT",
+  "FRIENDLY", "STRUGGLE", "CONTRACT", "PROJECTS", "ABSOLUTE",
+  "CAPACITY", "CRITICAL", "DELIVERY", "EMPHASIS", "FORECAST"
+];
+
+const HARD_SOURCE_WORDS = [
+  "MAXIMIZE", "ADJUDGED", "PUZZLING", "CHUTZPAH", "MEZZANINE",
+  "ACQUIRE", "ACQUITS", "ADEQUACY", "ADJUNCT", "BEQUEATH",
+  "JACQUARD", "JONQUIL", "WIZARDRY", "XENOPHON", "SPHINX",
+  "COGNIZANT", "BLIZZARD", "FLUMMOXED", "SKEPTIC", "CACOPHONY",
+  "GARRULOUS", "EQUINOXES", "HAZARDOUS", "JEOPARDY", "JUXTAPOSE"
+];
+
 const DIFFICULTY_PROFILES = {
   easy: {
-    minLength: 9,
+    minLength: 8,
     maxLength: 12,
-    maxValidWords: 80,
-    maxUniqueLetters: 9,
+    maxValidWords: 300,
+    maxUniqueLetters: 10,
     requireRepeatedLetters: false,
     sampleSize: 220,
   },
   medium: {
     minLength: 8,
     maxLength: 10,
-    maxValidWords: 54,
-    maxUniqueLetters: 7,
-    requireRepeatedLetters: true,
+    maxValidWords: 150,
+    maxUniqueLetters: 8,
+    requireRepeatedLetters: false,
     sampleSize: 160,
   },
   hard: {
-    minLength: 7,
-    maxLength: 9,
-    maxValidWords: 36,
-    maxUniqueLetters: 6,
-    requireRepeatedLetters: true,
+    minLength: 6,
+    maxLength: 10,
+    maxValidWords: 100,
+    maxUniqueLetters: 9,
+    requireRepeatedLetters: false,
     sampleSize: 120,
   },
 };
@@ -395,13 +421,28 @@ function getFallbackRounds(difficulty) {
   const profile = getDifficultyProfile(difficulty);
   const dictionary = loadDictionary();
 
+  let basePool = SOURCE_WORD_POOL;
+  if (difficulty === "easy") basePool = EASY_SOURCE_WORDS;
+  else if (difficulty === "medium") basePool = MEDIUM_SOURCE_WORDS;
+  else if (difficulty === "hard") basePool = HARD_SOURCE_WORDS;
+
   if (!dictionary.length) {
-    console.warn("Dictionary empty; using SOURCE_WORD_POOL fallback");
-    return SOURCE_WORD_POOL.map(makeRound).filter((round) =>
+    console.warn("Dictionary empty; using source pool fallback");
+    return basePool.map(makeRound).filter((round) =>
       isDifficultyPlayableRound(round, difficulty),
     );
   }
 
+  // Filter pool words to ensure they are playable and fit the profiles
+  const poolRounds = basePool
+    .map(makeRound)
+    .filter((round) => isDifficultyPlayableRound(round, difficulty));
+  
+  if (poolRounds.length) {
+    return shuffle(poolRounds);
+  }
+
+  // Fallback to dictionary filtering if the pool didn'\''t yield matches
   const dictionaryRounds = shuffle(
     dictionary.filter(
       (word) =>
@@ -423,7 +464,7 @@ function getFallbackRounds(difficulty) {
     return dictionaryRounds;
   }
 
-  return SOURCE_WORD_POOL.map(makeRound).filter((round) =>
+  return basePool.map(makeRound).filter((round) =>
     isDifficultyPlayableRound(round, difficulty),
   );
 }
@@ -511,86 +552,15 @@ async function fetchDatamuseCandidates() {
 // ✅ FIX: Prevent race conditions with promise deduplication
 async function refillRoundCache(difficulty) {
   const normalizedDifficulty = normalizeDifficulty(difficulty);
-  const profile = getDifficultyProfile(normalizedDifficulty);
-  const activeRefillPromise = cacheRefillPromises.get(normalizedDifficulty);
-
-  if (activeRefillPromise) {
-    return activeRefillPromise;
-  }
-
-  const refillPromise = (async () => {
-    let retries = 0;
-
-    while (retries <= MAX_RETRIES) {
-      try {
-        const remoteSourceWords = await fetchDatamuseCandidates();
-        const remoteRounds = uniqueWords(remoteSourceWords)
-          .map(makeRound)
-          .filter((round) =>
-            isDifficultyPlayableRound(round, normalizedDifficulty),
-          )
-          .sort(
-            (a, b) =>
-              getRoundDifficultyScore(b, normalizedDifficulty) -
-              getRoundDifficultyScore(a, normalizedDifficulty),
-          )
-          .slice(0, profile.sampleSize);
-
-        if (remoteRounds.length) {
-          roundCaches.set(normalizedDifficulty, {
-            rounds: remoteRounds,
-            expiresAt: Date.now() + CACHE_TTL_MS,
-          });
-          console.info(
-            `Cache refilled: ${remoteRounds.length} ${normalizedDifficulty} rounds from API`,
-          );
-          return;
-        }
-
-        retries++;
-      } catch (error) {
-        console.warn(
-          `API fetch attempt ${retries + 1}/${MAX_RETRIES + 1} failed: ${error.message}`,
-        );
-        retries++;
-
-        if (retries <= MAX_RETRIES) {
-          // Exponential backoff before retry
-          await new Promise((resolve) =>
-            setTimeout(resolve, Math.pow(2, retries) * 500),
-          );
-        }
-      }
-    }
-
-    // Fallback chain
-    console.warn("All API retries exhausted; using fallback rounds");
-    const fallbackRounds = getFallbackRounds(normalizedDifficulty);
-
-    if (!fallbackRounds.length) {
-      console.warn("Fallback pool exhausted; using EMERGENCY_SOURCE_WORDS");
-      roundCaches.set(normalizedDifficulty, {
-        rounds: EMERGENCY_SOURCE_WORDS.map(makeRound).filter((round) =>
-          isDifficultyPlayableRound(round, normalizedDifficulty),
-        ),
-        expiresAt: Date.now() + CACHE_TTL_MS,
-      });
-      return;
-    }
-
-    roundCaches.set(normalizedDifficulty, {
-      rounds: fallbackRounds,
-      expiresAt: Date.now() + CACHE_TTL_MS,
-    });
-  })();
-
-  cacheRefillPromises.set(normalizedDifficulty, refillPromise);
-
-  try {
-    await refillPromise;
-  } finally {
-    cacheRefillPromises.delete(normalizedDifficulty);
-  }
+  const fallbackRounds = getFallbackRounds(normalizedDifficulty);
+  
+  roundCaches.set(normalizedDifficulty, {
+    rounds: fallbackRounds,
+    expiresAt: Date.now() + CACHE_TTL_MS,
+  });
+  console.info(
+    `Cache refilled: ${fallbackRounds.length} ${normalizedDifficulty} rounds from local pool`,
+  );
 }
 
 export async function getDynamicRound(difficulty = DEFAULT_DIFFICULTY, exclusions = []) {
