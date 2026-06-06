@@ -361,26 +361,60 @@ export function PracticeScreen({
           />
         ) : (
           <>
-            <form className="submit-panel" onSubmit={handleSubmit}>
-              <input
-                type="text"
-                value={selectedWord}
-                onChange={(event) => {
-                  setDraftWord(event.target.value);
-                  setSelectedIndexes([]);
-                }}
-                placeholder="Tap letters or type your word"
-                autoComplete="off"
-                spellCheck="false"
-              />
-              <button type="button" className="button-secondary" onClick={clearSelection}>
-                Clear
-              </button>
-              <button type="submit" disabled={!selectedWord}>Claim Word</button>
-            </form>
+            <div className="mobile-sticky-top-wrap">
+              <form className="submit-panel" onSubmit={handleSubmit} style={{
+                display: "grid",
+                gridTemplateColumns: "1fr 1fr",
+                gap: "0.5rem",
+                marginTop: "0",
+                width: "100%"
+              }}>
+                <input
+                  type="text"
+                  value={selectedWord}
+                  onChange={(event) => {
+                    setDraftWord(event.target.value);
+                    setSelectedIndexes([]);
+                  }}
+                  placeholder="Tap letters or type your word"
+                  autoComplete="off"
+                  spellCheck="false"
+                  style={{
+                    gridColumn: "span 2",
+                    padding: "0.75rem 1rem",
+                    borderRadius: "12px",
+                    fontSize: "0.95rem"
+                  }}
+                />
+                <button type="button" className="button-secondary" onClick={clearSelection} style={{
+                  padding: "0.75rem",
+                  borderRadius: "12px",
+                  fontSize: "0.95rem"
+                }}>
+                  Clear
+                </button>
+                <button type="submit" disabled={!selectedWord} style={{
+                  padding: "0.75rem",
+                  borderRadius: "12px",
+                  fontSize: "0.95rem",
+                  background: "var(--accent-mint)",
+                  color: "#121212",
+                  fontWeight: "bold"
+                }}>
+                  Claim Word
+                </button>
+              </form>
 
-            <div className={`notice-strip notice-strip--${feedbackTone}`}>
-              {feedback}
+              {feedback ? (
+                <div className={`notice-strip notice-strip--${feedbackTone}`} style={{
+                  marginTop: "0.5rem",
+                  padding: "0.6rem 0.8rem",
+                  fontSize: "0.88rem",
+                  borderRadius: "10px"
+                }}>
+                  {feedback}
+                </div>
+              ) : null}
             </div>
 
             <section className="practice-grid">

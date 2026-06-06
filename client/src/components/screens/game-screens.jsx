@@ -822,25 +822,27 @@ export function MatchRoomScreen({
               </div>
             </div>
 
-            <form className="submit-panel submit-panel--prominent" onSubmit={handleSubmit}>
-              <div className="submit-panel__locked" aria-live="polite">
-                <span className="submit-panel__locked-label">Your Word</span>
-                <strong>{selectedWord ? selectedWord.toUpperCase() : "Tap letters above to build"}</strong>
-              </div>
-              <div className="submit-panel__actions">
-                <button type="button" className="button-secondary" onClick={clearSelection}>
-                  Clear
-                </button>
-                <button
-                  type="submit"
-                  className="button-submit-soft"
-                  disabled={timeLeft === 0 || !selectedWord || submitBusy}
-                  style={{ flex: 1, padding: "0.875rem 1.5rem", fontSize: "1rem", fontWeight: "600" }}
-                >
-                  {submitBusy ? "Submitting..." : "✓ Submit Word"}
-                </button>
-              </div>
-            </form>
+            <div className="mobile-sticky-top-wrap">
+              <form className="submit-panel submit-panel--prominent" onSubmit={handleSubmit}>
+                <div className="submit-panel__locked" aria-live="polite">
+                  <span className="submit-panel__locked-label">Your Word</span>
+                  <strong>{selectedWord ? selectedWord.toUpperCase() : "Tap letters above to build"}</strong>
+                </div>
+                <div className="submit-panel__actions">
+                  <button type="button" className="button-secondary" onClick={clearSelection}>
+                    Clear
+                  </button>
+                  <button
+                    type="submit"
+                    className="button-submit-soft"
+                    disabled={timeLeft === 0 || !selectedWord || submitBusy}
+                    style={{ flex: 1, padding: "0.875rem 1.5rem", fontSize: "1rem", fontWeight: "600" }}
+                  >
+                    {submitBusy ? "Submitting..." : "✓ Submit Word"}
+                  </button>
+                </div>
+              </form>
+            </div>
 
             <RoomPlayersStrip players={room?.players} scoreboard={room?.scoreboard} playerId={playerId} />
 

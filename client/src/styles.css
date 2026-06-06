@@ -3763,3 +3763,27 @@ small,
 button:active {
   transform: scale(0.96);
 }
+
+/* Glassmorphic mobile sticky gameplay panel */
+.mobile-sticky-top-wrap {
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  padding: 0;
+}
+
+@media (max-width: 768px) {
+  .mobile-sticky-top-wrap {
+    position: sticky;
+    top: 0.5rem;
+    z-index: 100;
+    background: rgba(12, 12, 16, 0.95);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    padding: 0.85rem;
+    border-radius: 16px;
+    border: 1px solid rgba(130, 152, 235, 0.16);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+    margin-bottom: 1.2rem;
+  }
+}
