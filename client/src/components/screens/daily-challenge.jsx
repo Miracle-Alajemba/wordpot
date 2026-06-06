@@ -588,13 +588,13 @@ export function DailyChallenge({
           </div>
         ) : phase === "idle" ? (
           <div className="results-sheet" style={{ maxWidth: "500px", margin: "0 auto" }}>
-            <div style={{ fontSize: "2.5rem", marginBottom: "1rem", textAlign: "center" }}>🏆</div>
+            <div style={{ fontSize: "2rem", marginBottom: "0.5rem", textAlign: "center" }}>🏆</div>
             <p className="eyebrow">Ready</p>
             <h2>Daily Challenge</h2>
-            <p style={{ marginBottom: "1.5rem" }}>
+            <p style={{ marginBottom: "1rem" }}>
               Select your difficulty level. Each level has a different score target and reward payout. You can play once per day.
             </p>
-            <div className="difficulty-choices" style={{ display: "flex", flexDirection: "column", gap: "1rem", width: "100%", marginBottom: "1.5rem" }}>
+            <div className="difficulty-choices" style={{ display: "flex", flexDirection: "column", gap: "0.6rem", width: "100%", marginBottom: "1rem" }}>
               <button
                 type="button"
                 className="difficulty-card"
@@ -604,11 +604,11 @@ export function DailyChallenge({
                   display: "flex",
                   justifyContent: "space-between",
                   alignItems: "center",
-                  padding: "1.2rem 1.5rem",
+                  padding: "0.75rem 1.2rem",
                   background: "rgba(255, 255, 255, 0.02)",
                   border: "1px solid rgba(141, 163, 255, 0.12)",
                   borderLeft: "4px solid #63f4ca",
-                  borderRadius: "16px",
+                  borderRadius: "12px",
                   textAlign: "left",
                   color: "#f5f7ff",
                   cursor: "pointer",
@@ -616,10 +616,10 @@ export function DailyChallenge({
                 }}
               >
                 <div>
-                  <strong style={{ fontSize: "1.1rem", display: "block", color: "#ffffff", fontWeight: "700", marginBottom: "0.25rem" }}>🎮 Easy</strong>
-                  <span style={{ fontSize: "0.82rem", color: "#63f4ca", fontWeight: "700", letterSpacing: "0.06em", textTransform: "uppercase" }}>Target: 40 pts</span>
+                  <strong style={{ fontSize: "1rem", display: "block", color: "#ffffff", fontWeight: "700", marginBottom: "0.15rem" }}>🎮 Easy</strong>
+                  <span style={{ fontSize: "0.78rem", color: "#63f4ca", fontWeight: "700", letterSpacing: "0.06em", textTransform: "uppercase" }}>Target: 40 pts</span>
                 </div>
-                <strong style={{ color: "#ffffff", fontSize: "1.15rem", fontFamily: "var(--font-mono)", fontWeight: "700" }}>0.05 CELO</strong>
+                <strong style={{ color: "#ffffff", fontSize: "1.05rem", fontFamily: "var(--font-mono)", fontWeight: "700" }}>0.05 CELO</strong>
               </button>
 
               <button
@@ -631,11 +631,11 @@ export function DailyChallenge({
                   display: "flex",
                   justifyContent: "space-between",
                   alignItems: "center",
-                  padding: "1.2rem 1.5rem",
+                  padding: "0.75rem 1.2rem",
                   background: "rgba(255, 255, 255, 0.02)",
                   border: "1px solid rgba(141, 163, 255, 0.12)",
                   borderLeft: "4px solid #63f4ca",
-                  borderRadius: "16px",
+                  borderRadius: "12px",
                   textAlign: "left",
                   color: "#f5f7ff",
                   cursor: "pointer",
@@ -643,10 +643,10 @@ export function DailyChallenge({
                 }}
               >
                 <div>
-                  <strong style={{ fontSize: "1.1rem", display: "block", color: "#ffffff", fontWeight: "700", marginBottom: "0.25rem" }}>⚔️ Medium</strong>
-                  <span style={{ fontSize: "0.82rem", color: "#63f4ca", fontWeight: "700", letterSpacing: "0.06em", textTransform: "uppercase" }}>Target: 60 pts</span>
+                  <strong style={{ fontSize: "1rem", display: "block", color: "#ffffff", fontWeight: "700", marginBottom: "0.15rem" }}>⚔️ Medium</strong>
+                  <span style={{ fontSize: "0.78rem", color: "#63f4ca", fontWeight: "700", letterSpacing: "0.06em", textTransform: "uppercase" }}>Target: 60 pts</span>
                 </div>
-                <strong style={{ color: "#ffffff", fontSize: "1.15rem", fontFamily: "var(--font-mono)", fontWeight: "700" }}>1 CELO</strong>
+                <strong style={{ color: "#ffffff", fontSize: "1.05rem", fontFamily: "var(--font-mono)", fontWeight: "700" }}>1 CELO</strong>
               </button>
 
               <button
@@ -658,11 +658,11 @@ export function DailyChallenge({
                   display: "flex",
                   justifyContent: "space-between",
                   alignItems: "center",
-                  padding: "1.2rem 1.5rem",
+                  padding: "0.75rem 1.2rem",
                   background: "rgba(255, 255, 255, 0.02)",
                   border: "1px solid rgba(141, 163, 255, 0.12)",
                   borderLeft: "4px solid #63f4ca",
-                  borderRadius: "16px",
+                  borderRadius: "12px",
                   textAlign: "left",
                   color: "#f5f7ff",
                   cursor: "pointer",
@@ -670,10 +670,10 @@ export function DailyChallenge({
                 }}
               >
                 <div>
-                  <strong style={{ fontSize: "1.1rem", display: "block", color: "#ffffff", fontWeight: "700", marginBottom: "0.25rem" }}>👑 Hard</strong>
-                  <span style={{ fontSize: "0.82rem", color: "#63f4ca", fontWeight: "700", letterSpacing: "0.06em", textTransform: "uppercase" }}>Target: 80 pts</span>
+                  <strong style={{ fontSize: "1rem", display: "block", color: "#ffffff", fontWeight: "700", marginBottom: "0.15rem" }}>👑 Hard</strong>
+                  <span style={{ fontSize: "0.78rem", color: "#63f4ca", fontWeight: "700", letterSpacing: "0.06em", textTransform: "uppercase" }}>Target: 80 pts</span>
                 </div>
-                <strong style={{ color: "#ffffff", fontSize: "1.15rem", fontFamily: "var(--font-mono)", fontWeight: "700" }}>2 CELO</strong>
+                <strong style={{ color: "#ffffff", fontSize: "1.05rem", fontFamily: "var(--font-mono)", fontWeight: "700" }}>2 CELO</strong>
               </button>
             </div>
           </div>
