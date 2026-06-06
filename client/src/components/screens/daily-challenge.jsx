@@ -569,6 +569,36 @@ export function DailyChallenge({
                   ? selectedWord.toUpperCase().split("").join(" - ")
                   : "Tap letters to form a word"}
               </div>
+
+              {phase === "playing" && (
+                <>
+                  <form className="submit-panel" onSubmit={handleSubmit} style={{ marginTop: "1rem" }}>
+                    <input
+                      type="text"
+                      value={selectedWord}
+                      onChange={(event) => {
+                        setDraftWord(event.target.value);
+                        setSelectedIndexes([]);
+                      }}
+                      placeholder="Tap letters or type your word"
+                      autoComplete="off"
+                      spellCheck="false"
+                    />
+                    <button type="button" className="button-secondary" onClick={clearSelection}>
+                      Clear
+                    </button>
+                    <button type="submit" disabled={!selectedWord || wordSubmitBusy}>
+                      {wordSubmitBusy ? "Claiming..." : "Claim Word"}
+                    </button>
+                  </form>
+
+                  {feedback ? (
+                    <div className={`notice-strip notice-strip--${feedbackTone}`} style={{ marginTop: "0.5rem" }}>
+                      {feedback}
+                    </div>
+                  ) : null}
+                </>
+              )}
             </div>
 
             <div className="score-row">
@@ -754,33 +784,7 @@ export function DailyChallenge({
               </>
             )}
           </div>
-        ) : (
-          <>
-            <form className="submit-panel" onSubmit={handleSubmit}>
-              <input
-                type="text"
-                value={selectedWord}
-                onChange={(event) => {
-                  setDraftWord(event.target.value);
-                  setSelectedIndexes([]);
-                }}
-                placeholder="Tap letters or type your word"
-                autoComplete="off"
-                spellCheck="false"
-              />
-              <button type="button" className="button-secondary" onClick={clearSelection}>
-                Clear
-              </button>
-              <button type="submit" disabled={!selectedWord || wordSubmitBusy}>
-                {wordSubmitBusy ? "Claiming..." : "Claim Word"}
-              </button>
-            </form>
-
-            <div className={`notice-strip notice-strip--${feedbackTone}`}>
-              {feedback}
-            </div>
-          </>
-        )}
+        ) : null}
       </section>
     </main>
   );
