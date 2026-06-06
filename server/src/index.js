@@ -372,7 +372,14 @@ function loadDailyPlays() {
     for (const [key, value] of Object.entries(parsed)) {
       if (String(key).includes(":")) {
         const wallet = String(key).split(":")[0].toLowerCase();
-        const playedAt = value?.playedAt || new Date().toISOString();
+        let playedAt;
+        if (value && typeof value === "object" && value.playedAt) {
+          playedAt = value.playedAt;
+        } else if (typeof value === "string" && value) {
+          playedAt = value;
+        } else {
+          playedAt = new Date().toISOString();
+        }
         out.set(wallet, { playedAt });
       } else {
         const wallet = String(key).toLowerCase();
@@ -1409,6 +1416,21 @@ app.get("/api/daily/status", (req, res) => {
     policy: "rolling-24h",
     nextAvailableAt,
     treasuryWallet: TREASURY_WALLET,
+  });
+});
+
+app.get("/api/daily/clear-all-plays-claims", (req, res) => {
+  dailyPlays.clear();
+  dailyClaims.clear();
+  try {
+    persistDailyPlays();
+    persistDailyClaims();
+  } catch (err) {
+    console.warn("Failed to persist empty daily challenge files:", err.message);
+  }
+  return res.json({
+    ok: true,
+    message: "Successfully cleared all daily challenge history (plays and claims)!",
   });
 });
 

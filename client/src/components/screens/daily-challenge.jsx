@@ -682,12 +682,30 @@ export function DailyChallenge({
             <h2>{score} pts</h2>
             {score < (roundSeed?.targetScore || 40) ? (
               <>
-                <p>
-                  You scored {score} points. You need {roundSeed?.targetScore || 40} points to claim today's reward. Try again.
+                <p style={{ marginBottom: "1.5rem" }}>
+                  You scored {score} points. You need {roundSeed?.targetScore || 40} points to claim today's reward.
                 </p>
-                <div className="hero-actions">
-                  <button type="button" onClick={resetChallenge}>
-                    Play Again
+                <div style={{ borderTop: "1px solid rgba(255,255,255,0.1)", paddingTop: "1.5rem", marginTop: "1rem", width: "100%", marginBottom: "1.5rem" }}>
+                  <h4 style={{ color: "var(--accent-mint)" }}>Can't wait? ⚡</h4>
+                  <p style={{ fontSize: "0.85em", opacity: 0.8, marginBottom: "1.5rem" }}>
+                    Skip the cooldown and play again immediately with a retry ticket.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={handleBuyRetryTicket}
+                    disabled={isRetrying}
+                    className="primary-button"
+                    style={{ background: "var(--accent-mint)", color: "#121212", padding: "0.75rem 1.5rem", borderRadius: "8px", fontWeight: "bold" }}
+                  >
+                    {isRetrying ? "Processing..." : "Buy Retry Ticket (0.05 CELO)"}
+                  </button>
+                  {retryError ? (
+                    <div className="notice-strip notice-strip--error" style={{ marginTop: "10px" }}>{retryError}</div>
+                  ) : null}
+                </div>
+                <div className="hero-actions" style={{ justifyContent: "center" }}>
+                  <button type="button" className="button-secondary" onClick={onBack}>
+                    Back to Home
                   </button>
                 </div>
               </>
