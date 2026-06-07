@@ -135,7 +135,8 @@ const DEFAULT_RATE_LIMIT_MAX = 120;
 const SENSITIVE_RATE_LIMIT_MAX = 20;
 
 function getRateLimitBucket(req) {
-  if (req.path.startsWith("/api/daily")) return "daily";
+  if (req.path === "/api/daily/claim") return "daily-claim";
+  if (req.path.startsWith("/api/daily")) return "daily-general";
   if (req.method !== "GET" && req.path.startsWith("/api/rooms")) return "rooms";
   return "default";
 }
@@ -148,7 +149,9 @@ function rateLimiter(req, res, next) {
 
   const bucket = getRateLimitBucket(req);
   const maxRequests =
-    bucket === "default" ? DEFAULT_RATE_LIMIT_MAX : SENSITIVE_RATE_LIMIT_MAX;
+    (bucket === "daily-claim" || bucket === "rooms")
+      ? SENSITIVE_RATE_LIMIT_MAX
+      : DEFAULT_RATE_LIMIT_MAX;
   const key = `${req.ip || req.socket?.remoteAddress || "unknown"}:${bucket}`;
   const now = Date.now();
   const windowStart = now - RATE_LIMIT_WINDOW_MS;
