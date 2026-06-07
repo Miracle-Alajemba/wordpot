@@ -1128,7 +1128,7 @@ app.get("/api/rounds/daily-challenge", async (_req, res) => {
     const DIFFICULTY_RULES = {
       easy: { targetScore: 40, rewardWei: "50000000000000000", rewardDisplay: "0.05 CELO" },
       medium: { targetScore: 60, rewardWei: "1000000000000000000", rewardDisplay: "1 CELO" },
-      hard: { targetScore: 80, rewardWei: "2000000000000000000", rewardDisplay: "2 CELO" }
+      hard: { targetScore: 110, rewardWei: "2000000000000000000", rewardDisplay: "2 CELO" }
     };
 
     const rules = DIFFICULTY_RULES[difficulty];

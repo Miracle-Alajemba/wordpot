@@ -379,12 +379,30 @@ function hasRepeatedLetters(word) {
   return countUniqueLetters(word) < String(word || "").length;
 }
 
+function getWordScore(word) {
+  if (word.length >= 6) return 12;
+  if (word.length === 5) return 8;
+  if (word.length === 4) return 5;
+  return 3;
+}
+
+function getRoundMaxScore(round) {
+  return round.validWords.reduce((sum, word) => sum + getWordScore(word), 0);
+}
+
 function isDifficultyPlayableRound(round, difficulty) {
   if (!isPlayableRound(round)) return false;
 
   const profile = getDifficultyProfile(difficulty);
   const sourceWordLength = round.sourceWord.length;
   const uniqueLetters = countUniqueLetters(round.sourceWord);
+
+  const maxScore = getRoundMaxScore(round);
+  let minMaxScoreRequired = 55;
+  if (difficulty === "medium") minMaxScoreRequired = 85;
+  else if (difficulty === "hard") minMaxScoreRequired = 130;
+
+  if (maxScore < minMaxScoreRequired) return false;
 
   return (
     sourceWordLength >= profile.minLength &&
