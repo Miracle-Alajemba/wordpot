@@ -567,18 +567,50 @@ async function fetchDatamuseCandidates() {
     .map((word) => word.toUpperCase());
 }
 
-// ✅ FIX: Prevent race conditions with promise deduplication
+// ✅ FIX: Prevent race conditions with promise deduplication and fetch from Datamuse API with local fallbacks
 async function refillRoundCache(difficulty) {
   const normalizedDifficulty = normalizeDifficulty(difficulty);
-  const fallbackRounds = getFallbackRounds(normalizedDifficulty);
   
-  roundCaches.set(normalizedDifficulty, {
-    rounds: fallbackRounds,
-    expiresAt: Date.now() + CACHE_TTL_MS,
-  });
-  console.info(
-    `Cache refilled: ${fallbackRounds.length} ${normalizedDifficulty} rounds from local pool`,
-  );
+  if (cacheRefillPromises.has(normalizedDifficulty)) {
+    return cacheRefillPromises.get(normalizedDifficulty);
+  }
+
+  const promise = (async () => {
+    try {
+      console.info(`Refilling round cache for ${normalizedDifficulty} using Datamuse API...`);
+      const candidates = await fetchDatamuseCandidates();
+      
+      const rounds = candidates
+        .map((word) => makeRound(word))
+        .filter((round) => isDifficultyPlayableRound(round, normalizedDifficulty));
+      
+      if (rounds.length < 5) {
+        throw new Error("Too few playable rounds returned from Datamuse.");
+      }
+
+      roundCaches.set(normalizedDifficulty, {
+        rounds,
+        expiresAt: Date.now() + CACHE_TTL_MS,
+      });
+      console.info(
+        `Cache refilled: ${rounds.length} ${normalizedDifficulty} rounds from Datamuse API`,
+      );
+    } catch (error) {
+      console.warn(
+        `Datamuse API cache refill failed: ${error.message}. Using fallback local rounds.`,
+      );
+      const fallbackRounds = getFallbackRounds(normalizedDifficulty);
+      roundCaches.set(normalizedDifficulty, {
+        rounds: fallbackRounds,
+        expiresAt: Date.now() + CACHE_TTL_MS,
+      });
+    } finally {
+      cacheRefillPromises.delete(normalizedDifficulty);
+    }
+  })();
+
+  cacheRefillPromises.set(normalizedDifficulty, promise);
+  return promise;
 }
 
 export async function getDynamicRound(difficulty = DEFAULT_DIFFICULTY, exclusions = []) {

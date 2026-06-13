@@ -1121,6 +1121,31 @@ app.get("/api/rounds/daily-challenge", async (_req, res) => {
       });
     }
 
+    // Enforce daily play and claim limits (cooldown) on the server side
+    const walletKey = walletAddress.toLowerCase();
+    const claimKey = getTodayKey(walletAddress);
+    if (dailyClaims.has(claimKey)) {
+      return res.status(409).json({
+        error:
+          "You have already claimed your daily reward today. Come back tomorrow.",
+        claimed: true,
+      });
+    }
+
+    const entry = dailyPlays.get(walletKey);
+    const now = Date.now();
+    if (entry?.playedAt) {
+      const nextTs = new Date(entry.playedAt).getTime() + 24 * 60 * 60 * 1000;
+      if (now < nextTs) {
+        return res.status(409).json({
+          error:
+            "You have already played the Daily Challenge within the last 24 hours.",
+          played: true,
+          nextAvailableAt: new Date(nextTs).toISOString(),
+        });
+      }
+    }
+
     const allowedDifficulties = ["easy", "medium", "hard"];
     if (!allowedDifficulties.includes(difficulty)) {
       return res.status(400).json({
