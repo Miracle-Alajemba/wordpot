@@ -27,6 +27,7 @@ contract WordPotArena {
     mapping(uint256 => mapping(address => bool)) public joinedRoom;
     mapping(uint256 => mapping(address => uint256)) public playerScore;
     mapping(uint256 => mapping(address => bool)) public claimedReward;
+    mapping(uint256 => mapping(address => bool)) public roomPlayerSettled;
 
     event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
     event TreasuryUpdated(address indexed treasury);
@@ -100,12 +101,19 @@ contract WordPotArena {
         for (uint256 i = 0; i < players.length; i++) {
             address player = players[i];
             require(joinedRoom[roomId][player], "WordPot: player missing");
+            require(!roomPlayerSettled[roomId][player], "WordPot: duplicate player");
+
+            roomPlayerSettled[roomId][player] = true;
             playerScore[roomId][player] = scores[i];
             aggregateScore += scores[i];
         }
 
         room.totalScore = aggregateScore;
-        room.treasuryAmount = (room.totalPot * treasuryFeeBps) / BPS_DENOMINATOR;
+        if (aggregateScore > 0) {
+            room.treasuryAmount = (room.totalPot * treasuryFeeBps) / BPS_DENOMINATOR;
+        } else {
+            room.treasuryAmount = 0;
+        }
         room.rewardPool = room.totalPot - room.treasuryAmount;
         room.settled = true;
 
@@ -152,6 +160,7 @@ contract WordPotArena {
         for (uint256 i = 0; i < players.length; i++) {
             address player = players[i];
             if (!joinedRoom[roomId][player]) continue;
+            joinedRoom[roomId][player] = false;
             (bool ok, ) = player.call{value: room.entryFee}("");
             require(ok, "WordPot: transfer failed");
         }
