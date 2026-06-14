@@ -3765,7 +3765,7 @@ button:active {
 }
 
 /* Glassmorphic mobile sticky gameplay panel */
-.mobile-sticky-top-wrap {
+.mobile-sticky-bottom-wrap {
   background: transparent;
   border: none;
   box-shadow: none;
@@ -3773,9 +3773,11 @@ button:active {
 }
 
 @media (max-width: 768px) {
-  .mobile-sticky-top-wrap {
-    position: sticky;
-    top: 0.5rem;
+  .mobile-sticky-bottom-wrap {
+    position: fixed;
+    bottom: 5.2rem; /* Float above the bottom tab navigation bar */
+    left: 0.9rem;
+    right: 0.9rem;
     z-index: 100;
     background: rgba(12, 12, 16, 0.95);
     backdrop-filter: blur(12px);
@@ -3784,6 +3786,9 @@ button:active {
     border-radius: 16px;
     border: 1px solid rgba(130, 152, 235, 0.16);
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
-    margin-bottom: 1.2rem;
+  }
+
+  .play-shell {
+    padding-bottom: 12rem; /* Prevent fixed bottom panel from blocking final list items */
   }
 }

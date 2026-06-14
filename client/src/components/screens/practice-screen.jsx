@@ -361,7 +361,7 @@ export function PracticeScreen({
           />
         ) : (
           <>
-            <div className="mobile-sticky-top-wrap">
+            <div className="mobile-sticky-bottom-wrap">
               <form className="submit-panel" onSubmit={handleSubmit} style={{
                 display: "grid",
                 gridTemplateColumns: "1fr 1fr",

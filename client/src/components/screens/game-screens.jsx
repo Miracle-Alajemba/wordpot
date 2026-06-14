@@ -822,7 +822,7 @@ export function MatchRoomScreen({
               </div>
             </div>
 
-            <div className="mobile-sticky-top-wrap">
+            <div className="mobile-sticky-bottom-wrap">
               <form className="submit-panel submit-panel--prominent" onSubmit={handleSubmit}>
                 <div className="submit-panel__locked" aria-live="polite">
                   <span className="submit-panel__locked-label">Your Word</span>
