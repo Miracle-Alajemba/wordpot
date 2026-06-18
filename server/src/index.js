@@ -1136,7 +1136,10 @@ app.get("/api/rounds/daily-challenge", async (_req, res) => {
     const now = Date.now();
     if (entry?.playedAt) {
       const nextTs = new Date(entry.playedAt).getTime() + 24 * 60 * 60 * 1000;
-      if (now < nextTs) {
+      const ageMs = now - new Date(entry.playedAt).getTime();
+      // Allow fetching the round if the play was recorded within the last 2 minutes,
+      // which happens when the client registers the play right before requesting the round.
+      if (now < nextTs && ageMs > 2 * 60 * 1000) {
         return res.status(409).json({
           error:
             "You have already played the Daily Challenge within the last 24 hours.",
