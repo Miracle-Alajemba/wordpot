@@ -1,3 +1,5 @@
+
+
 import fs from "fs";
 import { fileURLToPath } from "url";
 
@@ -216,6 +218,8 @@ const DEFAULT_DIFFICULTY = "hard";
 const lastSourceWordByDifficulty = new Map();
 const roundCaches = new Map();
 let dictionaryWords = [];
+let dictionaryWordCounts = [];
+let dictionaryBitmasks = [];
 const cacheRefillPromises = new Map();
 const derivedWordsCache = new Map();
 
@@ -259,12 +263,27 @@ function loadDictionary() {
       throw new Error("Dictionary loaded but contains no valid words.");
     }
 
+    // Pre-calculate count maps and bitmasks for each dictionary word once for ultra-fast matching
+    dictionaryWordCounts = dictionaryWords.map((word) => buildLetterCounts(word));
+    dictionaryBitmasks = dictionaryWords.map((word) => {
+      let mask = 0;
+      for (let i = 0; i < word.length; i++) {
+        const code = word.charCodeAt(i) - 97; // 'a' is 97
+        if (code >= 0 && code < 26) {
+          mask |= (1 << code);
+        }
+      }
+      return mask;
+    });
+
     console.info(
       `Dictionary loaded: ${dictionaryWords.length} words from ${dictionaryPath}`,
     );
   } catch (error) {
     console.error(`Unable to load WordPot dictionary: ${error.message}`);
     dictionaryWords = [];
+    dictionaryWordCounts = [];
+    dictionaryBitmasks = [];
   }
 
   return dictionaryWords;
@@ -310,13 +329,42 @@ export function deriveValidWords(sourceWord) {
     return [];
   }
 
-  const validWords = uniqueWords(
-    dictionary.filter(
-      (word) =>
-        word.length <= normalizedSource.length &&
-        canBuildFromSource(word, normalizedSource),
-    ),
-  ).sort((a, b) => {
+  const sourceCounts = buildLetterCounts(normalizedSource);
+  
+  // Calculate source bitmask
+  let sourceMask = 0;
+  for (let i = 0; i < normalizedSource.length; i++) {
+    const code = normalizedSource.charCodeAt(i) - 97;
+    if (code >= 0 && code < 26) {
+      sourceMask |= (1 << code);
+    }
+  }
+
+  const sourceLen = normalizedSource.length;
+  const matched = [];
+
+  for (let i = 0; i < dictionary.length; i++) {
+    const word = dictionary[i];
+    if (word.length <= sourceLen) {
+      const mask = dictionaryBitmasks[i];
+      // Bitwise check: if the word contains letters not in the source word, skip it
+      if ((mask & ~sourceMask) === 0) {
+        const counts = dictionaryWordCounts[i];
+        let possible = true;
+        for (const letter in counts) {
+          if ((sourceCounts[letter] || 0) < counts[letter]) {
+            possible = false;
+            break;
+          }
+        }
+        if (possible) {
+          matched.push(word);
+        }
+      }
+    }
+  }
+
+  const validWords = uniqueWords(matched).sort((a, b) => {
     if (b.length !== a.length) return b.length - a.length;
     return a.localeCompare(b);
   });
@@ -455,7 +503,7 @@ function getFallbackRounds(difficulty) {
   const poolRounds = basePool
     .map(makeRound)
     .filter((round) => isDifficultyPlayableRound(round, difficulty));
-  
+
   if (poolRounds.length) {
     return shuffle(poolRounds);
   }
@@ -491,7 +539,7 @@ function pickFromRounds(rounds, difficulty, exclusions = []) {
   if (!rounds.length) {
     const emergencyRound = makeRound(
       EMERGENCY_SOURCE_WORDS[
-        Math.floor(Math.random() * EMERGENCY_SOURCE_WORDS.length)
+      Math.floor(Math.random() * EMERGENCY_SOURCE_WORDS.length)
       ],
     );
     const normalizedDifficulty = normalizeDifficulty(difficulty);
@@ -570,7 +618,7 @@ async function fetchDatamuseCandidates() {
 // ✅ FIX: Prevent race conditions with promise deduplication and fetch from Datamuse API with local fallbacks
 async function refillRoundCache(difficulty) {
   const normalizedDifficulty = normalizeDifficulty(difficulty);
-  
+
   if (cacheRefillPromises.has(normalizedDifficulty)) {
     return cacheRefillPromises.get(normalizedDifficulty);
   }
@@ -579,11 +627,11 @@ async function refillRoundCache(difficulty) {
     try {
       console.info(`Refilling round cache for ${normalizedDifficulty} using Datamuse API...`);
       const candidates = await fetchDatamuseCandidates();
-      
+
       const rounds = candidates
         .map((word) => makeRound(word))
         .filter((round) => isDifficultyPlayableRound(round, normalizedDifficulty));
-      
+
       if (rounds.length < 5) {
         throw new Error("Too few playable rounds returned from Datamuse.");
       }
@@ -658,7 +706,7 @@ export async function pickNonRecentRound(
     );
     const emergency = makeRound(
       EMERGENCY_SOURCE_WORDS[
-        Math.floor(Math.random() * EMERGENCY_SOURCE_WORDS.length)
+      Math.floor(Math.random() * EMERGENCY_SOURCE_WORDS.length)
       ],
     );
     lastSourceWordByDifficulty.set(normalizedDifficulty, emergency.sourceWord);
