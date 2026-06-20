@@ -15,10 +15,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 function loadWordPotArtifact() {
-  const artifactPath = path.resolve(
-    __dirname,
-    "../../contracts/artifacts/contracts/WordPotArena.sol/WordPotArena.json",
-  );
+  const artifactPath = path.resolve(__dirname, "./WordPotArena.json");
 
   const raw = fs.readFileSync(artifactPath, "utf8");
   return JSON.parse(raw);
