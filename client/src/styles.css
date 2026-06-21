@@ -3707,12 +3707,38 @@ small,
 }
 
 .letter-tile--interactive {
+  animation: fadeInUp 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.2) both;
   transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.2s ease, border-color 0.2s ease, background 0.2s ease !important;
 }
 
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.letter-tile--interactive:nth-child(1) { animation-delay: 0.02s; }
+.letter-tile--interactive:nth-child(2) { animation-delay: 0.04s; }
+.letter-tile--interactive:nth-child(3) { animation-delay: 0.06s; }
+.letter-tile--interactive:nth-child(4) { animation-delay: 0.08s; }
+.letter-tile--interactive:nth-child(5) { animation-delay: 0.1s; }
+.letter-tile--interactive:nth-child(6) { animation-delay: 0.12s; }
+.letter-tile--interactive:nth-child(7) { animation-delay: 0.14s; }
+.letter-tile--interactive:nth-child(8) { animation-delay: 0.16s; }
+.letter-tile--interactive:nth-child(9) { animation-delay: 0.18s; }
+.letter-tile--interactive:nth-child(10) { animation-delay: 0.2s; }
+.letter-tile--interactive:nth-child(11) { animation-delay: 0.22s; }
+.letter-tile--interactive:nth-child(12) { animation-delay: 0.24s; }
+
 .letter-tile--interactive:hover {
-  transform: translateY(-3px) scale(1.06) !important;
-  box-shadow: 0 8px 16px rgba(255, 170, 81, 0.2);
+  transform: translateY(-4px) scale(1.08) !important;
+  box-shadow: 0 8px 20px rgba(201, 146, 10, 0.25) !important;
+  border-color: rgba(201, 146, 10, 0.5) !important;
 }
 
 .letter-tile--interactive:active {
@@ -3728,7 +3754,7 @@ small,
     transform: scale(1);
   }
   50% {
-    transform: scale(1.15);
+    transform: scale(1.18);
   }
   100% {
     transform: scale(1.06);
@@ -3764,6 +3790,51 @@ button:active {
   transform: scale(0.96);
 }
 
+/* Success bounce and pop for score upgrades */
+.score-badge--pop {
+  animation: scorePop 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.3) forwards !important;
+  border-color: #63f4ca !important;
+}
+
+@keyframes scorePop {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.18) translateY(-4px); box-shadow: 0 0 15px rgba(99, 244, 202, 0.2); }
+  100% { transform: scale(1); }
+}
+
+/* Input Shake on reject / error */
+.input-shake {
+  animation: inputShake 0.4s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+  border-color: #994444 !important;
+  box-shadow: 0 0 10px rgba(153, 68, 68, 0.15) !important;
+}
+
+@keyframes inputShake {
+  10%, 90% { transform: translate3d(-1px, 0, 0); }
+  20%, 80% { transform: translate3d(2px, 0, 0); }
+  30%, 50%, 70% { transform: translate3d(-4px, 0, 0); }
+  40%, 60% { transform: translate3d(4px, 0, 0); }
+}
+
+/* Red flashing pulse when timer is low */
+.timer-urgent {
+  color: #ff5e5e !important;
+  border-color: rgba(255, 94, 94, 0.4) !important;
+  animation: timerPulse 0.8s ease-in-out infinite alternate !important;
+}
+
+@keyframes timerPulse {
+  0% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(255, 94, 94, 0.25);
+  }
+  100% {
+    transform: scale(1.05);
+    box-shadow: 0 0 12px 2px rgba(255, 94, 94, 0.4);
+    background: rgba(255, 94, 94, 0.08) !important;
+  }
+}
+
 /* Glassmorphic mobile sticky gameplay panel */
 .mobile-sticky-bottom-wrap {
   background: transparent;
@@ -3791,4 +3862,48 @@ button:active {
   .play-shell {
     padding-bottom: 12rem; /* Prevent fixed bottom panel from blocking final list items */
   }
+}
+
+/* Premium GSAP Loader styles */
+.game-loader-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem 1.5rem;
+  width: 100%;
+  text-align: center;
+}
+
+.game-loader-rack {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1.5rem;
+  perspective: 600px; /* enables 3D transforms */
+}
+
+.game-loader-tile {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(180deg, #ffd787 0%, #c9920a 100%) !important;
+  color: #1a1202 !important;
+  font-weight: 900 !important;
+  font-size: 1.5rem !important;
+  box-shadow: 0 8px 20px rgba(201, 146, 10, 0.3), inset 0 2px 2px rgba(255, 255, 255, 0.4) !important;
+  border: 1px solid rgba(255, 255, 255, 0.3) !important;
+  border-radius: 12px !important;
+  width: 3.4rem !important;
+  height: 3.4rem !important;
+  min-width: 3.4rem !important;
+  text-shadow: 0 1px 1px rgba(255, 255, 255, 0.4);
+}
+
+.game-loader-label {
+  font-size: 0.85rem;
+  font-weight: 800;
+  color: #ffd073;
+  text-transform: uppercase;
+  letter-spacing: 3px;
+  opacity: 0.85;
 }

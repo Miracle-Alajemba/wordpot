@@ -7,9 +7,9 @@ import {
 } from "../../utils/ui-helpers.js";
 
 
-export function ScoreBadge({ label, value }) {
+export function ScoreBadge({ label, value, className = "" }) {
   return (
-    <div className="score-badge">
+    <div className={`score-badge ${className}`}>
       <span>{label}</span>
       <strong className="live-score">{value}</strong>
     </div>

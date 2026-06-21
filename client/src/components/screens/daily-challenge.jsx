@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { normalizeWord } from "../../game.js";
+import { GameLoader } from "../ui/index.js";
 
 const DAILY_TARGET_SCORE = 40;
 const DAILY_ROUND_SECONDS = 60;
@@ -8,9 +9,9 @@ function isWalletAddress(value) {
   return /^0x[a-fA-F0-9]{40}$/.test(String(value || "").trim());
 }
 
-function ScoreBadge({ label, value }) {
+function ScoreBadge({ label, value, className = "" }) {
   return (
-    <div className="score-badge">
+    <div className={`score-badge ${className}`}>
       <span>{label}</span>
       <strong>{value}</strong>
     </div>
@@ -57,6 +58,9 @@ export function DailyChallenge({
   const [loadingRound, setLoadingRound] = useState(false);
   const [wordSubmitBusy, setWordSubmitBusy] = useState(false);
   const [currentPlayStarted, setCurrentPlayStarted] = useState(false);
+  const [scorePop, setScorePop] = useState(false);
+  const [wordPop, setWordPop] = useState(false);
+  const [inputShake, setInputShake] = useState(false);
   const wordSubmitBusyRef = useRef(false);
   const [cooldownSeconds, setCooldownSeconds] = useState(0);
   const [treasuryWallet, setTreasuryWallet] = useState("");
@@ -272,6 +276,8 @@ export function DailyChallenge({
     if (claimedSet.has(normalized)) {
       setFeedback("Already claimed in this round.");
       setFeedbackTone("error");
+      setInputShake(true);
+      setTimeout(() => setInputShake(false), 400);
       wordSubmitBusyRef.current = false;
       setWordSubmitBusy(false);
       return;
@@ -301,9 +307,18 @@ export function DailyChallenge({
       onScoreUpdate(data.totalScore);
       setFeedback(data.message || `Locked in ${data.word} for +${data.score} points.`);
       setFeedbackTone("success");
+
+      setScorePop(true);
+      setWordPop(true);
+      setTimeout(() => {
+        setScorePop(false);
+        setWordPop(false);
+      }, 350);
     } catch (error) {
       setFeedback(error.message || "Unable to claim this word.");
       setFeedbackTone("error");
+      setInputShake(true);
+      setTimeout(() => setInputShake(false), 400);
     } finally {
       wordSubmitBusyRef.current = false;
       setWordSubmitBusy(false);
@@ -586,6 +601,7 @@ export function DailyChallenge({
                         setDraftWord(event.target.value);
                         setSelectedIndexes([]);
                       }}
+                      className={inputShake ? "input-shake" : ""}
                       placeholder="Tap letters or type your word"
                       autoComplete="off"
                       spellCheck="false"
@@ -631,18 +647,16 @@ export function DailyChallenge({
 
             <div className="score-row">
               <ScoreBadge label="Target" value={`${roundSeed?.targetScore || 40} pts`} />
-              <ScoreBadge label="Time left" value={`${timeLeft}s`} />
-              <ScoreBadge label="Score" value={score} />
-              <ScoreBadge label="Words" value={claimedWords.length} />
+              <ScoreBadge label="Time left" value={`${timeLeft}s`} className={timeLeft <= 10 ? "timer-urgent" : ""} />
+              <ScoreBadge label="Score" value={score} className={scorePop ? "score-badge--pop" : ""} />
+              <ScoreBadge label="Words" value={claimedWords.length} className={wordPop ? "score-badge--pop" : ""} />
             </div>
           </div>
         ) : null}
 
         {loadingRound ? (
-          <div className="results-sheet">
-            <p className="eyebrow">Loading</p>
-            <h2>...</h2>
-            <p>Preparing today's Daily Challenge.</p>
+          <div className="results-sheet" style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <GameLoader label="Preparing today's challenge..." letters="DAILY" />
           </div>
         ) : phase === "idle" ? (
           <div className="results-sheet" style={{ maxWidth: "500px", margin: "0 auto" }}>

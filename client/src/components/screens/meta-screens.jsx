@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { MetricCard, PlayerIdentity } from "../ui";
+import { MetricCard, PlayerIdentity, GameLoader } from "../ui";
 
 import {
   getAvatarStyle,
@@ -101,7 +101,7 @@ export function LeaderboardScreen({ room, onQuickMatch, onBack, apiBaseUrl }) {
             {error ? <div className="notice-strip notice-strip--neutral">{error}</div> : null}
             
             {loading ? (
-              <div className="empty-card">Loading standings...</div>
+              <GameLoader label="Loading standings..." letters="LEADER" />
             ) : activeEntries.length ? (
               <div className="leaderboard-table">
                 {activeEntries.map((entry, index) => (

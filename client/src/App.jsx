@@ -1,6 +1,6 @@
 import { Component, Suspense, lazy, useEffect, useMemo, useRef, useState } from "react";
 import { zeroAddress } from "viem";
-import { AppBottomNav } from "./components/ui/index.js";
+import { AppBottomNav, GameLoader } from "./components/ui/index.js";
 import { HomeScreen, LobbyScreen, MatchRoomScreen } from "./components/screens/index.js";
 import {
   API_BASE_URL,
@@ -85,10 +85,8 @@ function ScreenLoader({ label = "Loading view..." }) {
   return (
     <main className="page-shell">
       <section className="play-shell">
-        <div className="results-sheet">
-          <p className="eyebrow">Loading</p>
-          <h2>...</h2>
-          <p>{label}</p>
+        <div className="results-sheet" style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <GameLoader label={label} />
         </div>
       </section>
     </main>

@@ -4,7 +4,7 @@ import {
   getWordScore,
   normalizeWord,
 } from "../../game.js";
-import { MetricCard, ScoreBadge } from "../ui/game-ui.jsx";
+import { MetricCard, ScoreBadge, GameLoader } from "../ui/index.js";
 
 const PRACTICE_DIFFICULTIES = [
   { id: "easy", label: "Warm Up" },
@@ -89,6 +89,9 @@ export function PracticeScreen({
   const [bestWord, setBestWord] = useState("");
   const [streak, setStreak] = useState(0);
   const [loadingRound, setLoadingRound] = useState(true);
+  const [scorePop, setScorePop] = useState(false);
+  const [wordPop, setWordPop] = useState(false);
+  const [inputShake, setInputShake] = useState(false);
   const sourceLetters = String(roundSeed?.sourceWord || "").split("");
   const selectedWord = draftWord;
 
@@ -189,6 +192,8 @@ export function PracticeScreen({
       setFeedback(evaluation.message);
       setFeedbackTone("error");
       setStreak(0);
+      setInputShake(true);
+      setTimeout(() => setInputShake(false), 400);
       return;
     }
 
@@ -202,6 +207,13 @@ export function PracticeScreen({
     setFeedback(evaluation.message);
     setFeedbackTone("success");
     setStreak((current) => current + 1);
+
+    setScorePop(true);
+    setWordPop(true);
+    setTimeout(() => {
+      setScorePop(false);
+      setWordPop(false);
+    }, 350);
 
     if (!bestWord || evaluation.word.length > bestWord.length) {
       setBestWord(evaluation.word);
@@ -330,9 +342,9 @@ export function PracticeScreen({
           </div>
 
           <div className="score-row">
-            <ScoreBadge label="Time left" value={`${timeLeft}s`} />
-            <ScoreBadge label="Score" value={score} />
-            <ScoreBadge label="Claimed" value={claimedWords.length} />
+            <ScoreBadge label="Time left" value={`${timeLeft}s`} className={timeLeft <= 10 ? "timer-urgent" : ""} />
+            <ScoreBadge label="Score" value={score} className={scorePop ? "score-badge--pop" : ""} />
+            <ScoreBadge label="Claimed" value={claimedWords.length} className={wordPop ? "score-badge--pop" : ""} />
           </div>
         </div>
 
@@ -347,10 +359,8 @@ export function PracticeScreen({
         </div>
 
         {loadingRound ? (
-          <div className="results-sheet">
-            <p className="eyebrow">Loading Round</p>
-            <h2>...</h2>
-            <p>Pulling a fresh source word from the backend.</p>
+          <div className="results-sheet" style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <GameLoader label="Generating new round..." letters="PRACTICE" />
           </div>
         ) : isFinished ? (
           <PracticeResults
@@ -376,6 +386,7 @@ export function PracticeScreen({
                     setDraftWord(event.target.value);
                     setSelectedIndexes([]);
                   }}
+                  className={inputShake ? "input-shake" : ""}
                   placeholder="Tap letters or type your word"
                   autoComplete="off"
                   spellCheck="false"
