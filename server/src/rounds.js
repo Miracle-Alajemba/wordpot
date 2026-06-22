@@ -1,5 +1,8 @@
 
 
+
+
+
 import fs from "fs";
 import { fileURLToPath } from "url";
 
@@ -330,7 +333,7 @@ export function deriveValidWords(sourceWord) {
   }
 
   const sourceCounts = buildLetterCounts(normalizedSource);
-  
+
   // Calculate source bitmask
   let sourceMask = 0;
   for (let i = 0; i < normalizedSource.length; i++) {
