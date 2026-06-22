@@ -451,7 +451,7 @@ function isDifficultyPlayableRound(round, difficulty) {
   const maxScore = getRoundMaxScore(round);
   let minMaxScoreRequired = 55;
   if (difficulty === "medium") minMaxScoreRequired = 85;
-  else if (difficulty === "hard") minMaxScoreRequired = 130;
+  else if (difficulty === "hard") minMaxScoreRequired = 200;
 
   if (maxScore < minMaxScoreRequired) return false;
 
