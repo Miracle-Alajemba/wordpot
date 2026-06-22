@@ -207,7 +207,7 @@ const DIFFICULTY_PROFILES = {
   hard: {
     minLength: 6,
     maxLength: 10,
-    maxValidWords: 100,
+    maxValidWords: 150,
     maxUniqueLetters: 9,
     requireRepeatedLetters: false,
     sampleSize: 120,
