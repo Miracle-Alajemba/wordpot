@@ -1169,13 +1169,22 @@ app.get("/api/rounds/daily-challenge", async (_req, res) => {
     }
 
     const DIFFICULTY_RULES = {
-      easy: { targetScore: 40, rewardWei: "50000000000000000", rewardDisplay: "0.05 CELO" },
-      medium: { targetScore: 60, rewardWei: "1000000000000000000", rewardDisplay: "1 CELO" },
-      hard: { targetScore: 110, rewardWei: "2000000000000000000", rewardDisplay: "2 CELO" }
+      easy: { targetPct: 0.30, targetFloor: 30, rewardWei: "50000000000000000", rewardDisplay: "0.05 CELO" },
+      medium: { targetPct: 0.35, targetFloor: 45, rewardWei: "1000000000000000000", rewardDisplay: "1 CELO" },
+      hard: { targetPct: 0.40, targetFloor: 70, rewardWei: "2000000000000000000", rewardDisplay: "2 CELO" }
     };
 
     const rules = DIFFICULTY_RULES[difficulty];
     const round = await getDailyChallengeRound(difficulty);
+
+    // Calculate target score as a percentage of the round's actual max score
+    // This normalizes difficulty so every round feels equally challenging
+    const roundMaxScore = (round.validWords || []).reduce(
+      (sum, word) => sum + getWordScore(word), 0
+    );
+    const dynamicTarget = Math.round(roundMaxScore * rules.targetPct);
+    const targetScore = Math.max(rules.targetFloor, dynamicTarget);
+
     const sessionId = makeId("daily");
     const session = {
       id: sessionId,
@@ -1183,7 +1192,7 @@ app.get("/api/rounds/daily-challenge", async (_req, res) => {
       round,
       claimedWords: new Set(),
       score: 0,
-      targetScore: rules.targetScore,
+      targetScore,
       rewardWei: rules.rewardWei,
       rewardDisplay: rules.rewardDisplay,
       createdAt: new Date().toISOString(),
@@ -1197,7 +1206,7 @@ app.get("/api/rounds/daily-challenge", async (_req, res) => {
         sourceWord: round.sourceWord,
         difficulty: round.difficulty,
         validWordsCount: round.validWords?.length || 0,
-        targetScore: rules.targetScore,
+        targetScore,
         rewardDisplay: rules.rewardDisplay,
       },
     });
