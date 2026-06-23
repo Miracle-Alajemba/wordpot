@@ -474,6 +474,13 @@ function isWalletAddress(value) {
   return /^0x[a-fA-F0-9]{40}$/.test(String(value || "").trim());
 }
 
+const ALLOWED_DIFFICULTIES = ["easy", "medium", "hard"];
+
+function normalizeDifficultyParam(value) {
+  const normalized = String(value || "").trim().toLowerCase();
+  return ALLOWED_DIFFICULTIES.includes(normalized) ? normalized : "medium";
+}
+
 function rememberDailySourceWord(sourceWord) {
   const normalized = String(sourceWord || "")
     .trim()
@@ -701,6 +708,7 @@ function getRoomSummary(room, options = {}) {
   const summary = {
     id: room.id,
     status: room.status,
+    difficulty: room.difficulty || "medium",
     entryFee: ENTRY_FEE,
     minPlayers: MIN_PLAYERS,
     maxPlayers: MAX_PLAYERS,
@@ -773,9 +781,13 @@ function getRoomSummary(room, options = {}) {
   return summary;
 }
 
-function getWaitingRoom() {
+function getWaitingRoom(difficulty) {
+  const targetDifficulty = normalizeDifficultyParam(difficulty);
   return Array.from(rooms.values()).find(
-    (room) => room.status === "waiting" && room.players.length < MAX_PLAYERS,
+    (room) =>
+      room.status === "waiting" &&
+      room.players.length < MAX_PLAYERS &&
+      (room.difficulty || "medium") === targetDifficulty,
   );
 }
 
@@ -1550,6 +1562,7 @@ app.post("/api/daily/play", (req, res) => {
 app.post("/api/rooms/quick-match", async (req, res) => {
   const walletAddress = String(req.body?.walletAddress || "").trim();
   const signature = String(req.body?.signature || "").trim();
+  const difficulty = normalizeDifficultyParam(req.body?.difficulty);
 
   if (!isWalletAddress(walletAddress)) {
     return res
@@ -1572,7 +1585,7 @@ app.post("/api/rooms/quick-match", async (req, res) => {
     }
   }
 
-  let room = getWaitingRoom();
+  let room = getWaitingRoom(difficulty);
 
   if (!room) {
     if (
@@ -1589,6 +1602,7 @@ app.post("/api/rooms/quick-match", async (req, res) => {
     room = {
       id: makeId("room"),
       status: "waiting",
+      difficulty,
       hostPlayerId,
       createdAt: new Date().toISOString(),
       players: [],
@@ -1871,7 +1885,8 @@ app.post("/api/rooms/:roomId/start", async (req, res) => {
     });
   }
 
-  const roundSeed = await getDynamicRound("hard", recentUsedSourceWords);
+  const roomDifficulty = room.difficulty || "medium";
+  const roundSeed = await getDynamicRound(roomDifficulty, recentUsedSourceWords);
   if (roundSeed && roundSeed.sourceWord) {
     recentUsedSourceWords.push(String(roundSeed.sourceWord).toUpperCase());
     while (recentUsedSourceWords.length > 20) {
