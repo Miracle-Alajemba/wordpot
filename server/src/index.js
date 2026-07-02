@@ -1276,18 +1276,34 @@ app.get("/api/leaderboard", async (req, res) => {
   const addressLower = walletAddress.toLowerCase();
   
   let playerRecord = null;
-  if (isWalletAddress(walletAddress) && leaderboardSeasons.players[addressLower]) {
-    playerRecord = leaderboardSeasons.players[addressLower];
-    const usernameMap = await getUsernamesMap([walletAddress]);
-    playerRecord = {
-      ...playerRecord,
-      username: usernameMap.get(addressLower) || null
-    };
+  if (isWalletAddress(walletAddress)) {
+    try {
+      const dbRecord = await query(
+        `SELECT score, words_found as "wordsFound", games_played as "gamesPlayed", wins 
+         FROM seasonal_leaderboard 
+         WHERE wallet_address = $1 AND season_id = 1`,
+        [addressLower]
+      );
+      if (dbRecord.rows.length > 0) {
+        const row = dbRecord.rows[0];
+        const usernameMap = await getUsernamesMap([walletAddress]);
+        playerRecord = {
+          walletAddress,
+          username: usernameMap.get(addressLower) || null,
+          score: Number(row.score || 0),
+          wordsFound: Number(row.wordsFound || 0),
+          gamesPlayed: Number(row.gamesPlayed || 0),
+          wins: Number(row.wins || 0)
+        };
+      }
+    } catch (dbErr) {
+      console.error("Failed to query player leaderboard record:", dbErr.message);
+    }
   }
 
-  const entries = await attachUsernamesToLeaderboard(getCommunityLeaderboard());
-  const seasonalEntries = await attachUsernamesToLeaderboard(getSeasonalLeaderboard());
-  const dailyEntries = await attachUsernamesToLeaderboard(getDailyChallengeRankings());
+  const entries = await attachUsernamesToLeaderboard(await getCommunityLeaderboard());
+  const seasonalEntries = await attachUsernamesToLeaderboard(await getSeasonalLeaderboard());
+  const dailyEntries = await attachUsernamesToLeaderboard(await getDailyChallengeRankings());
 
   res.json({
     entries,
