@@ -5,6 +5,7 @@ import { GameLoader } from "../ui/index.js";
 const DAILY_TARGET_SCORE = 40;
 const DAILY_ROUND_SECONDS = 60;
 
+
 function isWalletAddress(value) {
   return /^0x[a-fA-F0-9]{40}$/.test(String(value || "").trim());
 }
@@ -113,7 +114,7 @@ export function DailyChallenge({
       if (!response.ok) {
         throw new Error(data.error || "Unable to purchase retry ticket.");
       }
-      
+
       if (onRefreshStatus) {
         await onRefreshStatus();
       }
@@ -495,9 +496,9 @@ export function DailyChallenge({
             </div>
 
             <div className="hero-actions" style={{ justifyContent: "center", marginTop: "2rem" }}>
-               <button type="button" className="button-secondary" onClick={onBack}>
-                 Back to Home
-               </button>
+              <button type="button" className="button-secondary" onClick={onBack}>
+                Back to Home
+              </button>
             </div>
           </div>
         </section>

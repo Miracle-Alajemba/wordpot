@@ -3907,3 +3907,211 @@ button:active {
   letter-spacing: 3px;
   opacity: 0.85;
 }
+
+/* ── Daily Challenge Result Card ── */
+.dc-result-card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 20px;
+  overflow: hidden;
+  margin-top: 1rem;
+  animation: slideInUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.dc-result-card__header {
+  background: linear-gradient(180deg, rgba(201, 146, 10, 0.12), rgba(201, 146, 10, 0.04));
+  border-bottom: 1px solid rgba(201, 146, 10, 0.2);
+  padding: 2rem 1.75rem 1.5rem;
+  text-align: center;
+}
+
+.dc-result-card__eyebrow {
+  font-family: var(--font-display);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--color-accent);
+  margin-bottom: 1rem;
+}
+
+.dc-result-card__score-block {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 0.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.dc-result-card__score {
+  font-family: var(--font-display);
+  font-size: clamp(4rem, 12vw, 7rem);
+  font-weight: 800;
+  color: var(--color-accent);
+  line-height: 1;
+}
+
+.dc-result-card__score-label {
+  font-family: var(--font-display);
+  font-size: clamp(1.5rem, 4vw, 2.5rem);
+  font-weight: 700;
+  color: var(--color-text-secondary);
+}
+
+.dc-result-card__stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.75rem;
+}
+
+.dc-result-stat {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  padding: 0.75rem;
+  display: grid;
+  gap: 0.25rem;
+}
+
+.dc-result-stat span {
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--color-text-muted);
+  font-family: var(--font-display);
+}
+
+.dc-result-stat strong {
+  font-family: var(--font-display);
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: var(--color-text-primary);
+}
+
+.dc-result-card__body {
+  padding: 1.75rem;
+  display: grid;
+  gap: 1rem;
+}
+
+.dc-result-card__message {
+  color: var(--color-text-secondary);
+  font-size: 1rem;
+  line-height: 1.7;
+  text-align: center;
+}
+
+.dc-result-card__message strong {
+  color: var(--color-text-primary);
+  font-weight: 700;
+}
+
+.dc-result-card__cta {
+  width: 100%;
+  padding: 1rem;
+  font-size: 1rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+}
+
+.dc-result-card__claimed-badge {
+  background: rgba(201, 146, 10, 0.12);
+  border: 1px solid rgba(201, 146, 10, 0.3);
+  border-radius: 10px;
+  color: var(--color-accent);
+  font-family: var(--font-display);
+  font-size: 0.9rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  padding: 0.75rem 1rem;
+  text-align: center;
+  text-transform: uppercase;
+}
+
+.dc-result-card__tx-link {
+  color: var(--color-accent);
+  font-size: 0.82rem;
+  font-family: var(--font-mono);
+  text-align: center;
+  text-decoration: none;
+  opacity: 0.8;
+  display: block;
+}
+
+.dc-result-card__tx-link:hover {
+  opacity: 1;
+  text-decoration: underline;
+}
+
+/* ── Already Claimed Screen ── */
+.dc-claimed-screen {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 20px;
+  padding: 3rem 2rem;
+  display: grid;
+  gap: 1rem;
+  place-items: center;
+  text-align: center;
+  max-width: 520px;
+  margin: 0 auto;
+  animation: slideInUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.dc-claimed-screen__icon {
+  font-size: 3.5rem;
+  line-height: 1;
+}
+
+.dc-claimed-screen__title {
+  font-family: var(--font-display);
+  font-size: clamp(1.8rem, 5vw, 2.5rem);
+  font-weight: 800;
+  color: var(--color-text-primary);
+}
+
+.dc-claimed-screen__sub {
+  color: var(--color-text-secondary);
+  font-size: 0.95rem;
+}
+
+.dc-claimed-screen__amount {
+  font-family: var(--font-display);
+  font-size: clamp(2.5rem, 8vw, 4rem);
+  font-weight: 800;
+  color: var(--color-accent);
+  line-height: 1;
+  padding: 0.5rem 1.5rem;
+  background: rgba(201, 146, 10, 0.1);
+  border: 1px solid rgba(201, 146, 10, 0.25);
+  border-radius: 12px;
+}
+
+.dc-claimed-screen__divider {
+  width: 100%;
+  height: 1px;
+  background: var(--color-border);
+}
+
+.dc-claimed-screen__next {
+  color: var(--color-text-muted);
+  font-size: 0.9rem;
+}
+
+@media (max-width: 640px) {
+  .dc-result-card__stats {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .dc-result-card__header {
+    padding: 1.5rem 1.25rem 1.25rem;
+  }
+
+  .dc-result-card__body {
+    padding: 1.25rem;
+  }
+
+  .dc-claimed-screen {
+    padding: 2rem 1.25rem;
+  }
+}
