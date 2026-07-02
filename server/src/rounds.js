@@ -5,6 +5,7 @@
 
 import fs from "fs";
 import { fileURLToPath } from "url";
+import { query } from "./db.js";
 
 const DATAMUSE_API_URL = "https://api.datamuse.com/words";
 const MIN_VALID_WORDS = 18;
@@ -666,6 +667,29 @@ async function refillRoundCache(difficulty) {
 
 export async function getDynamicRound(difficulty = DEFAULT_DIFFICULTY, exclusions = []) {
   const normalizedDifficulty = normalizeDifficulty(difficulty);
+  const uppercaseExclusions = exclusions.map(e => String(e || "").trim().toUpperCase()).filter(Boolean);
+
+  try {
+    const res = await query(
+      `SELECT source_word, valid_words FROM precalculated_rounds 
+       WHERE difficulty = $1 AND NOT (source_word = ANY($2))
+       ORDER BY RANDOM() LIMIT 1`,
+      [normalizedDifficulty, uppercaseExclusions]
+    );
+
+    if (res && res.rows && res.rows.length > 0) {
+      const row = res.rows[0];
+      console.info(`[rounds] getDynamicRound fetched from DB: ${row.source_word}`);
+      return {
+        sourceWord: row.source_word,
+        validWords: row.valid_words,
+        difficulty: normalizedDifficulty
+      };
+    }
+  } catch (error) {
+    console.warn(`[rounds] getDynamicRound DB query failed: ${error.message}. Falling back to cache.`);
+  }
+
   const cache = roundCaches.get(normalizedDifficulty);
   const isCacheValid =
     cache?.rounds?.length > 0 && Date.now() <= cache.expiresAt;
@@ -684,6 +708,29 @@ export async function pickNonRecentRound(
   exclusions = [],
 ) {
   const normalizedDifficulty = normalizeDifficulty(difficulty);
+  const uppercaseExclusions = exclusions.map(e => String(e || "").trim().toUpperCase()).filter(Boolean);
+
+  try {
+    const res = await query(
+      `SELECT source_word, valid_words FROM precalculated_rounds 
+       WHERE difficulty = $1 AND NOT (source_word = ANY($2))
+       ORDER BY RANDOM() LIMIT 1`,
+      [normalizedDifficulty, uppercaseExclusions]
+    );
+
+    if (res && res.rows && res.rows.length > 0) {
+      const row = res.rows[0];
+      console.info(`[rounds] pickNonRecentRound fetched from DB: ${row.source_word}`);
+      return {
+        sourceWord: row.source_word,
+        validWords: row.valid_words,
+        difficulty: normalizedDifficulty
+      };
+    }
+  } catch (error) {
+    console.warn(`[rounds] pickNonRecentRound DB query failed: ${error.message}. Falling back to cache.`);
+  }
+
   const cache = roundCaches.get(normalizedDifficulty);
   const isCacheValid =
     cache?.rounds?.length > 0 && Date.now() <= cache.expiresAt;

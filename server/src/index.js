@@ -4,14 +4,62 @@ import dotenv from "dotenv";
 import express from "express";
 import fs from "fs";
 import zlib from "zlib";
+import { createServer } from "http";
+import { Server } from "socket.io";
+import { createAdapter } from "@socket.io/redis-adapter";
 import { recoverMessageAddress } from "viem";
 import { canBuildFromSource, getDynamicRound } from "./rounds.js";
 import { createWordPotContractService } from "./wordpot-contract.js";
+import { query, initDb } from "./db.js";
+import { redis } from "./redis.js";
 
 dotenv.config();
 
 const app = express();
 const port = Number(process.env.PORT || 4000);
+
+const httpServer = createServer(app);
+const io = new Server(httpServer, {
+  cors: {
+    origin: "*",
+    methods: ["GET", "POST"]
+  }
+});
+
+const subRedis = redis.duplicate();
+subRedis.on("error", (err) => {
+  console.error("subRedis connection error:", err.message);
+});
+
+io.adapter(createAdapter(redis, subRedis));
+
+io.on("connection", (socket) => {
+  console.log(`Socket connected: ${socket.id}`);
+
+  socket.on("join_room", (roomId) => {
+    socket.join(`room:${roomId}`);
+    console.log(`Socket ${socket.id} joined room:${roomId}`);
+  });
+
+  socket.on("leave_room", (roomId) => {
+    socket.leave(`room:${roomId}`);
+    console.log(`Socket ${socket.id} left room:${roomId}`);
+  });
+
+  socket.on("disconnect", () => {
+    console.log(`Socket disconnected: ${socket.id}`);
+  });
+});
+
+async function broadcastRoomUpdate(roomId, room) {
+  try {
+    const summary = await getRoomSummary(room);
+    io.to(`room:${roomId}`).emit("room_update", summary);
+    console.log(`[ws] Broadcasted room update to room:${roomId}`);
+  } catch (err) {
+    console.error(`Failed to broadcast room update: ${err.message}`);
+  }
+}
 const MIN_PLAYERS = 2;
 const MAX_PLAYERS = 5;
 const ROUND_SECONDS = 60;
@@ -52,15 +100,137 @@ const DAILY_RESET_HOUR = Math.max(
   0,
   Math.min(23, Number(process.env.DAILY_RESET_HOUR || 0)),
 );
-const rooms = new Map();
-const dailyClaims = loadDailyClaims(); // key: "walletAddress:YYYY-MM-DD" -> claim entry
-const dailyPlays = loadDailyPlays(); // key: "walletAddress:YYYY-MM-DD" -> play entry
+// Redis active room storage
+async function saveRoom(room) {
+  if (!room) return;
+  await redis.set(`room:${room.id}`, JSON.stringify(room), "EX", 7200); // 2 hours TTL
+}
+
+async function getRoom(roomId) {
+  try {
+    const data = await redis.get(`room:${roomId}`);
+    if (!data) return null;
+    const room = JSON.parse(data);
+    
+    // Lazy expiry check
+    if (room.status === "waiting") {
+      const age = Date.now() - new Date(room.createdAt).getTime();
+      if (age > 4 * 60 * 1000) {
+        room.status = "expired";
+        pushSystemEvent(room, "Room expired. No game started in time.");
+        await saveRoom(room);
+        await removeRoomFromWaiting(room.id, room.difficulty);
+      }
+    }
+    return room;
+  } catch (err) {
+    console.error("Redis getRoom error:", err.message);
+    return null;
+  }
+}
+
+async function addRoomToWaiting(roomId, difficulty) {
+  const targetDifficulty = normalizeDifficultyParam(difficulty);
+  await redis.sadd(`waiting_rooms:${targetDifficulty}`, roomId);
+}
+
+async function removeRoomFromWaiting(roomId, difficulty) {
+  const targetDifficulty = normalizeDifficultyParam(difficulty);
+  await redis.srem(`waiting_rooms:${targetDifficulty}`, roomId);
+}
+
+async function getWaitingRoom(difficulty) {
+  const targetDifficulty = normalizeDifficultyParam(difficulty);
+  try {
+    const roomIds = await redis.smembers(`waiting_rooms:${targetDifficulty}`);
+    for (const roomId of roomIds) {
+      const room = await getRoom(roomId);
+      if (room && room.status === "waiting" && room.players.length < MAX_PLAYERS) {
+        return room;
+      } else {
+        await removeRoomFromWaiting(roomId, targetDifficulty);
+      }
+    }
+  } catch (err) {
+    console.error("Redis getWaitingRoom error:", err.message);
+  }
+  return null;
+}
+
+// Redis daily challenge session storage
+async function saveDailyChallengeSession(sessionId, session) {
+  // Convert Set to Array for JSON serialization
+  const toSave = {
+    ...session,
+    claimedWords: Array.from(session.claimedWords || [])
+  };
+  await redis.set(`session:daily:${sessionId}`, JSON.stringify(toSave), "EX", 900); // 15 mins TTL
+}
+
+async function getDailyChallengeSession(sessionId) {
+  try {
+    const data = await redis.get(`session:daily:${sessionId}`);
+    if (!data) return null;
+    const session = JSON.parse(data);
+    session.claimedWords = new Set(session.claimedWords || []);
+    return session;
+  } catch (err) {
+    console.error("Redis getDailyChallengeSession error:", err.message);
+    return null;
+  }
+}
+
+async function deleteDailyChallengeSession(sessionId) {
+  await redis.del(`session:daily:${sessionId}`);
+}
+
+// Rolling source history in Redis
+async function getRecentDailySourceWords() {
+  try {
+    const list = await redis.lrange("recent_daily_sources", 0, -1);
+    return list || [];
+  } catch (err) {
+    console.warn("Failed to get recent daily sources:", err.message);
+    return [];
+  }
+}
+
+async function pushRecentDailySourceWord(word) {
+  try {
+    const normalized = String(word || "").trim().toUpperCase();
+    if (!normalized) return;
+    await redis.lpush("recent_daily_sources", normalized);
+    await redis.ltrim("recent_daily_sources", 0, 99);
+  } catch (err) {
+    console.warn("Failed to push recent daily source:", err.message);
+  }
+}
+
+async function getRecentUsedSourceWords() {
+  try {
+    const list = await redis.lrange("recent_used_sources", 0, -1);
+    return list || [];
+  } catch (err) {
+    console.warn("Failed to get recent used sources:", err.message);
+    return [];
+  }
+}
+
+async function pushRecentUsedSourceWord(word) {
+  try {
+    const normalized = String(word || "").trim().toUpperCase();
+    if (!normalized) return;
+    await redis.lpush("recent_used_sources", normalized);
+    await redis.ltrim("recent_used_sources", 0, 19);
+  } catch (err) {
+    console.warn("Failed to push recent used source:", err.message);
+  }
+}
+
+const dailyClaims = loadDailyClaims();
+const dailyPlays = loadDailyPlays();
 const leaderboardSeasons = loadLeaderboardSeasons();
 const dailyLeaderboard = loadDailyLeaderboard();
-const dailyChallengeSessions = new Map();
-let recentDailySourceWords = loadRecentDailySources();
-const recentUsedSourceWords = []; // rolling history of last 20 words used across rooms/practice
-const roomJoinLocks = new Map(); // roomId -> Set<walletAddress_lowercase> for concurrent join protection
 let roomStateVersion = 0;
 let leaderboardCache = null;
 
@@ -78,20 +248,6 @@ function isAdminRequest(req) {
   const token = String(req.headers["x-admin-token"] || "").trim();
   return token && token === ADMIN_TOKEN;
 }
-
-// ─── Room expiry — runs every 30 seconds ──────────────────────────────────────
-setInterval(() => {
-  const EXPIRY_MS = 4 * 60 * 1000;
-  for (const [roomId, room] of rooms.entries()) {
-    if (room.status !== "waiting") continue;
-    const age = Date.now() - new Date(room.createdAt).getTime();
-    if (age > EXPIRY_MS) {
-      room.status = "expired";
-      pushSystemEvent(room, "Room expired. No game started in time.");
-      markRoomDirty(room);
-    }
-  }
-}, 30_000);
 
 app.use(cors());
 app.use(rateLimiter);
@@ -238,53 +394,32 @@ function persistDailyLeaderboard() {
   }
 }
 
-function updateDailyLeaderboard(walletAddress, score) {
-  const addressKey = walletAddress.toLowerCase();
-  const player = dailyLeaderboard.players[addressKey] || {
-    walletAddress: walletAddress,
-    highScore: 0,
-    totalScore: 0,
-    roundsPlayed: 0
-  };
-
-  player.roundsPlayed += 1;
-  player.totalScore += score;
-  if (score > player.highScore) {
-    player.highScore = score;
+async function updateDailyLeaderboard(walletAddress, score) {
+  const addressLower = walletAddress.toLowerCase();
+  try {
+    await query(
+      "INSERT INTO users (wallet_address) VALUES ($1) ON CONFLICT (wallet_address) DO NOTHING",
+      [addressLower]
+    );
+    await query(
+      `INSERT INTO daily_leaderboard (wallet_address, high_score, total_score, rounds_played, updated_at)
+       VALUES ($1, $2, $2, 1, NOW())
+       ON CONFLICT (wallet_address) DO UPDATE
+       SET rounds_played = daily_leaderboard.rounds_played + 1,
+           total_score = daily_leaderboard.total_score + EXCLUDED.high_score,
+           high_score = GREATEST(daily_leaderboard.high_score, EXCLUDED.high_score),
+           updated_at = NOW()`,
+      [addressLower, score]
+    );
+    console.info(`[daily-leaderboard] Updated for ${walletAddress} with score ${score}`);
+  } catch (err) {
+    console.error("[daily-leaderboard] Failed to update in DB:", err.message);
   }
-
-  dailyLeaderboard.players[addressKey] = player;
-  persistDailyLeaderboard();
 }
 
-function getDailyChallengeRankings() {
-  const list = Object.values(dailyLeaderboard.players);
-  return list
-    .sort((a, b) => b.highScore - a.highScore || b.totalScore - a.totalScore)
-    .slice(0, DEFAULT_LEADERBOARD_LIMIT)
-    .map((player, index) => ({
-      rank: index + 1,
-      walletAddress: player.walletAddress,
-      score: player.highScore,
-      totalScore: player.totalScore,
-      roundsPlayed: player.roundsPlayed
-    }));
-}
 
-function getSeasonalLeaderboard() {
-  const entries = Object.values(leaderboardSeasons.players)
-    .filter((player) => player.registered === true)
-    .sort((a, b) => {
-      if (b.score !== a.score) return b.score - a.score;
-      if (b.wins !== a.wins) return b.wins - a.wins;
-      return b.wordsFound - a.wordsFound;
-    })
-    .slice(0, DEFAULT_LEADERBOARD_LIMIT)
-    .map((entry, index) => ({ rank: index + 1, ...entry }));
-  return entries;
-}
 
-function updateSeasonalStatsForRoom(room) {
+async function updateSeasonalStatsForRoom(room) {
   try {
     const derived = getRoomDerived(room);
     const scoreboard = derived.scoreboard;
@@ -294,43 +429,44 @@ function updateSeasonalStatsForRoom(room) {
 
     for (const entry of scoreboard) {
       const addressLower = entry.walletAddress.toLowerCase();
-      
-      // Initialize player in database if not exist
-      if (!leaderboardSeasons.players[addressLower]) {
-        leaderboardSeasons.players[addressLower] = {
-          walletAddress: entry.walletAddress,
-          registered: false,
-          score: 0,
-          wordsFound: 0,
-          gamesPlayed: 0,
-          wins: 0,
-          boosterGamesRemaining: 0,
-        };
-      }
 
-      const playerRecord = leaderboardSeasons.players[addressLower];
-      
-      // Check if player has an active booster
+      // Ensure user profile exists
+      await query(
+        "INSERT INTO users (wallet_address) VALUES ($1) ON CONFLICT (wallet_address) DO NOTHING",
+        [addressLower]
+      );
+
+      // Check user booster state from DB
+      const userRes = await query("SELECT booster_games_remaining FROM users WHERE wallet_address = $1", [addressLower]);
+      const boosterGames = userRes.rows[0]?.booster_games_remaining || 0;
       let multiplier = 1;
-      if (playerRecord.boosterGamesRemaining > 0) {
+      if (boosterGames > 0) {
         multiplier = 2;
-        playerRecord.boosterGamesRemaining -= 1;
-        console.info(`[leaderboard] Applied 2x booster for ${entry.walletAddress}. Boosters remaining: ${playerRecord.boosterGamesRemaining}`);
+        await query(
+          "UPDATE users SET booster_games_remaining = booster_games_remaining - 1 WHERE wallet_address = $1",
+          [addressLower]
+        );
+        console.info(`[leaderboard] Applied 2x booster for ${entry.walletAddress}. Boosters remaining: ${boosterGames - 1}`);
       }
 
-      // Add to stats
-      playerRecord.score += (entry.score * multiplier);
-      playerRecord.wordsFound += entry.wordsFound;
-      playerRecord.gamesPlayed += 1;
-      if (winnerAddress === addressLower) {
-        playerRecord.wins += 1;
-      }
+      const isWinner = winnerAddress === addressLower;
+
+      // Upsert seasonal stats
+      await query(
+        `INSERT INTO seasonal_leaderboard (wallet_address, season_id, score, words_found, games_played, wins, updated_at)
+         VALUES ($1, 1, $2, $3, 1, $4, NOW())
+         ON CONFLICT (wallet_address, season_id) DO UPDATE
+         SET score = seasonal_leaderboard.score + EXCLUDED.score,
+             words_found = seasonal_leaderboard.words_found + EXCLUDED.words_found,
+             games_played = seasonal_leaderboard.games_played + 1,
+             wins = seasonal_leaderboard.wins + EXCLUDED.wins,
+             updated_at = NOW()`,
+        [addressLower, entry.score * multiplier, entry.wordsFound, isWinner ? 1 : 0]
+      );
     }
-
-    persistLeaderboardSeasons();
-    console.info(`[leaderboard] Seasonal stats updated for room ${room.id}`);
+    console.info(`[leaderboard] Seasonal stats updated in database for room ${room.id}`);
   } catch (error) {
-    console.error(`[leaderboard] Failed to update seasonal stats: ${error.message}`);
+    console.error(`[leaderboard] Failed to update seasonal stats in DB: ${error.message}`);
   }
 }
 
@@ -481,32 +617,23 @@ function normalizeDifficultyParam(value) {
   return ALLOWED_DIFFICULTIES.includes(normalized) ? normalized : "medium";
 }
 
-function rememberDailySourceWord(sourceWord) {
+async function rememberDailySourceWord(sourceWord) {
   const normalized = String(sourceWord || "")
     .trim()
     .toUpperCase();
   if (!normalized) return;
-
-  recentDailySourceWords.push(normalized);
-  while (recentDailySourceWords.length > 100) {
-    recentDailySourceWords.shift();
-  }
-  try {
-    persistRecentDailySources();
-  } catch (err) {
-    // ignore
-  }
+  await pushRecentDailySourceWord(normalized);
 }
 
 async function getDailyChallengeRound(difficulty = "medium") {
   const roundDiff = difficulty === "hard" ? "hard" : difficulty === "medium" ? "medium" : "easy";
+  const recentDaily = await getRecentDailySourceWords();
   try {
-    // Use rounds.pickNonRecentRound to avoid selecting recently used source words
     const round = await import("./rounds.js").then((m) =>
-      m.pickNonRecentRound(roundDiff, recentDailySourceWords),
+      m.pickNonRecentRound(roundDiff, recentDaily),
     );
     if (round && round.sourceWord) {
-      rememberDailySourceWord(round.sourceWord);
+      await rememberDailySourceWord(round.sourceWord);
       console.info(
         `[daily-challenge] selected new source word: ${round.sourceWord} (difficulty=${roundDiff})`,
       );
@@ -523,8 +650,8 @@ async function getDailyChallengeRound(difficulty = "medium") {
   for (let attempt = 0; attempt < 10; attempt++) {
     const round = await getDynamicRound(roundDiff);
     fallbackRound ||= round;
-    if (!recentDailySourceWords.includes(round.sourceWord)) {
-      rememberDailySourceWord(round.sourceWord);
+    if (!recentDaily.includes(round.sourceWord)) {
+      await rememberDailySourceWord(round.sourceWord);
       console.info(
         `[daily-challenge] fallback selected new source word: ${round.sourceWord} (attempt ${attempt + 1})`,
       );
@@ -536,7 +663,7 @@ async function getDailyChallengeRound(difficulty = "medium") {
   }
 
   if (fallbackRound) {
-    rememberDailySourceWord(fallbackRound.sourceWord);
+    await rememberDailySourceWord(fallbackRound.sourceWord);
     console.warn(
       `[daily-challenge] fallback using round: ${fallbackRound.sourceWord}`,
     );
@@ -692,7 +819,35 @@ function settleRoom(room) {
   markRoomDirty(room);
 }
 
-function getRoomSummary(room, options = {}) {
+async function getUsernamesMap(walletAddresses) {
+  const map = new Map();
+  if (!walletAddresses || !walletAddresses.length) return map;
+  try {
+    const placeholders = walletAddresses.map((_, i) => `$${i + 1}`).join(", ");
+    const dbRes = await query(
+      `SELECT wallet_address, username FROM users WHERE wallet_address IN (${placeholders})`,
+      walletAddresses.map(w => w.toLowerCase())
+    );
+    for (const row of dbRes.rows) {
+      map.set(row.wallet_address.toLowerCase(), row.username);
+    }
+  } catch (err) {
+    console.warn("Failed to fetch usernames map:", err.message);
+  }
+  return map;
+}
+
+async function attachUsernamesToLeaderboard(entries) {
+  if (!entries || !entries.length) return entries;
+  const wallets = entries.map(e => e.walletAddress).filter(Boolean);
+  const usernamesMap = await getUsernamesMap(wallets);
+  return entries.map(e => ({
+    ...e,
+    username: e.walletAddress ? (usernamesMap.get(e.walletAddress.toLowerCase()) || null) : null
+  }));
+}
+
+async function getRoomSummary(room, options = {}) {
   settleRoom(room);
   const feedLimit = Math.max(
     1,
@@ -700,8 +855,18 @@ function getRoomSummary(room, options = {}) {
   );
   const txLimit = Math.max(1, Number(options.txLimit) || DEFAULT_TX_LIMIT);
   const summaryCacheKey = `${room._version || 0}:${feedLimit}:${txLimit}`;
-  if (room._summaryCache?.key === summaryCacheKey)
-    return room._summaryCache.value;
+
+  const playerWallets = room.players.map((p) => p.walletAddress);
+  const usernamesMap = await getUsernamesMap(playerWallets);
+
+  if (room._summaryCache?.key === summaryCacheKey) {
+    const summary = room._summaryCache.value;
+    summary.players = summary.players.map(p => ({
+      ...p,
+      username: usernamesMap.get(p.walletAddress.toLowerCase()) || null
+    }));
+    return summary;
+  }
 
   const derived = getRoomDerived(room);
 
@@ -732,6 +897,7 @@ function getRoomSummary(room, options = {}) {
     players: room.players.map((player) => ({
       id: player.id,
       walletAddress: player.walletAddress,
+      username: usernamesMap.get(player.walletAddress.toLowerCase()) || null,
       joinedAt: player.joinedAt,
       isHost: player.id === room.hostPlayerId,
       joinPaid: derived.paidPlayerIds.has(player.id),
@@ -781,61 +947,78 @@ function getRoomSummary(room, options = {}) {
   return summary;
 }
 
-function getWaitingRoom(difficulty) {
-  const targetDifficulty = normalizeDifficultyParam(difficulty);
-  return Array.from(rooms.values()).find(
-    (room) =>
-      room.status === "waiting" &&
-      room.players.length < MAX_PLAYERS &&
-      (room.difficulty || "medium") === targetDifficulty,
-  );
-}
-
-function getCommunityLeaderboard() {
-  if (leaderboardCache?.version === roomStateVersion)
-    return leaderboardCache.entries;
-
-  const aggregate = new Map();
-
-  for (const room of rooms.values()) {
-    settleRoom(room);
-    const scoreboard = getRoomDerived(room).scoreboard;
-    for (const entry of scoreboard) {
-      const current = aggregate.get(entry.walletAddress) || {
-        walletAddress: entry.walletAddress,
-        score: 0,
-        wordsFound: 0,
-        gamesPlayed: 0,
-        wins: 0,
-      };
-      current.score += entry.score;
-      current.wordsFound += entry.wordsFound;
-      current.gamesPlayed += 1;
-      if (
-        scoreboard[0]?.walletAddress === entry.walletAddress &&
-        entry.score > 0
-      ) {
-        current.wins += 1;
-      }
-      aggregate.set(entry.walletAddress, current);
-    }
+async function getCommunityLeaderboard() {
+  try {
+    const res = await query(
+      `SELECT wallet_address, SUM(score) as score, COUNT(*) as "wordsFound", COUNT(DISTINCT room_id) as "gamesPlayed"
+       FROM submissions
+       GROUP BY wallet_address
+       ORDER BY score DESC
+       LIMIT $1`,
+      [DEFAULT_LEADERBOARD_LIMIT]
+    );
+    return res.rows.map((row, index) => ({
+      rank: index + 1,
+      walletAddress: row.wallet_address,
+      score: Number(row.score || 0),
+      wordsFound: Number(row.wordsFound || 0),
+      gamesPlayed: Number(row.gamesPlayed || 0),
+      wins: 0
+    }));
+  } catch (err) {
+    console.error("Failed to query community leaderboard:", err.message);
+    return [];
   }
-
-  const entries = Array.from(aggregate.values())
-    .sort((a, b) => {
-      if (b.score !== a.score) return b.score - a.score;
-      if (b.wins !== a.wins) return b.wins - a.wins;
-      return b.wordsFound - a.wordsFound;
-    })
-    .slice(0, DEFAULT_LEADERBOARD_LIMIT)
-    .map((entry, index) => ({ rank: index + 1, ...entry }));
-
-  leaderboardCache = { version: roomStateVersion, entries };
-  return entries;
 }
 
-function getRoomOr404(roomId, res) {
-  const room = rooms.get(roomId);
+async function getSeasonalLeaderboard() {
+  try {
+    const res = await query(
+      `SELECT wallet_address, score, words_found as "wordsFound", games_played as "gamesPlayed", wins
+       FROM seasonal_leaderboard
+       WHERE season_id = $1
+       ORDER BY score DESC, wins DESC
+       LIMIT $2`,
+      [1, DEFAULT_LEADERBOARD_LIMIT]
+    );
+    return res.rows.map((row, index) => ({
+      rank: index + 1,
+      walletAddress: row.wallet_address,
+      score: Number(row.score || 0),
+      wordsFound: Number(row.wordsFound || 0),
+      gamesPlayed: Number(row.gamesPlayed || 0),
+      wins: Number(row.wins || 0)
+    }));
+  } catch (err) {
+    console.error("Failed to query seasonal leaderboard:", err.message);
+    return [];
+  }
+}
+
+async function getDailyChallengeRankings() {
+  try {
+    const res = await query(
+      `SELECT wallet_address, high_score as "highScore", total_score as "totalScore", rounds_played as "roundsPlayed"
+       FROM daily_leaderboard
+       ORDER BY high_score DESC, total_score DESC
+       LIMIT $1`,
+      [DEFAULT_LEADERBOARD_LIMIT]
+    );
+    return res.rows.map((row, index) => ({
+      rank: index + 1,
+      walletAddress: row.wallet_address,
+      score: Number(row.highScore || 0),
+      totalScore: Number(row.totalScore || 0),
+      roundsPlayed: Number(row.roundsPlayed || 0)
+    }));
+  } catch (err) {
+    console.error("Failed to query daily challenge rankings:", err.message);
+    return [];
+  }
+}
+
+async function getRoomOr404(roomId, res) {
+  const room = await getRoom(roomId);
   if (!room) {
     res.status(404).json({ error: "Room not found." });
     return null;
@@ -994,6 +1177,70 @@ app.get("/api/health", (_req, res) => {
   });
 });
 
+app.post("/api/users/profile", async (req, res) => {
+  const walletAddress = String(req.body?.walletAddress || "").trim();
+  const signature = String(req.body?.signature || "").trim();
+  const username = String(req.body?.username || "").trim();
+
+  if (!isWalletAddress(walletAddress)) {
+    return res.status(400).json({ error: "A valid wallet address is required." });
+  }
+
+  if (!username) {
+    try {
+      const dbRes = await query("SELECT username, registered_season_1, booster_games_remaining FROM users WHERE wallet_address = $1", [walletAddress.toLowerCase()]);
+      const user = dbRes.rows[0];
+      return res.json({ 
+        walletAddress,
+        username: user?.username || null,
+        registered: user?.registered_season_1 || false,
+        boosterGamesRemaining: user?.booster_games_remaining || 0
+      });
+    } catch (err) {
+      return res.status(500).json({ error: "Database error fetching profile." });
+    }
+  }
+
+  if (!/^[a-zA-Z0-9_]{3,20}$/.test(username)) {
+    return res.status(400).json({ 
+      error: "Username must be 3-20 characters long and contain only letters, numbers, and underscores." 
+    });
+  }
+
+  const authMessage = `${SIGNED_MESSAGE_PREFIX}profile:${walletAddress}:${username}`;
+  const validSig = await verifyWalletSignature(walletAddress, signature, authMessage);
+  if (!validSig) {
+    return res.status(403).json({
+      error: "Signature verification failed. Cannot register username."
+    });
+  }
+
+  try {
+    const checkRes = await query("SELECT wallet_address FROM users WHERE username = $1", [username]);
+    if (checkRes.rows.length > 0 && checkRes.rows[0].wallet_address !== walletAddress.toLowerCase()) {
+      return res.status(409).json({ error: "Username is already taken by another player." });
+    }
+
+    await query(
+      `INSERT INTO users (wallet_address, username)
+       VALUES ($1, $2)
+       ON CONFLICT (wallet_address) DO UPDATE
+       SET username = EXCLUDED.username`,
+      [walletAddress.toLowerCase(), username]
+    );
+
+    return res.json({ 
+      ok: true, 
+      walletAddress,
+      username,
+      message: "Username updated successfully." 
+    });
+  } catch (err) {
+    console.error("Profile registration failed:", err.message);
+    return res.status(500).json({ error: "Database error saving profile." });
+  }
+});
+
 app.get("/api/meta", (_req, res) => {
   res.json({
     name: "WordPot",
@@ -1024,19 +1271,28 @@ app.get("/api/meta", (_req, res) => {
   });
 });
 
-app.get("/api/leaderboard", (req, res) => {
+app.get("/api/leaderboard", async (req, res) => {
   const walletAddress = String(req.query?.walletAddress || "").trim();
   const addressLower = walletAddress.toLowerCase();
   
   let playerRecord = null;
   if (isWalletAddress(walletAddress) && leaderboardSeasons.players[addressLower]) {
     playerRecord = leaderboardSeasons.players[addressLower];
+    const usernameMap = await getUsernamesMap([walletAddress]);
+    playerRecord = {
+      ...playerRecord,
+      username: usernameMap.get(addressLower) || null
+    };
   }
 
+  const entries = await attachUsernamesToLeaderboard(getCommunityLeaderboard());
+  const seasonalEntries = await attachUsernamesToLeaderboard(getSeasonalLeaderboard());
+  const dailyEntries = await attachUsernamesToLeaderboard(getDailyChallengeRankings());
+
   res.json({
-    entries: getCommunityLeaderboard(),
-    seasonalEntries: getSeasonalLeaderboard(),
-    dailyEntries: getDailyChallengeRankings(),
+    entries,
+    seasonalEntries,
+    dailyEntries,
     seasonInfo: {
       activeSeason: leaderboardSeasons.activeSeason,
       seasonEndsAt: leaderboardSeasons.seasonEndsAt,
@@ -1104,14 +1360,11 @@ app.get("/api/rounds/practice", async (_req, res) => {
       .trim()
       .toLowerCase();
 
-    const round = await getDynamicRound(difficulty, recentUsedSourceWords);
+    const recentUsed = await getRecentUsedSourceWords();
+    const round = await getDynamicRound(difficulty, recentUsed);
 
-    // Add to recent used history to prevent duplicates
     if (round && round.sourceWord) {
-      recentUsedSourceWords.push(String(round.sourceWord).toUpperCase());
-      while (recentUsedSourceWords.length > 20) {
-        recentUsedSourceWords.shift();
-      }
+      await pushRecentUsedSourceWord(round.sourceWord);
     }
 
     return res.json({ round });
@@ -1133,28 +1386,34 @@ app.get("/api/rounds/daily-challenge", async (_req, res) => {
       });
     }
 
-    // Enforce daily play and claim limits (cooldown) on the server side
     const walletKey = walletAddress.toLowerCase();
-    const claimKey = getTodayKey(walletAddress);
-    if (dailyClaims.has(claimKey)) {
+    const todayStr = getDayKeyFromTimestamp();
+
+    // Check if claimed today using database query
+    const claimCheck = await query(
+      "SELECT 1 FROM daily_challenge_claims WHERE wallet_address = $1 AND DATE(claimed_at) = $2",
+      [walletKey, todayStr]
+    );
+    if (claimCheck.rows.length > 0) {
       return res.status(409).json({
-        error:
-          "You have already claimed your daily reward today. Come back tomorrow.",
+        error: "You have already claimed your daily reward today. Come back tomorrow.",
         claimed: true,
       });
     }
 
-    const entry = dailyPlays.get(walletKey);
+    // Check play cooldown using database query
+    const playCheck = await query(
+      "SELECT played_at FROM daily_challenge_plays WHERE wallet_address = $1 ORDER BY played_at DESC LIMIT 1",
+      [walletKey]
+    );
+    const lastPlay = playCheck.rows[0];
     const now = Date.now();
-    if (entry?.playedAt) {
-      const nextTs = new Date(entry.playedAt).getTime() + 24 * 60 * 60 * 1000;
-      const ageMs = now - new Date(entry.playedAt).getTime();
-      // Allow fetching the round if the play was recorded within the last 2 minutes,
-      // which happens when the client registers the play right before requesting the round.
+    if (lastPlay) {
+      const nextTs = new Date(lastPlay.played_at).getTime() + 24 * 60 * 60 * 1000;
+      const ageMs = now - new Date(lastPlay.played_at).getTime();
       if (now < nextTs && ageMs > 2 * 60 * 1000) {
         return res.status(409).json({
-          error:
-            "You have already played the Daily Challenge within the last 24 hours.",
+          error: "You have already played the Daily Challenge within the last 24 hours.",
           played: true,
           nextAvailableAt: new Date(nextTs).toISOString(),
         });
@@ -1183,7 +1442,7 @@ app.get("/api/rounds/daily-challenge", async (_req, res) => {
       id: sessionId,
       walletAddress,
       round,
-      claimedWords: new Set(),
+      claimedWords: [], // will be stored as array in Redis
       score: 0,
       targetScore,
       rewardWei: rules.rewardWei,
@@ -1191,7 +1450,8 @@ app.get("/api/rounds/daily-challenge", async (_req, res) => {
       createdAt: new Date().toISOString(),
       expiresAt: Date.now() + 15 * 60 * 1000,
     };
-    dailyChallengeSessions.set(sessionId, session);
+    
+    await saveDailyChallengeSession(sessionId, session);
 
     return res.json({
       round: {
@@ -1204,15 +1464,14 @@ app.get("/api/rounds/daily-challenge", async (_req, res) => {
       },
     });
   } catch (error) {
+    console.error("Daily challenge round generation failed:", error.message);
     return res.status(500).json({
-      error:
-        error.message ||
-        "Unable to generate a daily challenge round right now.",
+      error: error.message || "Unable to generate a daily challenge round right now.",
     });
   }
 });
 
-app.post("/api/daily/submit", (req, res) => {
+app.post("/api/daily/submit", async (req, res) => {
   const walletAddress = String(req.body?.walletAddress || "").trim();
   const sessionId = String(req.body?.sessionId || "").trim();
   const rawWord = normalizeWord(req.body?.word || "");
@@ -1223,7 +1482,7 @@ app.post("/api/daily/submit", (req, res) => {
       .json({ error: "A valid wallet address is required." });
   }
 
-  const session = dailyChallengeSessions.get(sessionId);
+  const session = await getDailyChallengeSession(sessionId);
   if (!session) {
     return res
       .status(404)
@@ -1237,7 +1496,7 @@ app.post("/api/daily/submit", (req, res) => {
   }
 
   if (Date.now() > session.expiresAt) {
-    dailyChallengeSessions.delete(sessionId);
+    await deleteDailyChallengeSession(sessionId);
     return res.status(410).json({
       error: "This Daily Challenge session expired. Start a new round.",
     });
@@ -1275,6 +1534,8 @@ app.post("/api/daily/submit", (req, res) => {
   session.claimedWords.add(rawWord);
   session.score += points;
 
+  await saveDailyChallengeSession(sessionId, session);
+
   return res.json({
     ok: true,
     word: rawWord,
@@ -1285,7 +1546,7 @@ app.post("/api/daily/submit", (req, res) => {
   });
 });
 
-app.post("/api/daily/finalize", (req, res) => {
+app.post("/api/daily/finalize", async (req, res) => {
   const walletAddress = String(req.body?.walletAddress || "").trim();
   const sessionId = String(req.body?.sessionId || "").trim();
 
@@ -1293,7 +1554,7 @@ app.post("/api/daily/finalize", (req, res) => {
     return res.status(400).json({ error: "A valid wallet address is required." });
   }
 
-  const session = dailyChallengeSessions.get(sessionId);
+  const session = await getDailyChallengeSession(sessionId);
   if (!session) {
     return res.json({ ok: true, message: "Session not found." });
   }
@@ -1306,10 +1567,9 @@ app.post("/api/daily/finalize", (req, res) => {
     return res.json({ ok: true, message: "Session already finalized." });
   }
 
-  // Mark as finalized
   session.finalized = true;
+  await saveDailyChallengeSession(sessionId, session);
 
-  // Finalize score
   updateDailyLeaderboard(walletAddress, session.score);
 
   return res.json({
@@ -1345,7 +1605,7 @@ app.post("/api/daily/claim", async (req, res) => {
     }
   }
 
-  const session = dailyChallengeSessions.get(sessionId);
+  const session = await getDailyChallengeSession(sessionId);
   if (!session) {
     return res
       .status(404)
@@ -1365,22 +1625,32 @@ app.post("/api/daily/claim", async (req, res) => {
     });
   }
 
-  const claimKey = getTodayKey(walletAddress);
-  if (dailyClaims.has(claimKey)) {
+  const walletKey = walletAddress.toLowerCase();
+  const todayStr = getDayKeyFromTimestamp();
+
+  // Check if already claimed today
+  const claimCheck = await query(
+    "SELECT 1 FROM daily_challenge_claims WHERE wallet_address = $1 AND DATE(claimed_at) = $2",
+    [walletKey, todayStr]
+  );
+  if (claimCheck.rows.length > 0) {
     return res.status(409).json({
-      error:
-        "You have already claimed your daily reward today. Come back tomorrow.",
+      error: "You have already claimed your daily reward today. Come back tomorrow.",
     });
   }
 
-  // Record that this wallet played now (used for 24h cooldown)
+  // Record that this wallet played today in PostgreSQL
   try {
-    const walletKey = walletAddress.toLowerCase();
-    const nowIso = new Date().toISOString();
-    dailyPlays.set(walletKey, { playedAt: nowIso });
-    persistDailyPlays();
+    const playedAt = new Date();
+    await query(
+      `INSERT INTO daily_challenge_plays (wallet_address, played_date, played_at)
+       VALUES ($1, $2, $3)
+       ON CONFLICT (wallet_address, played_date) DO UPDATE
+       SET played_at = EXCLUDED.played_at`,
+      [walletKey, todayStr, playedAt]
+    );
   } catch (err) {
-    // ignore
+    console.warn("Failed to persist daily play cooldown in database:", err.message);
   }
 
   if (!wordPotContract.enabled || !isWalletAddress(WORDPOT_CONTRACT_ADDRESS)) {
@@ -1406,16 +1676,16 @@ app.post("/api/daily/claim", async (req, res) => {
       walletAddress,
       rewardWei,
     );
-    dailyClaims.set(claimKey, {
-      walletAddress,
-      sessionId,
-      score: session.score,
-      claimedAt: new Date().toISOString(),
-      txHash,
-      amount: rewardDisplay,
-    });
-    persistDailyClaims();
-    dailyChallengeSessions.delete(sessionId);
+
+    const claimedAt = new Date();
+    const amountCelo = Number(rewardWei) / 1e18;
+    await query(
+      `INSERT INTO daily_challenge_claims (wallet_address, session_id, score, claimed_at, tx_hash, amount_celo)
+       VALUES ($1, $2, $3, $4, $5, $6)`,
+      [walletKey, sessionId, session.score, claimedAt, txHash, amountCelo]
+    );
+
+    await deleteDailyChallengeSession(sessionId);
     return res.json({
       ok: true,
       txHash,
@@ -1431,7 +1701,7 @@ app.post("/api/daily/claim", async (req, res) => {
   }
 });
 
-app.get("/api/daily/status", (req, res) => {
+app.get("/api/daily/status", async (req, res) => {
   const walletAddress = String(req.query?.walletAddress || "").trim();
 
   if (!isWalletAddress(walletAddress)) {
@@ -1440,45 +1710,56 @@ app.get("/api/daily/status", (req, res) => {
       .json({ error: "A valid wallet address is required." });
   }
 
-  const claimKey = getTodayKey(walletAddress);
-  const claimed = dailyClaims.has(claimKey);
-  const claimEntry = claimed ? dailyClaims.get(claimKey) : null;
+  try {
+    const walletKey = walletAddress.toLowerCase();
+    const todayStr = getDayKeyFromTimestamp();
+    
+    const claimRes = await query(
+      "SELECT claimed_at, tx_hash, amount_celo FROM daily_challenge_claims WHERE wallet_address = $1 AND DATE(claimed_at) = $2",
+      [walletKey, todayStr]
+    );
+    const claimed = claimRes.rows.length > 0;
+    const claimEntry = claimed ? claimRes.rows[0] : null;
 
-  const walletKey = walletAddress.toLowerCase();
-  const playEntry = dailyPlays.get(walletKey);
-  let played = false;
-  let nextAvailableAt = null;
-  if (playEntry?.playedAt) {
-    const nextTs = new Date(playEntry.playedAt).getTime() + 24 * 60 * 60 * 1000;
-    nextAvailableAt = new Date(nextTs).toISOString();
-    played = Date.now() < nextTs;
+    const playRes = await query(
+      "SELECT played_at FROM daily_challenge_plays WHERE wallet_address = $1 ORDER BY played_at DESC LIMIT 1",
+      [walletKey]
+    );
+    const playEntry = playRes.rows[0];
+    let played = false;
+    let nextAvailableAt = null;
+    if (playEntry?.played_at) {
+      const nextTs = new Date(playEntry.played_at).getTime() + 24 * 60 * 60 * 1000;
+      nextAvailableAt = new Date(nextTs).toISOString();
+      played = Date.now() < nextTs;
+    }
+
+    return res.json({
+      claimed,
+      played,
+      claimedAt: claimEntry?.claimed_at || null,
+      txHash: claimEntry?.tx_hash || null,
+      amount: claimEntry?.amount_celo ? `${claimEntry.amount_celo} CELO` : null,
+      policy: "rolling-24h",
+      nextAvailableAt,
+      treasuryWallet: TREASURY_WALLET,
+    });
+  } catch (err) {
+    console.error("Failed to query daily status:", err.message);
+    return res.status(500).json({ error: "Database query failed." });
   }
-
-  return res.json({
-    claimed,
-    played,
-    claimedAt: claimEntry?.claimedAt || null,
-    txHash: claimEntry?.txHash || null,
-    amount: claimEntry?.amount || null,
-    policy: "rolling-24h",
-    nextAvailableAt,
-    treasuryWallet: TREASURY_WALLET,
-  });
 });
 
-app.get("/api/daily/clear-all-plays-claims", (req, res) => {
-  dailyPlays.clear();
-  dailyClaims.clear();
+app.get("/api/daily/clear-all-plays-claims", async (req, res) => {
   try {
-    persistDailyPlays();
-    persistDailyClaims();
+    await query("TRUNCATE daily_challenge_plays, daily_challenge_claims CASCADE");
+    return res.json({
+      ok: true,
+      message: "Successfully cleared all daily challenge history (plays and claims)!",
+    });
   } catch (err) {
-    console.warn("Failed to persist empty daily challenge files:", err.message);
+    return res.status(500).json({ error: "Database query failed clearing history." });
   }
-  return res.json({
-    ok: true,
-    message: "Successfully cleared all daily challenge history (plays and claims)!",
-  });
 });
 
 // --- Admin debug endpoints for daily plays ---
@@ -1520,7 +1801,7 @@ app.post("/api/debug/daily-plays/clear", (req, res) => {
   return res.json({ ok: true, removed: !!existed });
 });
 
-app.post("/api/daily/play", (req, res) => {
+app.post("/api/daily/play", async (req, res) => {
   const walletAddress = String(req.body?.walletAddress || "").trim();
   if (!isWalletAddress(walletAddress)) {
     return res
@@ -1529,35 +1810,45 @@ app.post("/api/daily/play", (req, res) => {
   }
 
   const walletKey = walletAddress.toLowerCase();
-  const entry = dailyPlays.get(walletKey);
-  const now = Date.now();
-  if (entry?.playedAt) {
-    const nextTs = new Date(entry.playedAt).getTime() + 24 * 60 * 60 * 1000;
-    if (now < nextTs) {
-      return res.status(409).json({
-        error:
-          "You have already played the Daily Challenge within the last 24 hours.",
-        played: true,
-        nextAvailableAt: new Date(nextTs).toISOString(),
-      });
-    }
-  }
-
-  dailyPlays.set(walletKey, { playedAt: new Date().toISOString() });
+  
   try {
-    persistDailyPlays();
-  } catch (err) {
-    // ignore
-  }
+    const playCheck = await query(
+      "SELECT played_at FROM daily_challenge_plays WHERE wallet_address = $1 ORDER BY played_at DESC LIMIT 1",
+      [walletKey]
+    );
+    const lastPlay = playCheck.rows[0];
+    const now = Date.now();
+    if (lastPlay) {
+      const nextTs = new Date(lastPlay.played_at).getTime() + 24 * 60 * 60 * 1000;
+      if (now < nextTs) {
+        return res.status(409).json({
+          error: "You have already played the Daily Challenge within the last 24 hours.",
+          played: true,
+          nextAvailableAt: new Date(nextTs).toISOString(),
+        });
+      }
+    }
 
-  const nextTs =
-    new Date(dailyPlays.get(walletKey).playedAt).getTime() +
-    24 * 60 * 60 * 1000;
-  return res.json({
-    ok: true,
-    played: true,
-    nextAvailableAt: new Date(nextTs).toISOString(),
-  });
+    const todayStr = getDayKeyFromTimestamp();
+    const playedAt = new Date();
+    await query(
+      `INSERT INTO daily_challenge_plays (wallet_address, played_date, played_at)
+       VALUES ($1, $2, $3)
+       ON CONFLICT (wallet_address, played_date) DO UPDATE
+       SET played_at = EXCLUDED.played_at`,
+      [walletKey, todayStr, playedAt]
+    );
+
+    const nextTs = playedAt.getTime() + 24 * 60 * 60 * 1000;
+    return res.json({
+      ok: true,
+      played: true,
+      nextAvailableAt: new Date(nextTs).toISOString(),
+    });
+  } catch (err) {
+    console.error("Failed to register daily play:", err.message);
+    return res.status(500).json({ error: "Database error registering play." });
+  }
 });
 
 // FIX: contract room created in background so player joins instantly
@@ -1587,7 +1878,7 @@ app.post("/api/rooms/quick-match", async (req, res) => {
     }
   }
 
-  let room = getWaitingRoom(difficulty);
+  let room = await getWaitingRoom(difficulty);
 
   if (!room) {
     if (
@@ -1621,39 +1912,52 @@ app.post("/api/rooms/quick-match", async (req, res) => {
       _contractRoomPending: false,
     };
 
-    rooms.set(room.id, room);
+    await saveRoom(room);
+    await addRoomToWaiting(room.id, difficulty);
 
     // Create contract room in background — player lands in lobby immediately
     if (wordPotContract.enabled && isWalletAddress(WORDPOT_CONTRACT_ADDRESS)) {
       room._contractRoomPending = true;
+      await saveRoom(room);
       wordPotContract
         .createRoom(JOIN_PAYMENT_WEI)
-        .then((contractRoom) => {
-          room.contractRoomId = contractRoom?.roomId ?? null;
-          room.contractRoomCreateTx = contractRoom?.hash ?? null;
-          room._contractRoomPending = false;
-          if (room.contractRoomId) {
-            pushSystemEvent(
-              room,
-              `Onchain room ${room.contractRoomId} opened on WordPotArena`,
-            );
+        .then(async (contractRoom) => {
+          const currentRoom = await getRoom(room.id);
+          if (currentRoom) {
+            currentRoom.contractRoomId = contractRoom?.roomId ?? null;
+            currentRoom.contractRoomCreateTx = contractRoom?.hash ?? null;
+            currentRoom._contractRoomPending = false;
+            if (currentRoom.contractRoomId) {
+              pushSystemEvent(
+                currentRoom,
+                `Onchain room ${currentRoom.contractRoomId} opened on WordPotArena`,
+              );
+            }
+            markRoomDirty(currentRoom);
+            await saveRoom(currentRoom);
+            await broadcastRoomUpdate(currentRoom.id, currentRoom);
           }
-          markRoomDirty(room);
         })
-        .catch((error) => {
+        .catch(async (error) => {
           console.error(
             "Background contract room creation failed:",
             error.message,
           );
-          room._contractRoomPending = false;
-          pushSystemEvent(
-            room,
-            "Onchain room setup failed. Contract joins may be unavailable for this room.",
-          );
-          markRoomDirty(room);
+          const currentRoom = await getRoom(room.id);
+          if (currentRoom) {
+            currentRoom._contractRoomPending = false;
+            pushSystemEvent(
+              currentRoom,
+              "Onchain room setup failed. Contract joins may be unavailable for this room.",
+            );
+            markRoomDirty(currentRoom);
+            await saveRoom(currentRoom);
+            await broadcastRoomUpdate(currentRoom.id, currentRoom);
+          }
         });
     } else if (REQUIRE_ONCHAIN_ROOM) {
-      rooms.delete(room.id);
+      await deleteRoom(room.id);
+      await removeRoomFromWaiting(room.id, difficulty);
       return res.status(503).json({
         error:
           "Live rooms are temporarily unavailable until the onchain room contract is ready.",
@@ -1661,68 +1965,70 @@ app.post("/api/rooms/quick-match", async (req, res) => {
     }
   }
 
-  // TOCTOU-safe join with per-room lock
+  // TOCTOU-safe join with Redis lock
   const lowerWallet = walletAddress.toLowerCase();
-  const lockKey = `${room.id}:${lowerWallet}`;
+  const lockKey = `lock:join:${room.id}:${lowerWallet}`;
+  const lockAcquired = await redis.set(lockKey, "1", "NX", "EX", 5);
 
-  if (!roomJoinLocks.has(room.id)) {
-    roomJoinLocks.set(room.id, new Set());
-  }
-  const activeJoins = roomJoinLocks.get(room.id);
-
-  if (activeJoins.has(lowerWallet)) {
+  if (!lockAcquired) {
     return res
       .status(429)
       .json({ error: "Join already in progress. Please wait." });
   }
 
-  activeJoins.add(lowerWallet);
-
   try {
-    const existingPlayer = room.players.find(
+    const currentRoom = await getRoom(room.id);
+    if (!currentRoom || currentRoom.status !== "waiting") {
+      await redis.del(lockKey);
+      return res.status(400).json({ error: "Lobby no longer available. Try again." });
+    }
+
+    const existingPlayer = currentRoom.players.find(
       (player) => player.walletAddress.toLowerCase() === lowerWallet,
     );
 
     if (existingPlayer) {
-      activeJoins.delete(lowerWallet);
+      await redis.del(lockKey);
       return res.status(200).json({
-        room: getRoomSummary(room),
+        room: await getRoomSummary(currentRoom),
         playerId: existingPlayer.id,
         restored: true,
       });
     }
 
     const player = {
-      id: room.players.length === 0 ? room.hostPlayerId : makeId("player"),
+      id: currentRoom.players.length === 0 ? currentRoom.hostPlayerId : makeId("player"),
       walletAddress,
       joinedAt: new Date().toISOString(),
     };
 
-    room.players.push(player);
+    currentRoom.players.push(player);
     pushSystemEvent(
-      room,
+      currentRoom,
       `${shortenAddress(player.walletAddress)} joined the game`,
     );
 
-    activeJoins.delete(lowerWallet);
-    if (activeJoins.size === 0) {
-      roomJoinLocks.delete(room.id);
+    if (currentRoom.players.length >= MAX_PLAYERS) {
+      await removeRoomFromWaiting(currentRoom.id, currentRoom.difficulty);
     }
+
+    await saveRoom(currentRoom);
+    await redis.del(lockKey);
+    await broadcastRoomUpdate(currentRoom.id, currentRoom);
 
     return res
       .status(201)
-      .json({ room: getRoomSummary(room), playerId: player.id });
+      .json({ room: await getRoomSummary(currentRoom), playerId: player.id });
   } catch (error) {
-    activeJoins.delete(lowerWallet);
-    if (activeJoins.size === 0) {
-      roomJoinLocks.delete(room.id);
-    }
+    await redis.del(lockKey);
     throw error;
   }
 });
 
+
+
 app.post("/api/rooms/:roomId/join", async (req, res) => {
-  const room = getRoomOr404(req.params.roomId, res);
+  const room = await getRoomOr404(req.params.roomId, res);
   if (!room) return;
 
   const walletAddress = String(req.body?.walletAddress || "").trim();
@@ -1765,38 +2071,40 @@ app.post("/api/rooms/:roomId/join", async (req, res) => {
     return res.status(400).json({ error: "This room is already full." });
   }
 
-  // TOCTOU-safe join with per-room lock
+  // TOCTOU-safe join with Redis lock
   const lowerWallet = walletAddress.toLowerCase();
-  const lockKey = `${room.id}:${lowerWallet}`;
+  const lockKey = `lock:join:${room.id}:${lowerWallet}`;
+  const lockAcquired = await redis.set(lockKey, "1", "NX", "EX", 5);
 
-  if (!roomJoinLocks.has(room.id)) {
-    roomJoinLocks.set(room.id, new Set());
-  }
-  const activeJoins = roomJoinLocks.get(room.id);
-
-  if (activeJoins.has(lowerWallet)) {
+  if (!lockAcquired) {
     return res
       .status(429)
       .json({ error: "Join already in progress. Please wait." });
   }
 
-  activeJoins.add(lowerWallet);
-
   try {
-    const existingPlayer = room.players.find(
+    const currentRoom = await getRoom(room.id);
+    if (!currentRoom || currentRoom.status !== "waiting") {
+      await redis.del(lockKey);
+      return res.status(400).json({ error: "Lobby no longer available. Try again." });
+    }
+
+    const existingPlayer = currentRoom.players.find(
       (player) => player.walletAddress.toLowerCase() === lowerWallet,
     );
 
     if (existingPlayer) {
-      activeJoins.delete(lowerWallet);
-      if (activeJoins.size === 0) {
-        roomJoinLocks.delete(room.id);
-      }
+      await redis.del(lockKey);
       return res.status(200).json({
-        room: getRoomSummary(room),
+        room: await getRoomSummary(currentRoom),
         playerId: existingPlayer.id,
         restored: true,
       });
+    }
+
+    if (currentRoom.players.length >= MAX_PLAYERS) {
+      await redis.del(lockKey);
+      return res.status(400).json({ error: "This room is already full." });
     }
 
     const player = {
@@ -1805,39 +2113,38 @@ app.post("/api/rooms/:roomId/join", async (req, res) => {
       joinedAt: new Date().toISOString(),
     };
 
-    room.players.push(player);
+    currentRoom.players.push(player);
     pushSystemEvent(
-      room,
+      currentRoom,
       `${shortenAddress(player.walletAddress)} joined the game`,
     );
 
-    activeJoins.delete(lowerWallet);
-    if (activeJoins.size === 0) {
-      roomJoinLocks.delete(room.id);
+    if (currentRoom.players.length >= MAX_PLAYERS) {
+      await removeRoomFromWaiting(currentRoom.id, currentRoom.difficulty);
     }
+
+    await saveRoom(currentRoom);
+    await redis.del(lockKey);
+    await broadcastRoomUpdate(currentRoom.id, currentRoom);
 
     return res
       .status(201)
-      .json({ room: getRoomSummary(room), playerId: player.id });
+      .json({ room: await getRoomSummary(currentRoom), playerId: player.id });
   } catch (error) {
-    activeJoins.delete(lowerWallet);
-    if (activeJoins.size === 0) {
-      roomJoinLocks.delete(room.id);
-    }
+    await redis.del(lockKey);
     throw error;
   }
 });
 
-app.get("/api/rooms/:roomId", (req, res) => {
+app.get("/api/rooms/:roomId", async (req, res) => {
   const room = getRoomOr404(req.params.roomId, res);
   if (!room) return;
 
-  return res.json({
-    room: getRoomSummary(room, {
-      feedLimit: req.query?.feedLimit,
-      txLimit: req.query?.txLimit,
-    }),
+  const summary = await getRoomSummary(room, {
+    feedLimit: req.query?.feedLimit,
+    txLimit: req.query?.txLimit,
   });
+  return res.json({ room: summary });
 });
 
 app.post("/api/rooms/:roomId/start", async (req, res) => {
@@ -1888,12 +2195,10 @@ app.post("/api/rooms/:roomId/start", async (req, res) => {
   }
 
   const roomDifficulty = room.difficulty || "medium";
-  const roundSeed = await getDynamicRound(roomDifficulty, recentUsedSourceWords);
+  const recentUsed = await getRecentUsedSourceWords();
+  const roundSeed = await getDynamicRound(roomDifficulty, recentUsed);
   if (roundSeed && roundSeed.sourceWord) {
-    recentUsedSourceWords.push(String(roundSeed.sourceWord).toUpperCase());
-    while (recentUsedSourceWords.length > 20) {
-      recentUsedSourceWords.shift();
-    }
+    await pushRecentUsedSourceWord(roundSeed.sourceWord);
   }
   room.status = "active";
   room.startedAt = new Date().toISOString();
@@ -1905,11 +2210,15 @@ app.post("/api/rooms/:roomId/start", async (req, res) => {
   room._claimedWords = new Set();
   pushSystemEvent(room, "Game starting now");
 
-  return res.json({ room: getRoomSummary(room) });
+  await saveRoom(room);
+  await removeRoomFromWaiting(room.id, room.difficulty);
+  await broadcastRoomUpdate(room.id, room);
+
+  return res.json({ room: await getRoomSummary(room) });
 });
 
 app.post("/api/rooms/:roomId/submit", async (req, res) => {
-  const room = getRoomOr404(req.params.roomId, res);
+  const room = await getRoomOr404(req.params.roomId, res);
   if (!room) return;
 
   const playerId = String(req.body?.playerId || "").trim();
@@ -1932,7 +2241,7 @@ app.post("/api/rooms/:roomId/submit", async (req, res) => {
   );
   if (!player) return;
 
-  function logEvent({ status, word, score = 0, reason = "" }) {
+  async function logEvent({ status, word, score = 0, reason = "" }) {
     room.events.push({
       type: "submission",
       playerId,
@@ -1944,31 +2253,32 @@ app.post("/api/rooms/:roomId/submit", async (req, res) => {
       createdAt: new Date().toISOString(),
     });
     markRoomDirty(room);
+    await saveRoom(room);
   }
 
   if (!rawWord) {
-    logEvent({ status: "rejected", word: "", reason: "Empty submission" });
+    await logEvent({ status: "rejected", word: "", reason: "Empty submission" });
     return res.status(400).json({ error: "Type a word before claiming it." });
   }
 
   if (!/^[a-z]+$/.test(rawWord)) {
-    logEvent({ status: "rejected", word: rawWord, reason: "Letters only" });
+    await logEvent({ status: "rejected", word: rawWord, reason: "Letters only" });
     return res.status(400).json({ error: "Only letters are allowed." });
   }
 
   if (rawWord.length < 3) {
-    logEvent({ status: "rejected", word: rawWord, reason: "Too short" });
+    await logEvent({ status: "rejected", word: rawWord, reason: "Too short" });
     return res.status(400).json({ error: "Words must be at least 3 letters." });
   }
 
   room._claimedWords = room._claimedWords || new Set();
   if (room._claimedWords.has(rawWord)) {
-    logEvent({ status: "rejected", word: rawWord, reason: "Already used" });
+    await logEvent({ status: "rejected", word: rawWord, reason: "Already used" });
     return res.status(409).json({ error: "Already used by another player." });
   }
 
   if (!canBuildFromSource(rawWord, room.sourceWord)) {
-    logEvent({
+    await logEvent({
       status: "rejected",
       word: rawWord,
       reason: "Outside source word",
@@ -1979,7 +2289,7 @@ app.post("/api/rooms/:roomId/submit", async (req, res) => {
   }
 
   if (!room.validWords.includes(rawWord)) {
-    logEvent({ status: "rejected", word: rawWord, reason: "Invalid word" });
+    await logEvent({ status: "rejected", word: rawWord, reason: "Invalid word" });
     return res
       .status(400)
       .json({ error: "That word is not valid for this round." });
@@ -1996,13 +2306,27 @@ app.post("/api/rooms/:roomId/submit", async (req, res) => {
   room.submissions.push(submission);
   room._claimedWords.add(rawWord);
   markRoomDirty(room);
-  logEvent({ status: "accepted", word: rawWord, score: submission.score });
+  await logEvent({ status: "accepted", word: rawWord, score: submission.score });
 
-  return res.status(201).json({ submission, room: getRoomSummary(room) });
+  // Record submission in PostgreSQL database for permanent leaderboards
+  try {
+    await query(
+      `INSERT INTO submissions (room_id, wallet_address, word, score)
+       VALUES ($1, $2, $3, $4)`,
+      [room.id, player.walletAddress.toLowerCase(), rawWord, submission.score]
+    );
+  } catch (dbErr) {
+    console.error("Failed to persist submission in database:", dbErr.message);
+  }
+
+  await saveRoom(room);
+  await broadcastRoomUpdate(room.id, room);
+
+  return res.status(201).json({ submission, room: await getRoomSummary(room) });
 });
 
 app.post("/api/rooms/:roomId/join-tx", async (req, res) => {
-  const room = getRoomOr404(req.params.roomId, res);
+  const room = await getRoomOr404(req.params.roomId, res);
   if (!room) return;
 
   const playerId = String(req.body?.playerId || "").trim();
@@ -2042,13 +2366,15 @@ app.post("/api/rooms/:roomId/join-tx", async (req, res) => {
       room,
       `${shortenAddress(player.walletAddress)} funded the room onchain`,
     );
+    await saveRoom(room);
+    await broadcastRoomUpdate(room.id, room);
   }
 
-  return res.status(201).json({ room: getRoomSummary(room) });
+  return res.status(201).json({ room: await getRoomSummary(room) });
 });
 
 app.post("/api/rooms/:roomId/claim-tx", async (req, res) => {
-  const room = getRoomOr404(req.params.roomId, res);
+  const room = await getRoomOr404(req.params.roomId, res);
   if (!room) return;
 
   const playerId = String(req.body?.playerId || "").trim();
@@ -2094,13 +2420,15 @@ app.post("/api/rooms/:roomId/claim-tx", async (req, res) => {
       room,
       `${shortenAddress(player.walletAddress)} claimed a reward onchain`,
     );
+    await saveRoom(room);
+    await broadcastRoomUpdate(room.id, room);
   }
 
-  return res.status(201).json({ room: getRoomSummary(room) });
+  return res.status(201).json({ room: await getRoomSummary(room) });
 });
 
 app.post("/api/rooms/:roomId/settle", async (req, res) => {
-  const room = getRoomOr404(req.params.roomId, res);
+  const room = await getRoomOr404(req.params.roomId, res);
   if (!room) return;
   const playerId = String(req.body?.playerId || "").trim();
   const walletAddress = String(req.body?.walletAddress || "").trim();
@@ -2115,6 +2443,8 @@ app.post("/api/rooms/:roomId/settle", async (req, res) => {
   if (!player) return;
 
   settleRoom(room);
+  await saveRoom(room);
+  await broadcastRoomUpdate(room.id, room);
 
   if (room.status !== "finished") {
     return res.status(400).json({
@@ -2123,7 +2453,7 @@ app.post("/api/rooms/:roomId/settle", async (req, res) => {
   }
 
   if (room.contractSettledAt) {
-    return res.status(200).json({ room: getRoomSummary(room), settled: true });
+    return res.status(200).json({ room: await getRoomSummary(room), settled: true });
   }
 
   if (
@@ -2151,12 +2481,16 @@ app.post("/api/rooms/:roomId/settle", async (req, res) => {
       room,
       "Final scores were settled onchain. Claims are now live.",
     );
+    await saveRoom(room);
+    await broadcastRoomUpdate(room.id, room);
 
-    return res.status(200).json({ room: getRoomSummary(room), settled: true });
+    return res.status(200).json({ room: await getRoomSummary(room), settled: true });
   } catch (error) {
     console.error("Contract settle failed:", error.message);
     room.contractSettleError = error.message;
     markRoomDirty(room);
+    await saveRoom(room);
+    await broadcastRoomUpdate(room.id, room);
     return res.status(502).json({
       error: error.message || "Unable to settle the room onchain right now.",
     });
@@ -2164,7 +2498,7 @@ app.post("/api/rooms/:roomId/settle", async (req, res) => {
 });
 
 app.post("/api/rooms/:roomId/cancel", async (req, res) => {
-  const room = getRoomOr404(req.params.roomId, res);
+  const room = await getRoomOr404(req.params.roomId, res);
   if (!room) return;
 
   const playerId = String(req.body?.playerId || "").trim();
@@ -2210,8 +2544,10 @@ app.post("/api/rooms/:roomId/cancel", async (req, res) => {
 
     try {
       const result = await processRoomRefund(room, player.walletAddress);
+      await saveRoom(room);
+      await broadcastRoomUpdate(room.id, room);
       return res.status(200).json({
-        room: getRoomSummary(room),
+        room: await getRoomSummary(room),
         txHash: result.hash,
         explorerUrl: getCeloExplorerTxUrl(result.hash),
       });
@@ -2219,6 +2555,8 @@ app.post("/api/rooms/:roomId/cancel", async (req, res) => {
       console.error("[cancel-room] refund failed:", error.message);
       room.contractCancelError = error.message;
       markRoomDirty(room);
+      await saveRoom(room);
+      await broadcastRoomUpdate(room.id, room);
       return res
         .status(502)
         .json({ error: normalizeRefundErrorMessage(error.message) });
@@ -2228,8 +2566,11 @@ app.post("/api/rooms/:roomId/cancel", async (req, res) => {
   room.status = "cancelled";
   room.cancelledAt = new Date().toISOString();
   pushSystemEvent(room, "Room cancelled by host.");
+  await saveRoom(room);
+  await removeRoomFromWaiting(room.id, room.difficulty);
+  await broadcastRoomUpdate(room.id, room);
 
-  return res.status(200).json({ room: getRoomSummary(room) });
+  return res.status(200).json({ room: await getRoomSummary(room) });
 });
 
 app.post("/api/leaderboard/season/register", (req, res) => {
@@ -2337,6 +2678,13 @@ app.post("/api/daily/retry-purchase", (req, res) => {
   });
 });
 
-app.listen(port, () => {
-  console.log(`WordPot server listening on http://localhost:${port}`);
-});
+initDb()
+  .then(() => {
+    httpServer.listen(port, () => {
+      console.log(`WordPot server listening on http://localhost:${port}`);
+    });
+  })
+  .catch((err) => {
+    console.error("Database initialization failed. Exiting...", err);
+    process.exit(1);
+  });

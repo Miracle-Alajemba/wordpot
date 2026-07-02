@@ -1,5 +1,6 @@
 import { Component, Suspense, lazy, useEffect, useMemo, useRef, useState } from "react";
 import { zeroAddress } from "viem";
+import { io } from "socket.io-client";
 import { AppBottomNav, GameLoader } from "./components/ui/index.js";
 import { HomeScreen, LobbyScreen, MatchRoomScreen } from "./components/screens/index.js";
 import {
@@ -201,6 +202,61 @@ export default function App() {
     if (isMiniPay) return "Pay with MiniPay";
     return "Pay";
   }, [isMiniPay]);
+
+  const socketRef = useRef(null);
+
+  useEffect(() => {
+    const socketUrl = API_BASE_URL.replace(/\/api\/?$/, "");
+    const socket = io(socketUrl, {
+      transports: ["websocket"],
+      autoConnect: true
+    });
+    socketRef.current = socket;
+
+    socket.on("connect", () => {
+      console.log("WebSocket connected:", socket.id);
+    });
+
+    socket.on("disconnect", () => {
+      console.log("WebSocket disconnected");
+    });
+
+    return () => {
+      socket.disconnect();
+    };
+  }, []);
+
+  useEffect(() => {
+    const socket = socketRef.current;
+    if (!socket || !room?.id) return undefined;
+
+    if (screen === "lobby" || screen === "match-room") {
+      socket.emit("join_room", room.id);
+
+      const handleRoomUpdate = (updatedRoom) => {
+        console.log("[ws] Received room update:", updatedRoom);
+        setRoom(updatedRoom);
+        setRoomSyncStatus("live");
+
+        if (updatedRoom.status === "active") {
+          setScreen("match-room");
+        } else if (updatedRoom.status === "waiting") {
+          setScreen("lobby");
+        } else if (updatedRoom.status === "expired") {
+          setRoomError("This room expired before the game could start. Go back home and create a new one.");
+          setScreen("lobby");
+        }
+      };
+
+      socket.on("room_update", handleRoomUpdate);
+
+      return () => {
+        socket.emit("leave_room", room.id);
+        socket.off("room_update", handleRoomUpdate);
+      };
+    }
+    return undefined;
+  }, [screen, room?.id]);
 
   useEffect(() => {
     if (!isWalletAddress(walletAddress)) return undefined;
@@ -877,7 +933,7 @@ export default function App() {
 
     const interval = window.setInterval(() => {
       refreshRoom({ silent: true });
-    }, 2000);
+    }, 15000);
 
     return () => window.clearInterval(interval);
   }, [screen, room?.id, playerId, walletAddress]);
