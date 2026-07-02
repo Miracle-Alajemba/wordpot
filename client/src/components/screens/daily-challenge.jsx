@@ -511,37 +511,44 @@ export function DailyChallenge({
       <main className="page-shell">
         <section className="play-shell">
           <div className="play-header">
-            <button type="button" className="ghost-button" onClick={onBack}>
-              Back
-            </button>
+            <button type="button" className="ghost-button" onClick={onBack}>Back</button>
             <p className="eyebrow">Daily Challenge</p>
           </div>
-          <div className="results-sheet" style={{ textAlign: "center", padding: "3rem 1.5rem" }}>
-            <div style={{ fontSize: "2.5rem", marginBottom: "1rem" }}>🏆</div>
-            <h2>Already Claimed Today</h2>
-            <p style={{ marginBottom: "0.5rem" }}>
-              You have already claimed your {dailyClaimAmount || "reward"} today.
-            </p>
-            <p style={{ marginBottom: "1.5rem" }}>
-              Come back tomorrow for your next reward.
-            </p>
+          <div className="dc-claimed-screen">
+            <div className="dc-claimed-screen__icon">🏆</div>
+            <h2 className="dc-claimed-screen__title">Reward Claimed</h2>
+            <p className="dc-claimed-screen__sub">You claimed your 0.05 CELO reward today.</p>
+            <div className="dc-claimed-screen__amount">0.05 CELO</div>
             {dailyClaimTx ? (
-              <div className="notice-strip notice-strip--success" style={{ marginBottom: "1.5rem" }}>
-                Today's claim TX:{" "}
-                <a
-                  href={`https://celoscan.io/tx/${dailyClaimTx}`}
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                  {dailyClaimTx.slice(0, 10)}...{dailyClaimTx.slice(-8)}
-                </a>
-              </div>
+              <a
+                className="dc-result-card__tx-link"
+                href={`https://celoscan.io/tx/${dailyClaimTx}`}
+                target="_blank"
+                rel="noreferrer"
+              >
+                View transaction on Celoscan →
+              </a>
             ) : null}
-            <div className="hero-actions" style={{ justifyContent: "center" }}>
-              <button type="button" className="button-secondary" onClick={onBack}>
-                Back to Home
-              </button>
-            </div>
+            <button
+              type="button"
+              className="dc-result-card__share-btn"
+              onClick={() => {
+                const text = `I just claimed real CELO on WordPot! 🏆\n\nWordPot Daily Challenge pays 0.05 CELO every day — completely free to play.\n\nTry it at https://wordpot.vercel.app\n\n#WordPot #BuildOnCelo #Celo #Web3Gaming`;
+                if (navigator.share) {
+                  navigator.share({ text });
+                } else {
+                  navigator.clipboard.writeText(text);
+                  alert("Result copied to clipboard!");
+                }
+              }}
+            >
+              Share & Invite Friends
+            </button>
+            <div className="dc-claimed-screen__divider" />
+            <p className="dc-claimed-screen__next">Come back tomorrow for your next reward.</p>
+            <button type="button" className="button-secondary" onClick={onBack}>
+              Back to Home
+            </button>
           </div>
         </section>
       </main>
@@ -751,81 +758,130 @@ export function DailyChallenge({
             </div>
           </div>
         ) : phase === "finished" ? (
-          <div className="results-sheet">
-            <p className="eyebrow">Daily Challenge Complete</p>
-            <h2>{score} pts</h2>
-            {score < (roundSeed?.targetScore || 40) ? (
-              <>
-                <p style={{ marginBottom: "1.5rem" }}>
-                  You scored {score} points. You need {roundSeed?.targetScore || 40} points to claim today's reward.
-                </p>
-                <div style={{ borderTop: "1px solid rgba(255,255,255,0.1)", paddingTop: "1.5rem", marginTop: "1rem", width: "100%", marginBottom: "1.5rem" }}>
-                  <h4 style={{ color: "var(--accent-mint)" }}>Can't wait? ⚡</h4>
-                  <p style={{ fontSize: "0.85em", opacity: 0.8, marginBottom: "1.5rem" }}>
-                    Skip the cooldown and play again immediately with a retry ticket.
+          <div className="dc-result-card">
+            <div className="dc-result-card__header">
+              <p className="dc-result-card__eyebrow">Daily Challenge Complete</p>
+              <div className="dc-result-card__score-block">
+                <span className="dc-result-card__score">{score}</span>
+                <span className="dc-result-card__score-label">pts</span>
+              </div>
+              <div className="dc-result-card__stats">
+                <div className="dc-result-stat">
+                  <span>Words Found</span>
+                  <strong>{claimedWords.length}</strong>
+                </div>
+                <div className="dc-result-stat">
+                  <span>Target</span>
+                  <strong>{DAILY_TARGET_SCORE} pts</strong>
+                </div>
+                <div className="dc-result-stat">
+                  <span>Status</span>
+                  <strong style={{ color: score >= DAILY_TARGET_SCORE ? "#c9920a" : "#994444" }}>
+                    {score >= DAILY_TARGET_SCORE ? "Target Reached ✓" : "Target Missed"}
+                  </strong>
+                </div>
+              </div>
+            </div>
+
+            <div className="dc-result-card__body">
+              {score < DAILY_TARGET_SCORE ? (
+                <>
+                  <p className="dc-result-card__message">
+                    You scored <strong>{score} pts</strong> but need <strong>{DAILY_TARGET_SCORE} pts</strong> to claim today's reward. Try again tomorrow.
                   </p>
+                  <button type="button" onClick={resetChallenge} className="dc-result-card__cta">
+                    Play Again
+                  </button>
                   <button
                     type="button"
-                    onClick={handleBuyRetryTicket}
-                    disabled={isRetrying}
-                    className="primary-button"
-                    style={{ background: "var(--accent-mint)", color: "#121212", padding: "0.75rem 1.5rem", borderRadius: "8px", fontWeight: "bold" }}
+                    className="dc-result-card__share-btn"
+                    onClick={() => {
+                      const text = `I scored ${score} pts on WordPot Daily Challenge today! Can you beat me? 🎮\n\nPlay free at https://wordpot.vercel.app\n\n#WordPot #BuildOnCelo #Celo`;
+                      if (navigator.share) {
+                        navigator.share({ text });
+                      } else {
+                        navigator.clipboard.writeText(text);
+                        alert("Result copied to clipboard!");
+                      }
+                    }}
                   >
-                    {isRetrying ? "Processing..." : "Buy Retry Ticket (0.05 CELO)"}
+                    Share My Score
                   </button>
-                  {retryError ? (
-                    <div className="notice-strip notice-strip--error" style={{ marginTop: "10px" }}>{retryError}</div>
-                  ) : null}
-                </div>
-                <div className="hero-actions" style={{ justifyContent: "center" }}>
-                  <button type="button" className="button-secondary" onClick={onBack}>
-                    Back to Home
-                  </button>
-                </div>
-              </>
-            ) : dailyClaimed ? (
-              <>
-                <div className="notice-strip notice-strip--success">
-                  {dailyClaimMessage || `Claimed Today ✓ ${dailyClaimAmount || "Your reward"} is on its way to your wallet.`}
-                </div>
-                {dailyClaimTx ? (
-                  <p>
-                    TX:{" "}
+                </>
+              ) : dailyClaimed ? (
+                <>
+                  <div className="dc-result-card__claimed-badge">
+                    ✓ Reward Claimed
+                  </div>
+                  <p className="dc-result-card__message">
+                    0.05 CELO has been sent to your wallet.
+                  </p>
+                  {dailyClaimTx ? (
                     <a
+                      className="dc-result-card__tx-link"
                       href={`https://celoscan.io/tx/${dailyClaimTx}`}
                       target="_blank"
                       rel="noreferrer"
                     >
-                      {dailyClaimTx.slice(0, 10)}...
+                      View on Celoscan → {dailyClaimTx.slice(0, 10)}...{dailyClaimTx.slice(-6)}
                     </a>
+                  ) : null}
+                  <button
+                    type="button"
+                    className="dc-result-card__share-btn"
+                    onClick={() => {
+                      const text = `I just claimed 0.05 CELO on WordPot Daily Challenge! 🏆\n\nI scored ${score} pts from the word ${roundSeed?.sourceWord || ""}.\n\nPlay free at https://wordpot.vercel.app\n\n#WordPot #BuildOnCelo #Celo`;
+                      if (navigator.share) {
+                        navigator.share({ text });
+                      } else {
+                        navigator.clipboard.writeText(text);
+                        alert("Result copied to clipboard!");
+                      }
+                    }}
+                  >
+                    Share Result
+                  </button>
+                  <button type="button" className="button-secondary dc-result-card__cta" onClick={resetChallenge}>
+                    Play Again Tomorrow
+                  </button>
+                </>
+              ) : (
+                <>
+                  {dailyClaimMessage ? (
+                    <div className="dc-result-card__claimed-badge">✓ {dailyClaimMessage}</div>
+                  ) : null}
+                  {dailyClaimError ? (
+                    <div className="notice-strip notice-strip--error">{dailyClaimError}</div>
+                  ) : null}
+                  <p className="dc-result-card__message">
+                    You hit the target. Claim your <strong>0.05 CELO</strong> reward now.
                   </p>
-                ) : null}
-                <div className="hero-actions">
-                  <button type="button" className="button-secondary" onClick={resetChallenge}>
-                    Play Again
+                  <button
+                    type="button"
+                    className="dc-result-card__cta"
+                    onClick={handleClaim}
+                    disabled={dailyClaimBusy}
+                  >
+                    {dailyClaimBusy ? "Sending reward..." : walletConnected ? "Claim 0.05 CELO" : "Connect Wallet to Claim"}
                   </button>
-                </div>
-              </>
-            ) : (
-              <>
-                <p>You reached the target. Claim today's {roundSeed?.rewardDisplay || "0.01 CELO"} reward.</p>
-                {dailyClaimMessage ? (
-                  <div className="notice-strip notice-strip--success">{dailyClaimMessage}</div>
-                ) : null}
-                {dailyClaimError ? (
-                  <div className="notice-strip notice-strip--error">{dailyClaimError}</div>
-                ) : null}
-                <div className="hero-actions">
-                  <button type="button" onClick={handleClaim} disabled={dailyClaimBusy}>
-                    {dailyClaimBusy
-                      ? "Sending reward..."
-                      : walletConnected && walletReady
-                        ? `Claim ${roundSeed?.rewardDisplay || "0.01 CELO"}`
-                        : "Reconnect Wallet to Claim"}
+                  <button
+                    type="button"
+                    className="dc-result-card__share-btn"
+                    onClick={() => {
+                      const text = `I scored ${score} pts on WordPot Daily Challenge and hit the target! 🎯\n\nPlay free and earn CELO at https://wordpot.vercel.app\n\n#WordPot #BuildOnCelo #Celo`;
+                      if (navigator.share) {
+                        navigator.share({ text });
+                      } else {
+                        navigator.clipboard.writeText(text);
+                        alert("Result copied to clipboard!");
+                      }
+                    }}
+                  >
+                    Share My Score
                   </button>
-                </div>
-              </>
-            )}
+                </>
+              )}
+            </div>
           </div>
         ) : null}
       </section>

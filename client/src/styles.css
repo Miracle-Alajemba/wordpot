@@ -4043,6 +4043,25 @@ button:active {
   text-decoration: underline;
 }
 
+.dc-result-card__share-btn {
+  width: 100%;
+  padding: 0.875rem 1rem;
+  font-size: 0.9rem;
+  font-weight: 700;
+  background: transparent;
+  border: 1px solid rgba(201, 146, 10, 0.35);
+  color: var(--color-accent);
+  border-radius: 10px;
+  cursor: pointer;
+  letter-spacing: 0.04em;
+  transition: background 140ms ease, border-color 140ms ease;
+}
+
+.dc-result-card__share-btn:hover {
+  background: rgba(201, 146, 10, 0.08);
+  border-color: rgba(201, 146, 10, 0.5);
+}
+
 /* ── Already Claimed Screen ── */
 .dc-claimed-screen {
   background: var(--color-surface);
