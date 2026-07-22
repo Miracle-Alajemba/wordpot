@@ -1,3 +1,3 @@
-# WebSocket Protocol Specifications
+# Real-Time Lobby WebSocket Specifications
 
-Socket event payloads, room connection states, and heartbeats.
+Provides optional low-latency WebSocket connection for live lobby updates.
