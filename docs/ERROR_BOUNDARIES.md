@@ -1,3 +1,7 @@
-# React Error Boundaries
+# React Error Boundary Specifications
 
-Component error boundary fallbacks, crash report logging, and recovery buttons.
+React Error Boundaries wrap main navigation routes to prevent white-screen crashes.
+
+<ErrorBoundary fallback={<ErrorFallbackUI />}>
+  <GameRoomView />
+</ErrorBoundary>
