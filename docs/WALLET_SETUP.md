@@ -1,3 +1,3 @@
-# Web3 Wallet Integration
+# Viem & Wagmi Wallet Setup Specifications
 
-Reown AppKit configuration, Wagmi connectors, and Celo chain network switching.
+Configures Celo Mainnet client adapters for Web3 connectivity.
