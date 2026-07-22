@@ -1,3 +1,3 @@
-# Wordpot UI & Component Architecture
+# UI Component Hierarchy & Guidelines
 
-Guidelines for component hierarchy, modal management, and theme tokens.
+Detailed breakdown of React UI component tree layout in client/src/components/.
