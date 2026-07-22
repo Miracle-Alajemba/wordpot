@@ -1,3 +1,6 @@
-# On-Chain Event Indexing
+# Celo Event Listener & Indexer Specifications
 
-Contract event logs parsing, historical room indexer, and balance tracking.
+The backend runs a lightweight event listener filtering contract logs for:
+* RoomCreated
+* PlayerJoined
+* RoomSettled
