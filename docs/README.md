@@ -1,3 +1,3 @@
-# Wordpot Documentation Index
+# WordPot Documentation Index
 
-Complete index of all architectural, game mechanics, and developer specifications.
+Welcome to the official WordPot documentation directory. All modules contain complete technical specs covering client, server, and contract layers.
