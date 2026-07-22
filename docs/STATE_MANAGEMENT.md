@@ -1,3 +1,5 @@
-# Client State Architecture
+# React State Management Architecture
 
-React context providers, game phase transitions, and persistent storage.
+Client state is managed using React Context providers:
+* WalletContext: Holds account address, chain ID, and connection status.
+* GameContext: Tracks active room, score, source word, and timer.
