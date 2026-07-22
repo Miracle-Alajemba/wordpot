@@ -1,3 +1,7 @@
-# Testing Guide
+# Automated Testing Suite Instructions
 
-Instructions for unit testing contracts and integration tests.
+To run client unit tests:
+cd client && npm test
+
+To run server API tests:
+cd server && npm test
