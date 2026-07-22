@@ -1,3 +1,7 @@
-# Smart Contract Test Scenarios
+# Hardhat Smart Contract Unit Testing Scenarios
 
-Unit test cases for room escrow, daily rewards, and owner access controls.
+Smart contract tests reside in contracts/test/ powered by Hardhat & Mocha/Chai.
+
+## Test Suites
+* WordPotArena.test.js: Room creation, fee transfers, winner payout math.
+* DailyChallenge.test.js: Cooldown enforcement, reward claims, nullifier checks.
