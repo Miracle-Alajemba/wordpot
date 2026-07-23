@@ -12,7 +12,7 @@ import {
   triggerSuccessHaptic,
   triggerErrorHaptic,
 } from "../../utils/audio-haptics.js";
-import { MetricCard, ScoreBadge, GameLoader, SocialShareBar, RoundPressure } from "../ui/index.js";
+import { MetricCard, ScoreBadge, GameLoader, SocialShareBar, RoundPressure, MusicToggle, GameSticker } from "../ui/index.js";
 
 const PRACTICE_DIFFICULTIES = [
   { id: "easy", label: "Warm Up" },
@@ -45,7 +45,10 @@ function PracticeResults({
 }) {
   return (
     <div className="results-sheet">
-      <p className="eyebrow">Practice Complete</p>
+      <div style={{ textAlign: "center", marginBottom: "0.5rem" }}>
+        <GameSticker type={score > 50 ? "wordMaster" : "fastFingers"} size="large" />
+      </div>
+      <p className="eyebrow" style={{ marginTop: "0.5rem" }}>Practice Complete</p>
       <h2 style={{ fontFamily: "var(--font-mono)" }}>{score} pts</h2>
       <p>
         You claimed <strong>{wordsFound.length}</strong>{" "}
@@ -323,11 +326,14 @@ export function PracticeScreen({
   return (
     <main className="page-shell">
       <section className="play-shell">
-        <div className="play-header">
-          <button type="button" className="ghost-button" onClick={onExit}>
-            Back
-          </button>
-          <p className="eyebrow">Practice Mode</p>
+        <div className="play-header" style={{ justifyContent: "space-between", width: "100%" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
+            <button type="button" className="ghost-button" onClick={onExit}>
+              Back
+            </button>
+            <p className="eyebrow">Practice Mode</p>
+          </div>
+          <MusicToggle />
         </div>
 
         {/* Difficulty level selector removed */}
