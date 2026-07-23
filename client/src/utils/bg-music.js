@@ -55,7 +55,7 @@ function playChord(chordData) {
     bassOsc.frequency.setValueAtTime(chordData.bass, now);
 
     bassGain.gain.setValueAtTime(0.001, now);
-    bassGain.gain.linearRampToValueAtTime(0.18, now + 0.4);
+    bassGain.gain.linearRampToValueAtTime(0.35, now + 0.4);
     bassGain.gain.exponentialRampToValueAtTime(0.001, now + 3.4);
 
     bassOsc.connect(bassGain);
@@ -67,7 +67,7 @@ function playChord(chordData) {
     bgOscillators.push(bassOsc);
   } catch {}
 
-  // 2. Treble Chord Voices (Soft Sine Swell)
+  // 2. Treble Chord Voices (Rich Swell)
   chordData.treble.forEach((freq, idx) => {
     try {
       const osc = ctx.createOscillator();
@@ -79,7 +79,7 @@ function playChord(chordData) {
       const delay = idx * 0.08; // Staggered arpeggio entry
 
       gain.gain.setValueAtTime(0.001, now + delay);
-      gain.gain.linearRampToValueAtTime(0.08, now + delay + 0.6);
+      gain.gain.linearRampToValueAtTime(0.22, now + delay + 0.6);
       gain.gain.exponentialRampToValueAtTime(0.001, now + delay + 3.2);
 
       osc.connect(gain);
@@ -106,7 +106,7 @@ export function startBackgroundMusic() {
 
   if (!bgGainNode) {
     bgGainNode = ctx.createGain();
-    bgGainNode.gain.setValueAtTime(0.85, ctx.currentTime);
+    bgGainNode.gain.setValueAtTime(1.2, ctx.currentTime);
     bgGainNode.connect(ctx.destination);
   }
 
