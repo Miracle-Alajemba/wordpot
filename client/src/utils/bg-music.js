@@ -15,26 +15,26 @@ function getAudioContext() {
     }
   }
   if (audioCtx && audioCtx.state === "suspended") {
-    audioCtx.resume();
+    audioCtx.resume().catch(() => {});
   }
   return audioCtx;
 }
 
-// Ambient chord sequence (Cmaj9, Am9, Fmaj7, G6)
-const AMBIENT_CHORDS = [
-  [261.63, 329.63, 392.0, 493.88], // C4, E4, G4, B4
-  [220.0, 261.63, 329.63, 392.0],  // A3, C4, E4, G4
-  [174.61, 220.0, 261.63, 329.63], // F3, A3, C4, E4
-  [196.0, 246.94, 293.66, 349.23], // G3, B3, D4, F4
+// Chill Lo-Fi Chords & Bass Sequences
+const CHORDS = [
+  { bass: 130.81, treble: [261.63, 329.63, 392.0, 493.88] }, // C3 + C4/E4/G4/B4
+  { bass: 110.0,  treble: [220.0, 261.63, 329.63, 392.0] },  // A2 + A3/C4/E4/G4
+  { bass: 87.31,  treble: [174.61, 220.0, 261.63, 329.63] }, // F2 + F3/A3/C4/E4
+  { bass: 98.0,   treble: [196.0, 246.94, 293.66, 349.23] }, // G2 + G3/B3/D4/F4
 ];
 
 let chordIndex = 0;
 
-function playChord(notes) {
+function playChord(chordData) {
   const ctx = getAudioContext();
   if (!ctx || !isMusicPlaying) return;
 
-  // Stop previous note instances
+  // Clear past oscillator references
   bgOscillators.forEach((osc) => {
     try {
       osc.stop();
@@ -43,24 +43,50 @@ function playChord(notes) {
   });
   bgOscillators = [];
 
-  notes.forEach((freq) => {
+  const now = ctx.currentTime;
+  const destination = bgGainNode || ctx.destination;
+
+  // 1. Warm Bass Synth Line
+  try {
+    const bassOsc = ctx.createOscillator();
+    const bassGain = ctx.createGain();
+
+    bassOsc.type = "triangle";
+    bassOsc.frequency.setValueAtTime(chordData.bass, now);
+
+    bassGain.gain.setValueAtTime(0.001, now);
+    bassGain.gain.linearRampToValueAtTime(0.18, now + 0.4);
+    bassGain.gain.exponentialRampToValueAtTime(0.001, now + 3.4);
+
+    bassOsc.connect(bassGain);
+    bassGain.connect(destination);
+
+    bassOsc.start(now);
+    bassOsc.stop(now + 3.5);
+
+    bgOscillators.push(bassOsc);
+  } catch {}
+
+  // 2. Treble Chord Voices (Soft Sine Swell)
+  chordData.treble.forEach((freq, idx) => {
     try {
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
 
       osc.type = "sine";
-      osc.frequency.setValueAtTime(freq, ctx.currentTime);
+      osc.frequency.setValueAtTime(freq, now);
 
-      // Soft swell envelope
-      gain.gain.setValueAtTime(0.001, ctx.currentTime);
-      gain.gain.linearRampToValueAtTime(0.02, ctx.currentTime + 1.2);
-      gain.gain.linearRampToValueAtTime(0.001, ctx.currentTime + 3.8);
+      const delay = idx * 0.08; // Staggered arpeggio entry
+
+      gain.gain.setValueAtTime(0.001, now + delay);
+      gain.gain.linearRampToValueAtTime(0.08, now + delay + 0.6);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + delay + 3.2);
 
       osc.connect(gain);
-      gain.connect(bgGainNode || ctx.destination);
+      gain.connect(destination);
 
-      osc.start(ctx.currentTime);
-      osc.stop(ctx.currentTime + 3.9);
+      osc.start(now + delay);
+      osc.stop(now + delay + 3.3);
 
       bgOscillators.push(osc);
     } catch {}
@@ -71,25 +97,28 @@ export function startBackgroundMusic() {
   const ctx = getAudioContext();
   if (!ctx) return;
 
+  if (ctx.state === "suspended") {
+    ctx.resume().catch(() => {});
+  }
+
   if (isMusicPlaying) return;
   isMusicPlaying = true;
 
   if (!bgGainNode) {
     bgGainNode = ctx.createGain();
-    bgGainNode.gain.setValueAtTime(0.5, ctx.currentTime);
+    bgGainNode.gain.setValueAtTime(0.85, ctx.currentTime);
     bgGainNode.connect(ctx.destination);
   }
 
-  // Play immediately and schedule chord loop every 4 seconds
-  playChord(AMBIENT_CHORDS[chordIndex]);
-  chordIndex = (chordIndex + 1) % AMBIENT_CHORDS.length;
+  playChord(CHORDS[chordIndex]);
+  chordIndex = (chordIndex + 1) % CHORDS.length;
 
   if (loopInterval) clearInterval(loopInterval);
   loopInterval = setInterval(() => {
     if (!isMusicPlaying) return;
-    playChord(AMBIENT_CHORDS[chordIndex]);
-    chordIndex = (chordIndex + 1) % AMBIENT_CHORDS.length;
-  }, 4000);
+    playChord(CHORDS[chordIndex]);
+    chordIndex = (chordIndex + 1) % CHORDS.length;
+  }, 3500);
 }
 
 export function stopBackgroundMusic() {
@@ -108,6 +137,11 @@ export function stopBackgroundMusic() {
 }
 
 export function toggleBackgroundMusic() {
+  const ctx = getAudioContext();
+  if (ctx && ctx.state === "suspended") {
+    ctx.resume().catch(() => {});
+  }
+
   if (isMusicPlaying) {
     stopBackgroundMusic();
     return false;
