@@ -4,6 +4,9 @@ import {
   RoomPlayersStrip,
   TimerTone,
   SocialShareBar,
+  MusicToggle,
+  GameSticker,
+  GameStickerStrip,
 } from "../ui/index.js";
 import {
   getPlayerAlias,
@@ -123,9 +126,9 @@ export function HomeScreen({
     <main className="page-shell">
       <section className="hero">
         <div className="hero-copy">
-          <div className="hero-copy__top">
-            <div className="brand-lockup" aria-label="WordPot">
-            </div>
+          <div className="hero-copy__top" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
+            <GameSticker type="celoArena" size="medium" />
+            <MusicToggle />
           </div>
           <div className="hero-logo">
             <img
@@ -135,6 +138,7 @@ export function HomeScreen({
             />
             <h1 className="hero-logo__name">WordPot</h1>
           </div>
+          <GameStickerStrip />
 
           <p className="lede">
             A fast multiplayer word challenge where players build words from a
@@ -399,11 +403,14 @@ export function LobbyScreen({
         </div>
       ) : null}
       <section className="play-shell">
-        <div className="play-header">
-          <button type="button" className="ghost-button" onClick={onBack}>
-            Back
-          </button>
-          <p className="eyebrow">Quick Match Lobby</p>
+        <div className="play-header" style={{ justifyContent: "space-between", width: "100%" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
+            <button type="button" className="ghost-button" onClick={onBack}>
+              Back
+            </button>
+            <p className="eyebrow">Quick Match Lobby</p>
+          </div>
+          <MusicToggle />
         </div>
 
         <div className="room-topbar">
@@ -762,11 +769,14 @@ export function MatchRoomScreen({
   return (
     <main className="page-shell">
       <section className="play-shell">
-        <div className="play-header">
-          <button type="button" className="ghost-button" onClick={onBackHome}>
-            Back
-          </button>
-          <p className="eyebrow">Live Room</p>
+        <div className="play-header" style={{ justifyContent: "space-between", width: "100%" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
+            <button type="button" className="ghost-button" onClick={onBackHome}>
+              Back
+            </button>
+            <p className="eyebrow">Live Room</p>
+          </div>
+          <MusicToggle />
         </div>
 
         <div className="room-topbar">
