@@ -3,7 +3,8 @@ import {
   ChatMessage,
   RoomPlayersStrip,
   TimerTone,
-} from "../ui/game-ui.jsx";
+  SocialShareBar,
+} from "../ui/index.js";
 import {
   getPlayerAlias,
   shortenHash,
@@ -463,6 +464,7 @@ export function LobbyScreen({
                   {inviteCopied ? "Copied ✓" : "Copy Link"}
                 </button>
               </div>
+              <SocialShareBar roomId={room?.id} />
               <p className="field-hint">
                 Entry fees are non-refundable. If the room expires before the game starts your fee goes to the WordPot treasury.
               </p>
@@ -971,6 +973,7 @@ export function MatchRoomScreen({
                     Refresh Results
                   </button>
                 </div>
+                <SocialShareBar roomId={room?.id} score={myScore} wordCount={(room?.scoreboard?.find((entry) => entry.playerId === playerId)?.wordsFound) || 0} />
               </div>
 
               <div className="player-list">
