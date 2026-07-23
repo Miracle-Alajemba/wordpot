@@ -270,6 +270,15 @@ export function useWalletSession() {
     }
   }
 
+  function clearWalletSession() {
+    setWalletAddress("");
+    setWalletChainId(null);
+    setWalletStatus("Session cleared.");
+    if (typeof window !== "undefined") {
+      window.localStorage.removeItem(WALLET_STORAGE_KEY);
+    }
+  }
+
   return {
     walletAddress,
     walletStatus,
@@ -282,6 +291,7 @@ export function useWalletSession() {
     walletReady,
     connectWallet,
     disconnectWallet,
+    clearWalletSession,
     ensureCeloMainnet,
     parseChainId,
     getInjectedProvider: () => provider,
