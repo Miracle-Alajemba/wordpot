@@ -1,10 +1,10 @@
-// Web Audio API Ambient Background Music Synthesizer
+// Web Audio API Upbeat Arcade Game Melody Synthesizer
 
 let audioCtx = null;
 let bgOscillators = [];
 let bgGainNode = null;
 let isMusicPlaying = false;
-let loopInterval = null;
+let melodyInterval = null;
 
 function getAudioContext() {
   if (typeof window === "undefined") return null;
@@ -20,77 +20,78 @@ function getAudioContext() {
   return audioCtx;
 }
 
-// Chill Lo-Fi Chords & Bass Sequences
-const CHORDS = [
-  { bass: 130.81, treble: [261.63, 329.63, 392.0, 493.88] }, // C3 + C4/E4/G4/B4
-  { bass: 110.0,  treble: [220.0, 261.63, 329.63, 392.0] },  // A2 + A3/C4/E4/G4
-  { bass: 87.31,  treble: [174.61, 220.0, 261.63, 329.63] }, // F2 + F3/A3/C4/E4
-  { bass: 98.0,   treble: [196.0, 246.94, 293.66, 349.23] }, // G2 + G3/B3/D4/F4
+// Upbeat Arcade Game Melody Notes (BPM 130)
+// Frequencies for C4, E4, G4, A4, C5, B4, G4, E4, D4, F4, A4, C5
+const ARCADE_MELODY = [
+  { note: 523.25, duration: 0.2 }, // C5
+  { note: 659.25, duration: 0.2 }, // E5
+  { note: 783.99, duration: 0.2 }, // G5
+  { note: 880.0,  duration: 0.2 }, // A5
+  { note: 783.99, duration: 0.2 }, // G5
+  { note: 659.25, duration: 0.2 }, // E5
+  { note: 523.25, duration: 0.4 }, // C5
+  { note: 587.33, duration: 0.2 }, // D5
+  { note: 698.46, duration: 0.2 }, // F5
+  { note: 880.0,  duration: 0.2 }, // A5
+  { note: 1046.5, duration: 0.4 }, // C6
+  { note: 783.99, duration: 0.4 }, // G5
 ];
 
-let chordIndex = 0;
+const BASS_LINE = [261.63, 220.0, 174.61, 196.0]; // C4, A3, F3, G3
+let noteIdx = 0;
 
-function playChord(chordData) {
+function playMelodyStep() {
   const ctx = getAudioContext();
   if (!ctx || !isMusicPlaying) return;
 
-  // Clear past oscillator references
-  bgOscillators.forEach((osc) => {
-    try {
-      osc.stop();
-      osc.disconnect();
-    } catch {}
-  });
-  bgOscillators = [];
-
+  const step = ARCADE_MELODY[noteIdx % ARCADE_MELODY.length];
+  const bassFreq = BASS_LINE[Math.floor(noteIdx / 3) % BASS_LINE.length];
   const now = ctx.currentTime;
   const destination = bgGainNode || ctx.destination;
 
-  // 1. Warm Bass Synth Line
+  // Lead Melody (Square wave for retro game feel)
   try {
-    const bassOsc = ctx.createOscillator();
-    const bassGain = ctx.createGain();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
 
-    bassOsc.type = "triangle";
-    bassOsc.frequency.setValueAtTime(chordData.bass, now);
+    osc.type = "triangle";
+    osc.frequency.setValueAtTime(step.note, now);
 
-    bassGain.gain.setValueAtTime(0.001, now);
-    bassGain.gain.linearRampToValueAtTime(0.35, now + 0.4);
-    bassGain.gain.exponentialRampToValueAtTime(0.001, now + 3.4);
+    gain.gain.setValueAtTime(0.1, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + step.duration);
 
-    bassOsc.connect(bassGain);
-    bassGain.connect(destination);
+    osc.connect(gain);
+    gain.connect(destination);
 
-    bassOsc.start(now);
-    bassOsc.stop(now + 3.5);
+    osc.start(now);
+    osc.stop(now + step.duration);
 
-    bgOscillators.push(bassOsc);
+    bgOscillators.push(osc);
   } catch {}
 
-  // 2. Treble Chord Voices (Rich Swell)
-  chordData.treble.forEach((freq, idx) => {
+  // Bouncy Bass (Sine wave)
+  if (noteIdx % 3 === 0) {
     try {
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
+      const bassOsc = ctx.createOscillator();
+      const bassGain = ctx.createGain();
 
-      osc.type = "sine";
-      osc.frequency.setValueAtTime(freq, now);
+      bassOsc.type = "sine";
+      bassOsc.frequency.setValueAtTime(bassFreq, now);
 
-      const delay = idx * 0.08; // Staggered arpeggio entry
+      bassGain.gain.setValueAtTime(0.15, now);
+      bassGain.gain.exponentialRampToValueAtTime(0.001, now + 0.4);
 
-      gain.gain.setValueAtTime(0.001, now + delay);
-      gain.gain.linearRampToValueAtTime(0.22, now + delay + 0.6);
-      gain.gain.exponentialRampToValueAtTime(0.001, now + delay + 3.2);
+      bassOsc.connect(bassGain);
+      bassGain.connect(destination);
 
-      osc.connect(gain);
-      gain.connect(destination);
+      bassOsc.start(now);
+      bassOsc.stop(now + 0.4);
 
-      osc.start(now + delay);
-      osc.stop(now + delay + 3.3);
-
-      bgOscillators.push(osc);
+      bgOscillators.push(bassOsc);
     } catch {}
-  });
+  }
+
+  noteIdx++;
 }
 
 export function startBackgroundMusic() {
@@ -106,26 +107,25 @@ export function startBackgroundMusic() {
 
   if (!bgGainNode) {
     bgGainNode = ctx.createGain();
-    bgGainNode.gain.setValueAtTime(1.2, ctx.currentTime);
+    bgGainNode.gain.setValueAtTime(0.7, ctx.currentTime);
     bgGainNode.connect(ctx.destination);
   }
 
-  playChord(CHORDS[chordIndex]);
-  chordIndex = (chordIndex + 1) % CHORDS.length;
+  noteIdx = 0;
+  playMelodyStep();
 
-  if (loopInterval) clearInterval(loopInterval);
-  loopInterval = setInterval(() => {
+  if (melodyInterval) clearInterval(melodyInterval);
+  melodyInterval = setInterval(() => {
     if (!isMusicPlaying) return;
-    playChord(CHORDS[chordIndex]);
-    chordIndex = (chordIndex + 1) % CHORDS.length;
-  }, 3500);
+    playMelodyStep();
+  }, 230); // ~130 BPM bouncy rhythm
 }
 
 export function stopBackgroundMusic() {
   isMusicPlaying = false;
-  if (loopInterval) {
-    clearInterval(loopInterval);
-    loopInterval = null;
+  if (melodyInterval) {
+    clearInterval(melodyInterval);
+    melodyInterval = null;
   }
   bgOscillators.forEach((osc) => {
     try {
