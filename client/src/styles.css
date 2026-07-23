@@ -818,32 +818,18 @@ button:disabled {
   font-family: var(--font-mono);
 }
 
-.progress-shell {
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(113, 138, 232, 0.14);
-  border-radius: 22px;
-  padding: 0.95rem 1rem 1rem;
+.progress-shell,
+.round-pressure-shell {
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  transition: all 0.3s ease;
 }
 
-.progress-labels {
-  color: #bec8e4;
-  display: flex;
-  font-size: 0.92rem;
-  justify-content: space-between;
-  margin-bottom: 0.75rem;
-}
-
-.progress-bar {
-  background: rgba(255, 255, 255, 0.08);
-  border-radius: 999px;
-  height: 0.85rem;
-  overflow: hidden;
-}
-
-.progress-bar__fill {
-  background: linear-gradient(90deg, #63f4ca 0%, #ffb347 100%);
-  border-radius: inherit;
-  height: 100%;
+@media (max-width: 480px) {
+  .round-pressure-header {
+    flex-wrap: wrap;
+    gap: 0.4rem;
+  }
 }
 
 .submit-panel {
