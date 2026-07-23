@@ -4,7 +4,7 @@ import {
   getWordScore,
   normalizeWord,
 } from "../../game.js";
-import { MetricCard, ScoreBadge, GameLoader } from "../ui/index.js";
+import { MetricCard, ScoreBadge, GameLoader, SocialShareBar } from "../ui/index.js";
 
 const PRACTICE_DIFFICULTIES = [
   { id: "easy", label: "Warm Up" },
@@ -58,6 +58,8 @@ function PracticeResults({
           </div>
         )}
       </div>
+
+      <SocialShareBar score={score} wordCount={wordsFound.length} />
 
       <div className="hero-actions">
         <button type="button" onClick={onReplay}>
