@@ -59,3 +59,46 @@ export function MusicToggle({ className = "" }) {
     </button>
   );
 }
+
+export function NavItemMusicToggle() {
+  const [playing, setPlaying] = useState(false);
+
+  useEffect(() => {
+    const saved = typeof window !== "undefined" ? window.localStorage.getItem(MUSIC_STORAGE_KEY) : null;
+    if (saved === "true") {
+      startBackgroundMusic();
+      setPlaying(true);
+    }
+  }, []);
+
+  const handleToggle = () => {
+    const newState = toggleBackgroundMusic();
+    setPlaying(newState);
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem(MUSIC_STORAGE_KEY, String(newState));
+    }
+  };
+
+  return (
+    <button
+      type="button"
+      className={`bottom-nav__item ${playing ? "bottom-nav__item--active" : ""}`}
+      onClick={handleToggle}
+      title={playing ? "Mute Background Music" : "Play Background Music"}
+      style={{
+        flex: "1 1 0",
+        minWidth: 0,
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: "0.5rem 0.25rem",
+        fontSize: "0.65rem",
+        overflow: "hidden",
+      }}
+    >
+      <span style={{ fontSize: "1.2rem", lineHeight: 1 }}>{playing ? "🔊" : "🔇"}</span>
+      <span className="bottom-nav__label">{playing ? "Music" : "Mute"}</span>
+    </button>
+  );
+}

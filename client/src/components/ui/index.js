@@ -11,5 +11,5 @@ export { GameLoader } from "./game-loader.jsx";
 export { SocialShareBar } from "./social-share.jsx";
 export { KeyboardShortcutsModal } from "./keyboard-shortcuts-modal.jsx";
 export { RoundPressure } from "./round-pressure.jsx";
-export { MusicToggle } from "./music-toggle.jsx";
+export { MusicToggle, NavItemMusicToggle } from "./music-toggle.jsx";
 export { GameSticker, GameStickerStrip } from "./game-stickers.jsx";

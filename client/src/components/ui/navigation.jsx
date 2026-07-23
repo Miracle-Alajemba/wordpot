@@ -1,4 +1,5 @@
 import { shortenWalletAddress } from "../../utils/ui-helpers.js";
+import { NavItemMusicToggle } from "./music-toggle.jsx";
 
 function Icon({ name }) {
   const common = {
@@ -109,6 +110,8 @@ export function AppBottomNav({ screen, onNavigate, walletAddress, onWalletAction
         <Icon name="wallet" />
         <span className="bottom-nav__label">{walletLabel}</span>
       </button>
+
+      <NavItemMusicToggle />
     </nav>
   );
 }
