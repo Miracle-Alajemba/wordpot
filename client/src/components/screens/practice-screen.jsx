@@ -4,6 +4,14 @@ import {
   getWordScore,
   normalizeWord,
 } from "../../game.js";
+import {
+  playTileSound,
+  playSuccessSound,
+  playErrorSound,
+  triggerTileHaptic,
+  triggerSuccessHaptic,
+  triggerErrorHaptic,
+} from "../../utils/audio-haptics.js";
 import { MetricCard, ScoreBadge, GameLoader, SocialShareBar } from "../ui/index.js";
 
 const PRACTICE_DIFFICULTIES = [
@@ -191,6 +199,8 @@ export function PracticeScreen({
     });
 
     if (!evaluation.ok) {
+      playErrorSound();
+      triggerErrorHaptic();
       setFeedback(evaluation.message);
       setFeedbackTone("error");
       setStreak(0);
@@ -199,6 +209,8 @@ export function PracticeScreen({
       return;
     }
 
+    playSuccessSound();
+    triggerSuccessHaptic();
     const points = evaluation.score ?? getWordScore(evaluation.word);
 
     setClaimedWords((current) => [
@@ -228,6 +240,8 @@ export function PracticeScreen({
   }
 
   function handleToggleTile(index) {
+    playTileSound();
+    triggerTileHaptic();
     setSelectedIndexes((current) => {
       const nextIndexes = current.includes(index)
         ? current.filter((value) => value !== index)
