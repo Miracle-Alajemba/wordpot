@@ -46,26 +46,34 @@ export function MusicToggle({ className = "" }) {
     <button
       type="button"
       onClick={handleToggle}
-      className={`music-toggle-btn ${className}`}
+      className={`music-fab-btn ${className}`}
       aria-label={playing ? "Mute background music" : "Play background music"}
       title={playing ? "Mute Background Music" : "Play Background Music"}
       style={{
+        position: "fixed",
+        top: "14px",
+        right: "14px",
+        zIndex: 99999,
         display: "inline-flex",
         alignItems: "center",
         justifyContent: "center",
-        width: "40px",
-        height: "40px",
+        width: "44px",
+        height: "44px",
         borderRadius: "50%",
         background: playing
-          ? "linear-gradient(135deg, rgba(99, 244, 202, 0.25), rgba(56, 189, 248, 0.25))"
-          : "rgba(255, 255, 255, 0.08)",
+          ? "linear-gradient(135deg, rgba(30, 41, 59, 0.9), rgba(15, 23, 42, 0.95))"
+          : "rgba(15, 23, 42, 0.75)",
         border: playing
           ? "1.5px solid rgba(99, 244, 202, 0.6)"
-          : "1px solid rgba(255, 255, 255, 0.18)",
+          : "1px solid rgba(255, 255, 255, 0.2)",
+        backdropFilter: "blur(10px)",
+        WebkitBackdropFilter: "blur(10px)",
         color: playing ? "#38bdf8" : "#94a3b8",
         cursor: "pointer",
         transition: "all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)",
-        boxShadow: playing ? "0 4px 16px rgba(56, 189, 248, 0.35)" : "none",
+        boxShadow: playing
+          ? "0 6px 20px rgba(56, 189, 248, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.2)"
+          : "0 4px 12px rgba(0, 0, 0, 0.3)",
       }}
     >
       <span style={{ fontSize: "18px", lineHeight: 1 }}>{playing ? "🔊" : "🔇"}</span>
@@ -74,44 +82,5 @@ export function MusicToggle({ className = "" }) {
 }
 
 export function NavItemMusicToggle() {
-  const [playing, setPlaying] = useState(false);
-
-  useEffect(() => {
-    const saved = typeof window !== "undefined" ? window.localStorage.getItem(MUSIC_STORAGE_KEY) : null;
-    if (saved === "true") {
-      startBackgroundMusic();
-      setPlaying(true);
-    }
-  }, []);
-
-  const handleToggle = () => {
-    const newState = toggleBackgroundMusic();
-    setPlaying(newState);
-    if (typeof window !== "undefined") {
-      window.localStorage.setItem(MUSIC_STORAGE_KEY, String(newState));
-    }
-  };
-
-  return (
-    <button
-      type="button"
-      className={`bottom-nav__item ${playing ? "bottom-nav__item--active" : ""}`}
-      onClick={handleToggle}
-      aria-label={playing ? "Mute background music" : "Play background music"}
-      title={playing ? "Mute Background Music" : "Play Background Music"}
-      style={{
-        flex: "1 1 0",
-        minWidth: 0,
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        justifyContent: "center",
-        padding: "0.5rem 0.25rem",
-        fontSize: "0.65rem",
-        overflow: "hidden",
-      }}
-    >
-      <span style={{ fontSize: "1.3rem", lineHeight: 1 }}>{playing ? "🔊" : "🔇"}</span>
-    </button>
-  );
+  return null;
 }

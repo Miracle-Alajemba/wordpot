@@ -110,8 +110,6 @@ export function AppBottomNav({ screen, onNavigate, walletAddress, onWalletAction
         <Icon name="wallet" />
         <span className="bottom-nav__label">{walletLabel}</span>
       </button>
-
-      <NavItemMusicToggle />
     </nav>
   );
 }
