@@ -1,10 +1,10 @@
-// Web Audio API Upbeat Arcade Game Melody Synthesizer
+// Catchy American Funk / Pop Hit Soundtrack Synthesizer (Upbeat Funk Groove)
 
 let audioCtx = null;
 let bgOscillators = [];
 let bgGainNode = null;
 let isMusicPlaying = false;
-let melodyInterval = null;
+let grooveInterval = null;
 
 function getAudioContext() {
   if (typeof window === "undefined") return null;
@@ -20,78 +20,88 @@ function getAudioContext() {
   return audioCtx;
 }
 
-// Upbeat Arcade Game Melody Notes (BPM 130)
-// Frequencies for C4, E4, G4, A4, C5, B4, G4, E4, D4, F4, A4, C5
-const ARCADE_MELODY = [
-  { note: 523.25, duration: 0.2 }, // C5
-  { note: 659.25, duration: 0.2 }, // E5
-  { note: 783.99, duration: 0.2 }, // G5
-  { note: 880.0,  duration: 0.2 }, // A5
-  { note: 783.99, duration: 0.2 }, // G5
-  { note: 659.25, duration: 0.2 }, // E5
-  { note: 523.25, duration: 0.4 }, // C5
-  { note: 587.33, duration: 0.2 }, // D5
-  { note: 698.46, duration: 0.2 }, // F5
-  { note: 880.0,  duration: 0.2 }, // A5
-  { note: 1046.5, duration: 0.4 }, // C6
-  { note: 783.99, duration: 0.4 }, // G5
+// Iconic American Funk/Pop Hit Pattern (118 BPM Funk Groove in D Minor)
+// Slap Bass notes + Staccato Brass Chords
+const FUNK_BASS_PATTERN = [
+  { freq: 146.83, duration: 0.18 }, // D3
+  { freq: 146.83, duration: 0.12 }, // D3
+  { freq: 174.61, duration: 0.18 }, // F3
+  { freq: 196.0,  duration: 0.22 }, // G3
+  { freq: 220.0,  duration: 0.18 }, // A3
+  { freq: 261.63, duration: 0.22 }, // C4
+  { freq: 146.83, duration: 0.18 }, // D3
+  { freq: 196.0,  duration: 0.18 }, // G3
 ];
 
-const BASS_LINE = [261.63, 220.0, 174.61, 196.0]; // C4, A3, F3, G3
-let noteIdx = 0;
+const FUNK_BRASS_CHORDS = [
+  [293.66, 349.23, 440.0, 523.25], // Dm7 (D4, F4, A4, C5)
+  [392.0, 493.88, 587.33, 698.46],  // G7 (G4, B4, D5, F5)
+  [293.66, 349.23, 440.0, 523.25], // Dm7
+  [349.23, 440.0, 523.25, 659.25],  // Fmaj7 (F4, A4, C5, E5)
+];
 
-function playMelodyStep() {
+let stepIdx = 0;
+
+function playFunkStep() {
   const ctx = getAudioContext();
   if (!ctx || !isMusicPlaying) return;
 
-  const step = ARCADE_MELODY[noteIdx % ARCADE_MELODY.length];
-  const bassFreq = BASS_LINE[Math.floor(noteIdx / 3) % BASS_LINE.length];
   const now = ctx.currentTime;
   const destination = bgGainNode || ctx.destination;
+  const bassStep = FUNK_BASS_PATTERN[stepIdx % FUNK_BASS_PATTERN.length];
 
-  // Lead Melody (Square wave for retro game feel)
+  // 1. Funky Slap Bass (Sawtooth + Low-pass punch)
   try {
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
+    const bassOsc = ctx.createOscillator();
+    const bassGain = ctx.createGain();
+    const filter = ctx.createBiquadFilter();
 
-    osc.type = "triangle";
-    osc.frequency.setValueAtTime(step.note, now);
+    bassOsc.type = "sawtooth";
+    bassOsc.frequency.setValueAtTime(bassStep.freq, now);
 
-    gain.gain.setValueAtTime(0.1, now);
-    gain.gain.exponentialRampToValueAtTime(0.001, now + step.duration);
+    filter.type = "lowpass";
+    filter.frequency.setValueAtTime(450, now);
+    filter.frequency.exponentialRampToValueAtTime(150, now + bassStep.duration);
 
-    osc.connect(gain);
-    gain.connect(destination);
+    bassGain.gain.setValueAtTime(0.28, now);
+    bassGain.gain.exponentialRampToValueAtTime(0.001, now + bassStep.duration);
 
-    osc.start(now);
-    osc.stop(now + step.duration);
+    bassOsc.connect(filter);
+    filter.connect(bassGain);
+    bassGain.connect(destination);
 
-    bgOscillators.push(osc);
+    bassOsc.start(now);
+    bassOsc.stop(now + bassStep.duration);
+
+    bgOscillators.push(bassOsc);
   } catch {}
 
-  // Bouncy Bass (Sine wave)
-  if (noteIdx % 3 === 0) {
-    try {
-      const bassOsc = ctx.createOscillator();
-      const bassGain = ctx.createGain();
+  // 2. Energetic Brass Chord Stabs (on syncopated beats)
+  if (stepIdx % 2 === 1) {
+    const chord = FUNK_BRASS_CHORDS[Math.floor(stepIdx / 2) % FUNK_BRASS_CHORDS.length];
+    chord.forEach((freq) => {
+      try {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
 
-      bassOsc.type = "sine";
-      bassOsc.frequency.setValueAtTime(bassFreq, now);
+        osc.type = "sawtooth";
+        osc.frequency.setValueAtTime(freq, now);
 
-      bassGain.gain.setValueAtTime(0.15, now);
-      bassGain.gain.exponentialRampToValueAtTime(0.001, now + 0.4);
+        gain.gain.setValueAtTime(0.12, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.16);
 
-      bassOsc.connect(bassGain);
-      bassGain.connect(destination);
+        osc.connect(gain);
+        gain.connect(destination);
 
-      bassOsc.start(now);
-      bassOsc.stop(now + 0.4);
+        osc.start(now);
+        osc.stop(now + 0.18);
 
-      bgOscillators.push(bassOsc);
-    } catch {}
+        bgOscillators.push(osc);
+      } catch {}
+    });
   }
 
-  noteIdx++;
+  stepIdx++;
 }
 
 export function startBackgroundMusic() {
@@ -107,25 +117,25 @@ export function startBackgroundMusic() {
 
   if (!bgGainNode) {
     bgGainNode = ctx.createGain();
-    bgGainNode.gain.setValueAtTime(0.7, ctx.currentTime);
+    bgGainNode.gain.setValueAtTime(0.9, ctx.currentTime);
     bgGainNode.connect(ctx.destination);
   }
 
-  noteIdx = 0;
-  playMelodyStep();
+  stepIdx = 0;
+  playFunkStep();
 
-  if (melodyInterval) clearInterval(melodyInterval);
-  melodyInterval = setInterval(() => {
+  if (grooveInterval) clearInterval(grooveInterval);
+  grooveInterval = setInterval(() => {
     if (!isMusicPlaying) return;
-    playMelodyStep();
-  }, 230); // ~130 BPM bouncy rhythm
+    playFunkStep();
+  }, 250); // ~118 BPM upbeat funk rhythm
 }
 
 export function stopBackgroundMusic() {
   isMusicPlaying = false;
-  if (melodyInterval) {
-    clearInterval(melodyInterval);
-    melodyInterval = null;
+  if (grooveInterval) {
+    clearInterval(grooveInterval);
+    grooveInterval = null;
   }
   bgOscillators.forEach((osc) => {
     try {
