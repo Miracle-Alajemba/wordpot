@@ -4,7 +4,6 @@ import {
   RoomPlayersStrip,
   TimerTone,
   SocialShareBar,
-  MusicToggle,
   GameSticker,
   GameStickerStrip,
 } from "../ui/index.js";
@@ -126,9 +125,6 @@ export function HomeScreen({
     <main className="page-shell">
       <section className="hero">
         <div className="hero-copy">
-          <div className="hero-copy__top" style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", marginBottom: "1rem" }}>
-            <MusicToggle />
-          </div>
           <div className="hero-logo">
             <img
               src="/logo.png"
@@ -402,14 +398,11 @@ export function LobbyScreen({
         </div>
       ) : null}
       <section className="play-shell">
-        <div className="play-header" style={{ justifyContent: "space-between", width: "100%" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
-            <button type="button" className="ghost-button" onClick={onBack}>
-              Back
-            </button>
-            <p className="eyebrow">Quick Match Lobby</p>
-          </div>
-          <MusicToggle />
+        <div className="play-header">
+          <button type="button" className="ghost-button" onClick={onBack}>
+            Back
+          </button>
+          <p className="eyebrow">Quick Match Lobby</p>
         </div>
 
         <div className="room-topbar">
@@ -768,14 +761,11 @@ export function MatchRoomScreen({
   return (
     <main className="page-shell">
       <section className="play-shell">
-        <div className="play-header" style={{ justifyContent: "space-between", width: "100%" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
-            <button type="button" className="ghost-button" onClick={onBackHome}>
-              Back
-            </button>
-            <p className="eyebrow">Live Room</p>
-          </div>
-          <MusicToggle />
+        <div className="play-header">
+          <button type="button" className="ghost-button" onClick={onBackHome}>
+            Back
+          </button>
+          <p className="eyebrow">Live Room</p>
         </div>
 
         <div className="room-topbar">

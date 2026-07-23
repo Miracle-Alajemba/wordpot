@@ -12,7 +12,7 @@ import {
   triggerSuccessHaptic,
   triggerErrorHaptic,
 } from "../../utils/audio-haptics.js";
-import { MetricCard, ScoreBadge, GameLoader, SocialShareBar, RoundPressure, MusicToggle, GameSticker } from "../ui/index.js";
+import { MetricCard, ScoreBadge, GameLoader, SocialShareBar, RoundPressure, GameSticker } from "../ui/index.js";
 
 const PRACTICE_DIFFICULTIES = [
   { id: "easy", label: "Warm Up" },
@@ -326,14 +326,11 @@ export function PracticeScreen({
   return (
     <main className="page-shell">
       <section className="play-shell">
-        <div className="play-header" style={{ justifyContent: "space-between", width: "100%" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
-            <button type="button" className="ghost-button" onClick={onExit}>
-              Back
-            </button>
-            <p className="eyebrow">Practice Mode</p>
-          </div>
-          <MusicToggle />
+        <div className="play-header">
+          <button type="button" className="ghost-button" onClick={onExit}>
+            Back
+          </button>
+          <p className="eyebrow">Practice Mode</p>
         </div>
 
         {/* Difficulty level selector removed */}
