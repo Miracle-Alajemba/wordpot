@@ -14,9 +14,23 @@ export function MusicToggle({ className = "" }) {
   useEffect(() => {
     const saved = typeof window !== "undefined" ? window.localStorage.getItem(MUSIC_STORAGE_KEY) : null;
     if (saved === "true") {
-      // Auto-start if user previously enabled music
-      startBackgroundMusic();
-      setPlaying(true);
+      const handleFirstGesture = () => {
+        startBackgroundMusic();
+        setPlaying(true);
+        window.removeEventListener("click", handleFirstGesture);
+        window.removeEventListener("keydown", handleFirstGesture);
+        window.removeEventListener("touchstart", handleFirstGesture);
+      };
+
+      window.addEventListener("click", handleFirstGesture);
+      window.addEventListener("keydown", handleFirstGesture);
+      window.addEventListener("touchstart", handleFirstGesture);
+
+      return () => {
+        window.removeEventListener("click", handleFirstGesture);
+        window.removeEventListener("keydown", handleFirstGesture);
+        window.removeEventListener("touchstart", handleFirstGesture);
+      };
     }
   }, []);
 
