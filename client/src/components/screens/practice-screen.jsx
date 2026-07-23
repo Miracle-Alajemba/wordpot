@@ -12,7 +12,7 @@ import {
   triggerSuccessHaptic,
   triggerErrorHaptic,
 } from "../../utils/audio-haptics.js";
-import { MetricCard, ScoreBadge, GameLoader, SocialShareBar } from "../ui/index.js";
+import { MetricCard, ScoreBadge, GameLoader, SocialShareBar, RoundPressure } from "../ui/index.js";
 
 const PRACTICE_DIFFICULTIES = [
   { id: "easy", label: "Warm Up" },
@@ -364,15 +364,7 @@ export function PracticeScreen({
           </div>
         </div>
 
-        <div className="progress-shell">
-          <div className="progress-labels">
-            <span>Round pressure</span>
-            <span>{Math.round(progress)}%</span>
-          </div>
-          <div className="progress-bar">
-            <div className="progress-bar__fill" style={{ width: `${progress}%` }} />
-          </div>
-        </div>
+        <RoundPressure progress={progress} timeLeft={timeLeft} totalTime={roundSeconds} />
 
         {loadingRound ? (
           <div className="results-sheet" style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
