@@ -126,8 +126,7 @@ export function HomeScreen({
     <main className="page-shell">
       <section className="hero">
         <div className="hero-copy">
-          <div className="hero-copy__top" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
-            <GameSticker type="celoArena" size="medium" />
+          <div className="hero-copy__top" style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", marginBottom: "1rem" }}>
             <MusicToggle />
           </div>
           <div className="hero-logo">
