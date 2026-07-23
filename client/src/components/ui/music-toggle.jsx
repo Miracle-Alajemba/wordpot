@@ -47,29 +47,28 @@ export function MusicToggle({ className = "" }) {
       type="button"
       onClick={handleToggle}
       className={`music-toggle-btn ${className}`}
+      aria-label={playing ? "Mute background music" : "Play background music"}
       title={playing ? "Mute Background Music" : "Play Background Music"}
       style={{
         display: "inline-flex",
         alignItems: "center",
-        gap: "6px",
-        padding: "8px 14px",
-        borderRadius: "999px",
+        justifyContent: "center",
+        width: "40px",
+        height: "40px",
+        borderRadius: "50%",
         background: playing
-          ? "linear-gradient(135deg, rgba(99, 244, 202, 0.2), rgba(56, 189, 248, 0.2))"
+          ? "linear-gradient(135deg, rgba(99, 244, 202, 0.25), rgba(56, 189, 248, 0.25))"
           : "rgba(255, 255, 255, 0.08)",
         border: playing
-          ? "1px solid rgba(99, 244, 202, 0.5)"
-          : "1px solid rgba(255, 255, 255, 0.15)",
+          ? "1.5px solid rgba(99, 244, 202, 0.6)"
+          : "1px solid rgba(255, 255, 255, 0.18)",
         color: playing ? "#38bdf8" : "#94a3b8",
-        fontSize: "13px",
-        fontWeight: "600",
         cursor: "pointer",
-        transition: "all 0.3s ease",
-        boxShadow: playing ? "0 4px 14px rgba(56, 189, 248, 0.25)" : "none",
+        transition: "all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)",
+        boxShadow: playing ? "0 4px 16px rgba(56, 189, 248, 0.35)" : "none",
       }}
     >
-      <span style={{ fontSize: "15px" }}>{playing ? "🔊" : "🔇"}</span>
-      <span>{playing ? "Music ON" : "Music OFF"}</span>
+      <span style={{ fontSize: "18px", lineHeight: 1 }}>{playing ? "🔊" : "🔇"}</span>
     </button>
   );
 }
@@ -98,6 +97,7 @@ export function NavItemMusicToggle() {
       type="button"
       className={`bottom-nav__item ${playing ? "bottom-nav__item--active" : ""}`}
       onClick={handleToggle}
+      aria-label={playing ? "Mute background music" : "Play background music"}
       title={playing ? "Mute Background Music" : "Play Background Music"}
       style={{
         flex: "1 1 0",
@@ -111,8 +111,7 @@ export function NavItemMusicToggle() {
         overflow: "hidden",
       }}
     >
-      <span style={{ fontSize: "1.2rem", lineHeight: 1 }}>{playing ? "🔊" : "🔇"}</span>
-      <span className="bottom-nav__label">{playing ? "Music" : "Mute"}</span>
+      <span style={{ fontSize: "1.3rem", lineHeight: 1 }}>{playing ? "🔊" : "🔇"}</span>
     </button>
   );
 }
