@@ -13,8 +13,13 @@ export function isWalletAddress(value) {
 }
 
 export function getPlayerAlias(walletAddress, fallbackIndex = 1) {
-  const short = shortenWalletAddress(walletAddress);
   if (!walletAddress) return `Player ${fallbackIndex}`;
+  if (typeof window !== "undefined") {
+    const key = `wordpot_username_${walletAddress.toLowerCase().trim()}`;
+    const saved = window.localStorage.getItem(key);
+    if (saved && saved.trim()) return saved.trim();
+  }
+  const short = shortenWalletAddress(walletAddress);
   return `Player ${short.slice(2, 6).toUpperCase()}`;
 }
 

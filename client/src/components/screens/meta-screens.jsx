@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { MetricCard, PlayerIdentity, GameLoader } from "../ui";
+import { MetricCard, PlayerIdentity, GameLoader, UsernameModal } from "../ui";
+import { getSavedUsername } from "../../utils/username.js";
 
 import {
   getAvatarStyle,
@@ -137,7 +138,14 @@ export function LeaderboardScreen({ room, onQuickMatch, onBack, apiBaseUrl }) {
 
 export function ProfileScreen({ walletAddress, onConnectWallet, onBack }) {
   const connected = isWalletAddress(walletAddress);
-  const alias = connected ? getPlayerAlias(walletAddress) : "Guest Player";
+  const [alias, setAlias] = useState(connected ? getPlayerAlias(walletAddress) : "Guest Player");
+  const [modalOpen, setModalOpen] = useState(false);
+
+  useEffect(() => {
+    if (connected) {
+      setAlias(getSavedUsername(walletAddress));
+    }
+  }, [walletAddress, connected]);
 
   return (
     <main className="page-shell">
@@ -154,7 +162,19 @@ export function ProfileScreen({ walletAddress, onConnectWallet, onBack }) {
                 {(connected ? walletAddress.slice(2, 4) : "WP").toUpperCase()}
               </span>
               <div>
-                <h1 className="profile-title">{alias}</h1>
+                <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
+                  <h1 className="profile-title" style={{ margin: 0 }}>{alias}</h1>
+                  {connected && (
+                    <button
+                      type="button"
+                      className="button-secondary"
+                      style={{ padding: "4px 10px", fontSize: "0.75rem", minHeight: "auto", display: "inline-flex", alignItems: "center", gap: "4px" }}
+                      onClick={() => setModalOpen(true)}
+                    >
+                      ✏️ Edit Handle
+                    </button>
+                  )}
+                </div>
                 <p className="profile-subtitle">{connected ? shortenWalletAddress(walletAddress) : "Connect a wallet to personalise your profile."}</p>
                 <span className="rank-badge">Word Artist • Level 7</span>
               </div>
@@ -174,6 +194,13 @@ export function ProfileScreen({ walletAddress, onConnectWallet, onBack }) {
 
         </section>
       </section>
+
+      <UsernameModal
+        walletAddress={walletAddress}
+        isOpen={modalOpen}
+        onClose={() => setModalOpen(false)}
+        onSaveSuccess={(newHandle) => setAlias(newHandle)}
+      />
     </main>
   );
 }
