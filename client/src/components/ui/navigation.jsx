@@ -113,3 +113,4 @@ export function AppBottomNav({ screen, onNavigate, walletAddress, onWalletAction
     </nav>
   );
 }
+
