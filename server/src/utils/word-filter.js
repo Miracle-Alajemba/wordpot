@@ -2,13 +2,13 @@
  * Profanity and offensive word filtering utility for WordPot chat rooms and display names.
  */
 
-const BLOCKED_WORDS = new Set([
+const BLOCKED_WORDS = [
   "BADWORD",
   "SCAM",
   "PHISH",
   "EXPLOIT",
   "SPAM",
-]);
+];
 
 /**
  * Filter text input by replacing blocked words with asterisks.
@@ -19,7 +19,7 @@ export function filterProfanity(text) {
   if (!text || typeof text !== "string") return "";
   let result = text;
   for (const word of BLOCKED_WORDS) {
-    const regex = new RegExp(`\\b${word}\\b`, "gi");
+    const regex = new RegExp(word, "gi");
     result = result.replace(regex, "*".repeat(word.length));
   }
   return result;
