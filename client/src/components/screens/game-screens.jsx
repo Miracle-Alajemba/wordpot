@@ -309,6 +309,23 @@ export function HomeScreen({
               </button>
             )}
           </div>
+
+          <div className="sample-scoring-footer">
+            <div className="sample-scoring-footer__header">
+              <span style={{ fontSize: "0.74rem", textTransform: "uppercase", fontWeight: "700", color: "#38bdf8" }}>
+                ⚡ Word Scoring Matrix
+              </span>
+              <span style={{ fontSize: "0.72rem", color: "#4ade80", fontWeight: "600" }}>
+                ✓ Celo Contract Verified
+              </span>
+            </div>
+            <div className="sample-scoring-footer__matrix">
+              <div className="scoring-pill"><span>3 Ltrs</span> <strong>3 pts</strong></div>
+              <div className="scoring-pill"><span>4 Ltrs</span> <strong>5 pts</strong></div>
+              <div className="scoring-pill"><span>5 Ltrs</span> <strong>8 pts</strong></div>
+              <div className="scoring-pill"><span>6+ Ltrs</span> <strong>12 pts</strong></div>
+            </div>
+          </div>
         </div>
       </section>
 

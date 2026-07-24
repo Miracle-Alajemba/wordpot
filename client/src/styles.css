@@ -543,12 +543,59 @@ button:disabled {
 }
 
 .hero-card {
-  align-content: start;
-  align-self: start;
-  display: grid;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
   gap: 1rem;
-  height: fit-content;
   padding: 2rem;
+  height: 100%;
+}
+
+.sample-scoring-footer {
+  background: rgba(15, 23, 42, 0.75);
+  border: 1px solid rgba(141, 163, 255, 0.2);
+  border-radius: 16px;
+  padding: 0.8rem 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  margin-top: 0.5rem;
+}
+
+.sample-scoring-footer__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.sample-scoring-footer__matrix {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.4rem;
+}
+
+.scoring-pill {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  padding: 0.35rem 0.4rem;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+
+.scoring-pill span {
+  color: #94a3b8;
+  font-size: 0.68rem;
+  text-transform: uppercase;
+}
+
+.scoring-pill strong {
+  color: #f8fafc;
+  font-size: 0.85rem;
+  font-weight: 700;
 }
 
 .hero-card h2 {
