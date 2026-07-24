@@ -19,6 +19,8 @@ export { StatPill } from "./stat-pill.jsx";
 export { Toast } from "./toast.jsx";
 export { WordChip } from "./word-chip.jsx";
 export { CountdownRing } from "./countdown-ring.jsx";
+export { UsernameModal } from "./username-modal.jsx";
+
 
 
 
