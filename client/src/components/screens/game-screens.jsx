@@ -12,6 +12,7 @@ import {
   shortenHash,
   shortenWalletAddress,
 } from "../../utils/ui-helpers.js";
+import { getSavedUsername, saveCustomUsername } from "../../utils/username.js";
 
 function getSyncStatusMeta(syncStatus) {
   if (syncStatus === "live") {
@@ -386,6 +387,25 @@ export function LobbyScreen({
   paymentProviderLabel,
 }) {
   const [roomTimeLeft, setRoomTimeLeft] = useState("");
+  const myPlayer = room?.players?.find((p) => p.id === playerId);
+  const myWallet = myPlayer?.walletAddress || "";
+  const [handleInput, setHandleInput] = useState("");
+  const [handleNotice, setHandleNotice] = useState("");
+
+  useEffect(() => {
+    if (myWallet) {
+      setHandleInput(getSavedUsername(myWallet));
+    }
+  }, [myWallet]);
+
+  function handleSaveLobbyUsername() {
+    if (!myWallet || !handleInput.trim()) return;
+    const ok = saveCustomUsername(myWallet, handleInput.trim());
+    if (ok) {
+      setHandleNotice("✓ Username saved!");
+      setTimeout(() => setHandleNotice(""), 2000);
+    }
+  }
 
   useEffect(() => {
     if (!room?.expiresAt) return;
@@ -488,6 +508,28 @@ export function LobbyScreen({
               </div>
               <TimerTone seconds={0} />
             </div>
+
+            {myWallet && (
+              <div style={{ background: "rgba(15, 23, 42, 0.75)", border: "1px solid rgba(141, 163, 255, 0.25)", borderRadius: "14px", padding: "10px 14px", marginBottom: "14px", display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
+                <span style={{ fontSize: "0.8rem", color: "#38bdf8", fontWeight: "700", textTransform: "uppercase" }}>👤 Display Username:</span>
+                <input
+                  type="text"
+                  value={handleInput}
+                  onChange={(e) => setHandleInput(e.target.value)}
+                  placeholder="Type your username..."
+                  maxLength={16}
+                  style={{ flex: 1, minWidth: "130px", padding: "6px 12px", borderRadius: "8px", background: "rgba(255, 255, 255, 0.08)", border: "1px solid rgba(255, 255, 255, 0.15)", color: "#fff", fontSize: "0.85rem", outline: "none" }}
+                />
+                <button
+                  type="button"
+                  style={{ padding: "6px 14px", fontSize: "0.8rem", minHeight: "auto" }}
+                  onClick={handleSaveLobbyUsername}
+                >
+                  Save Username
+                </button>
+                {handleNotice && <span style={{ color: "#4ade80", fontSize: "0.78rem" }}>{handleNotice}</span>}
+              </div>
+            )}
 
             <div className={`lobby-readiness-card ${roomReadyToStart ? "lobby-readiness-card--ready" : ""}`}>
               <div>
