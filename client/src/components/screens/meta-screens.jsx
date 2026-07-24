@@ -206,54 +206,389 @@ export function ProfileScreen({ walletAddress, onConnectWallet, onBack }) {
 }
 
 export function SettingsScreen({ settings, onToggle, onBack }) {
+  const [selectedTheme, setSelectedTheme] = useState("mint"); // mint, gold, purple, cyan
+  const [testScore, setTestScore] = useState(12);
+  const [testTileSelected, setTestTileSelected] = useState(false);
+
+  const themeColors = {
+    mint: { name: "Emerald Mint", primary: "#34d399", glow: "rgba(52, 211, 153, 0.25)" },
+    gold: { name: "Cyber Gold", primary: "#fbbf24", glow: "rgba(251, 191, 36, 0.25)" },
+    purple: { name: "Neon Purple", primary: "#c084fc", glow: "rgba(192, 132, 252, 0.25)" },
+    cyan: { name: "Cosmic Cyan", primary: "#22d3ee", glow: "rgba(34, 211, 238, 0.25)" },
+  };
+
+  const currentTheme = themeColors[selectedTheme];
+
+  const handleTestSound = () => {
+    try {
+      const AudioCtx = window.AudioContext || window.webkitAudioContext;
+      if (AudioCtx) {
+        const ctx = new AudioCtx();
+        const now = ctx.currentTime;
+        [523.25, 659.25, 783.99].forEach((freq, idx) => {
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.type = "triangle";
+          osc.frequency.setValueAtTime(freq, now + idx * 0.08);
+          gain.gain.setValueAtTime(0.15, now + idx * 0.08);
+          gain.gain.exponentialRampToValueAtTime(0.01, now + idx * 0.08 + 0.15);
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.start(now + idx * 0.08);
+          osc.stop(now + idx * 0.08 + 0.15);
+        });
+      }
+    } catch {}
+  };
+
+  const handleTestHaptics = () => {
+    if (typeof window !== "undefined" && window.navigator && window.navigator.vibrate) {
+      window.navigator.vibrate([40, 50, 40]);
+    }
+  };
+
   return (
     <main className="page-shell">
       <section className="play-shell">
         <div className="play-header">
           <button type="button" className="ghost-button" onClick={onBack}>Back</button>
-          <p className="eyebrow">Settings</p>
+          <p className="eyebrow">Settings & Customization Studio</p>
         </div>
 
         <section className="profile-shell">
-          <article className="panel profile-panel">
-            <h3>Sound & Haptics</h3>
-            <div className="settings-list">
-              <button type="button" className="settings-row" onClick={() => onToggle("sound")}>
-                <span>Sound effects</span>
-                <strong>{settings.sound ? "On" : "Off"}</strong>
-              </button>
-              <button type="button" className="settings-row" onClick={() => onToggle("haptics")}>
-                <span>Haptic feedback</span>
-                <strong>{settings.haptics ? "On" : "Off"}</strong>
-              </button>
+          {/* Live Interactive UI Preview Stage */}
+          <article className="panel profile-panel" style={{ background: "linear-gradient(180deg, rgba(22, 31, 58, 0.95), rgba(10, 17, 34, 0.98))", border: `1px solid ${currentTheme.primary}44`, boxShadow: `0 12px 30px ${currentTheme.glow}` }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px" }}>
+              <h3 style={{ margin: 0, fontSize: "1.1rem", color: currentTheme.primary }}>
+                🎛️ Live UI & Audio Preview Stage
+              </h3>
+              <span style={{ fontSize: "0.75rem", background: `${currentTheme.primary}22`, color: currentTheme.primary, padding: "2px 8px", borderRadius: "12px", border: `1px solid ${currentTheme.primary}44`, fontWeight: "600" }}>
+                Interactive Demo
+              </span>
+            </div>
+
+            <p style={{ fontSize: "0.82rem", color: "#94a3b8", margin: "0 0 16px 0" }}>
+              Tap the letter tiles below to test your audio, contrast, and theme settings in real-time.
+            </p>
+
+            <div style={{ background: "rgba(15, 23, 42, 0.8)", border: "1px solid rgba(255, 255, 255, 0.1)", borderRadius: "14px", padding: "16px", display: "flex", flexDirection: "column", gap: "12px" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <span style={{ fontSize: "0.8rem", color: "#cbd5e1", textTransform: "uppercase", letterSpacing: "0.05em", fontWeight: "700" }}>
+                  Sample Round Word
+                </span>
+                <span style={{ fontSize: settings.largeText ? "1rem" : "0.85rem", fontWeight: "700", color: currentTheme.primary, fontFamily: "monospace" }}>
+                  +{testScore} PTS
+                </span>
+              </div>
+
+              <div style={{ display: "flex", gap: "8px", justifyContent: "center" }}>
+                {["W", "O", "R", "D", "P", "O", "T"].map((ltr, idx) => {
+                  const active = testTileSelected && idx < 4;
+                  return (
+                    <button
+                      key={`${ltr}-${idx}`}
+                      type="button"
+                      onClick={() => {
+                        setTestTileSelected((prev) => !prev);
+                        if (settings.sound) handleTestSound();
+                        if (settings.haptics) handleTestHaptics();
+                      }}
+                      style={{
+                        width: "38px",
+                        height: "44px",
+                        borderRadius: "8px",
+                        background: active ? currentTheme.primary : settings.highContrast ? "#1e293b" : "rgba(255, 255, 255, 0.07)",
+                        border: `2px solid ${active ? currentTheme.primary : settings.highContrast ? "#ffffff" : "rgba(255, 255, 255, 0.15)"}`,
+                        color: active ? "#0f172a" : "#f8fafc",
+                        fontWeight: "800",
+                        fontSize: settings.largeText ? "1.2rem" : "1rem",
+                        cursor: "pointer",
+                        transition: "all 0.15s ease",
+                        boxShadow: active ? `0 0 12px ${currentTheme.primary}aa` : "none",
+                      }}
+                    >
+                      {ltr}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
           </article>
 
+          {/* Theme Accent Picker */}
           <article className="panel profile-panel">
-            <h3>Display</h3>
-            <div className="settings-list">
-              <button type="button" className="settings-row" onClick={() => onToggle("highContrast")}>
-                <span>High contrast mode</span>
-                <strong>{settings.highContrast ? "Enabled" : "Disabled"}</strong>
-              </button>
-              <button type="button" className="settings-row" onClick={() => onToggle("largeText")}>
-                <span>Larger text</span>
-                <strong>{settings.largeText ? "Enabled" : "Disabled"}</strong>
-              </button>
+            <h3>🎨 Theme Color Accent</h3>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: "10px", marginTop: "10px" }}>
+              {Object.entries(themeColors).map(([key, theme]) => {
+                const isSelected = selectedTheme === key;
+                return (
+                  <button
+                    key={key}
+                    type="button"
+                    onClick={() => {
+                      setSelectedTheme(key);
+                      if (settings.sound) handleTestSound();
+                    }}
+                    style={{
+                      background: "rgba(255, 255, 255, 0.05)",
+                      border: `2px solid ${isSelected ? theme.primary : "rgba(255, 255, 255, 0.1)"}`,
+                      borderRadius: "12px",
+                      padding: "10px 6px",
+                      display: "flex",
+                      flexDirection: "column",
+                      alignItems: "center",
+                      gap: "6px",
+                      cursor: "pointer",
+                      boxShadow: isSelected ? `0 0 14px ${theme.glow}` : "none",
+                    }}
+                  >
+                    <span style={{ width: "20px", height: "20px", borderRadius: "50%", background: theme.primary, border: "2px solid #ffffff" }} />
+                    <span style={{ fontSize: "0.72rem", color: isSelected ? "#ffffff" : "#94a3b8", fontWeight: isSelected ? "700" : "500" }}>
+                      {theme.name}
+                    </span>
+                  </button>
+                );
+              })}
             </div>
           </article>
 
+          {/* Sound & Haptics */}
           <article className="panel profile-panel">
-            <h3>Privacy</h3>
+            <h3>🔊 Sound & Haptics</h3>
             <div className="settings-list">
-              <button type="button" className="settings-row" onClick={() => onToggle("showEarnings")}>
+              <div className="settings-row" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <div>
+                  <span style={{ display: "block" }}>Sound effects</span>
+                  <small style={{ color: "#94a3b8", fontSize: "0.75rem" }}>Synthesized Web Audio chimes for tile taps and word scores</small>
+                </div>
+                <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                  {settings.sound && (
+                    <button
+                      type="button"
+                      className="button-secondary"
+                      style={{ padding: "3px 10px", fontSize: "0.75rem", minHeight: "auto" }}
+                      onClick={handleTestSound}
+                    >
+                      🔊 Test Chime
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => onToggle("sound")}
+                    style={{
+                      width: "48px",
+                      height: "26px",
+                      borderRadius: "13px",
+                      background: settings.sound ? currentTheme.primary : "rgba(255, 255, 255, 0.15)",
+                      border: "none",
+                      position: "relative",
+                      cursor: "pointer",
+                      transition: "background 0.2s ease",
+                    }}
+                  >
+                    <span
+                      style={{
+                        width: "20px",
+                        height: "20px",
+                        borderRadius: "50%",
+                        background: "#ffffff",
+                        position: "absolute",
+                        top: "3px",
+                        left: settings.sound ? "25px" : "3px",
+                        transition: "left 0.2s ease",
+                      }}
+                    />
+                  </button>
+                </div>
+              </div>
+
+              <div className="settings-row" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <div>
+                  <span style={{ display: "block" }}>Haptic feedback</span>
+                  <small style={{ color: "#94a3b8", fontSize: "0.75rem" }}>Tactile vibration on tile selection and submission</small>
+                </div>
+                <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                  {settings.haptics && (
+                    <button
+                      type="button"
+                      className="button-secondary"
+                      style={{ padding: "3px 10px", fontSize: "0.75rem", minHeight: "auto" }}
+                      onClick={handleTestHaptics}
+                    >
+                      📳 Test Vibration
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => onToggle("haptics")}
+                    style={{
+                      width: "48px",
+                      height: "26px",
+                      borderRadius: "13px",
+                      background: settings.haptics ? currentTheme.primary : "rgba(255, 255, 255, 0.15)",
+                      border: "none",
+                      position: "relative",
+                      cursor: "pointer",
+                      transition: "background 0.2s ease",
+                    }}
+                  >
+                    <span
+                      style={{
+                        width: "20px",
+                        height: "20px",
+                        borderRadius: "50%",
+                        background: "#ffffff",
+                        position: "absolute",
+                        top: "3px",
+                        left: settings.haptics ? "25px" : "3px",
+                        transition: "left 0.2s ease",
+                      }}
+                    />
+                  </button>
+                </div>
+              </div>
+            </div>
+          </article>
+
+          {/* Display Options */}
+          <article className="panel profile-panel">
+            <h3>👁️ Accessibility & Display</h3>
+            <div className="settings-list">
+              <div className="settings-row" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <div>
+                  <span style={{ display: "block" }}>High contrast mode</span>
+                  <small style={{ color: "#94a3b8", fontSize: "0.75rem" }}>Enhanced tile borders for outdoor visibility</small>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => onToggle("highContrast")}
+                  style={{
+                    width: "48px",
+                    height: "26px",
+                    borderRadius: "13px",
+                    background: settings.highContrast ? currentTheme.primary : "rgba(255, 255, 255, 0.15)",
+                    border: "none",
+                    position: "relative",
+                    cursor: "pointer",
+                    transition: "background 0.2s ease",
+                  }}
+                >
+                  <span
+                    style={{
+                      width: "20px",
+                      height: "20px",
+                      borderRadius: "50%",
+                      background: "#ffffff",
+                      position: "absolute",
+                      top: "3px",
+                      left: settings.highContrast ? "25px" : "3px",
+                      transition: "left 0.2s ease",
+                    }}
+                  />
+                </button>
+              </div>
+
+              <div className="settings-row" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <div>
+                  <span style={{ display: "block" }}>Larger text</span>
+                  <small style={{ color: "#94a3b8", fontSize: "0.75rem" }}>Increase tile typography size</small>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => onToggle("largeText")}
+                  style={{
+                    width: "48px",
+                    height: "26px",
+                    borderRadius: "13px",
+                    background: settings.largeText ? currentTheme.primary : "rgba(255, 255, 255, 0.15)",
+                    border: "none",
+                    position: "relative",
+                    cursor: "pointer",
+                    transition: "background 0.2s ease",
+                  }}
+                >
+                  <span
+                    style={{
+                      width: "20px",
+                      height: "20px",
+                      borderRadius: "50%",
+                      background: "#ffffff",
+                      position: "absolute",
+                      top: "3px",
+                      left: settings.largeText ? "25px" : "3px",
+                      transition: "left 0.2s ease",
+                    }}
+                  />
+                </button>
+              </div>
+            </div>
+          </article>
+
+          {/* Privacy */}
+          <article className="panel profile-panel">
+            <h3>🔒 Leaderboard & Privacy</h3>
+            <div className="settings-list">
+              <div className="settings-row" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                 <span>Show earnings publicly</span>
-                <strong>{settings.showEarnings ? "Shown" : "Hidden"}</strong>
-              </button>
-              <button type="button" className="settings-row" onClick={() => onToggle("showRank")}>
+                <button
+                  type="button"
+                  onClick={() => onToggle("showEarnings")}
+                  style={{
+                    width: "48px",
+                    height: "26px",
+                    borderRadius: "13px",
+                    background: settings.showEarnings ? currentTheme.primary : "rgba(255, 255, 255, 0.15)",
+                    border: "none",
+                    position: "relative",
+                    cursor: "pointer",
+                    transition: "background 0.2s ease",
+                  }}
+                >
+                  <span
+                    style={{
+                      width: "20px",
+                      height: "20px",
+                      borderRadius: "50%",
+                      background: "#ffffff",
+                      position: "absolute",
+                      top: "3px",
+                      left: settings.showEarnings ? "25px" : "3px",
+                      transition: "left 0.2s ease",
+                    }}
+                  />
+                </button>
+              </div>
+
+              <div className="settings-row" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                 <span>Show rank publicly</span>
-                <strong>{settings.showRank ? "Shown" : "Hidden"}</strong>
-              </button>
+                <button
+                  type="button"
+                  onClick={() => onToggle("showRank")}
+                  style={{
+                    width: "48px",
+                    height: "26px",
+                    borderRadius: "13px",
+                    background: settings.showRank ? "var(--accent-mint, #38bdf8)" : "rgba(255, 255, 255, 0.15)",
+                    border: "none",
+                    position: "relative",
+                    cursor: "pointer",
+                    transition: "background 0.2s ease",
+                  }}
+                >
+                  <span
+                    style={{
+                      width: "20px",
+                      height: "20px",
+                      borderRadius: "50%",
+                      background: "#ffffff",
+                      position: "absolute",
+                      top: "3px",
+                      left: settings.showRank ? "25px" : "3px",
+                      transition: "left 0.2s ease",
+                    }}
+                  />
+                </button>
+              </div>
             </div>
           </article>
         </section>
