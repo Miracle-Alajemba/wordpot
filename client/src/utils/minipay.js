@@ -8,7 +8,7 @@ const CHAIN_LOOKUP = {
 
 export function getInjectedWalletProvider() {
   if (typeof window === "undefined") return null;
-  return window.ethereum || null;
+  return window.ethereum || window.celo || window.web3?.currentProvider || null;
 }
 
 export function getCeloChain(chainId = 42220) {
