@@ -12,3 +12,5 @@ export { SocialShareBar } from "./social-share.jsx";
 export { KeyboardShortcutsModal } from "./keyboard-shortcuts-modal.jsx";
 export { RoundPressure } from "./round-pressure.jsx";
 export { GameSticker, GameStickerStrip } from "./game-stickers.jsx";
+export { ReferralBanner } from "./referral-banner.jsx";
+

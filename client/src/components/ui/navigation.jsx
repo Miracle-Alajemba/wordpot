@@ -1,5 +1,5 @@
 import { shortenWalletAddress } from "../../utils/ui-helpers.js";
-import { NavItemMusicToggle } from "./music-toggle.jsx";
+
 
 function Icon({ name }) {
   const common = {
