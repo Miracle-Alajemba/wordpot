@@ -65,8 +65,6 @@ export function HomeScreen({
   walletHint,
   roomError,
 }) {
-  const [stats, setStats] = useState({ prizePool: "--", playersOnline: 0, activeRooms: 0, updatedAt: null });
-  const [detailsOpen, setDetailsOpen] = useState(false);
   const [sampleIndexes, setSampleIndexes] = useState([]);
   const [sampleScore, setSampleScore] = useState(0);
   const [sampleWords, setSampleWords] = useState([]);
@@ -119,49 +117,6 @@ export function HomeScreen({
   }
 
 
-  useEffect(() => {
-    let mounted = true;
-    async function fetchStats() {
-      try {
-        const res = await fetch(`${API_BASE_URL.replace(/\/$/, "")}/stats`);
-        if (!res.ok) return;
-        const json = await res.json();
-        if (!mounted) return;
-        setStats({
-          prizePool: json.onChainBalance || json.prizePool || "--",
-          playersOnline: json.playersOnline || 0,
-          activeRooms: json.activeRooms || 0,
-          updatedAt: json.updatedAt || new Date().toISOString(),
-        });
-      } catch (err) {
-        // ignore
-      }
-    }
-
-    fetchStats();
-    const id = setInterval(fetchStats, 30_000);
-    return () => {
-      mounted = false;
-      clearInterval(id);
-    };
-  }, []);
-
-  // manual refresh
-  async function refreshStats() {
-    try {
-      const res = await fetch(`${API_BASE_URL.replace(/\/$/, "")}/stats`);
-      if (!res.ok) return;
-      const json = await res.json();
-      setStats({
-        prizePool: json.onChainBalance || json.prizePool || "--",
-        playersOnline: json.playersOnline || 0,
-        activeRooms: json.activeRooms || 0,
-        updatedAt: json.updatedAt || new Date().toISOString(),
-      });
-    } catch (err) {
-      // ignore
-    }
-  }
   const joinLabel = isMiniPay && hasInjectedProvider
     ? walletReady
       ? "Join Game"
@@ -392,42 +347,7 @@ export function HomeScreen({
           </p>
         </article>
 
-        <article className="panel panel-wide">
-          <div className="featured-stats">
-            <div className="featured-stats__item">
-              <span>Players Online</span>
-              <strong>{stats.playersOnline}</strong>
-            </div>
-            <div className="featured-stats__item">
-              <span>Connected Wallet</span>
-              <strong>{walletAddress ? shortenWalletAddress(walletAddress) : "Not connected"}</strong>
-            </div>
-            <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-              <button type="button" className="button-secondary" onClick={() => setDetailsOpen((v) => !v)}>
-                {detailsOpen ? "Hide Details" : "Details"}
-              </button>
-              <button type="button" onClick={onQuickMatch} style={{ minHeight: 48 }}>
-                Quick Join
-              </button>
-            </div>
-            <div className={`featured-stats__details ${detailsOpen ? "is-open" : ""}`}>
-              <div style={{ display: "flex", alignItems: "center", gap: "0.6rem" }}>
-                <div className="featured-stats__item">
-                  <span>Prize Pool</span>
-                  <strong>{stats.prizePool}</strong>
-                </div>
-                <div className="featured-stats__item">
-                  <span>Active Rooms</span>
-                  <strong>{stats.activeRooms}</strong>
-                </div>
-                <div style={{ marginLeft: "auto", display: "flex", gap: "0.4rem", alignItems: "center" }}>
-                  <button type="button" className="button-secondary" onClick={refreshStats}>Refresh</button>
-                  <div style={{ color: "#9aa0b4", fontSize: "0.8rem" }}>{stats.updatedAt ? new Date(stats.updatedAt).toLocaleTimeString() : ""}</div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </article>
+
       </section>
     </main>
   );
