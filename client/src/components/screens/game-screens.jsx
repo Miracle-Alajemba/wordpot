@@ -67,6 +67,57 @@ export function HomeScreen({
 }) {
   const [stats, setStats] = useState({ prizePool: "--", playersOnline: 0, activeRooms: 0, updatedAt: null });
   const [detailsOpen, setDetailsOpen] = useState(false);
+  const [sampleIndexes, setSampleIndexes] = useState([]);
+  const [sampleScore, setSampleScore] = useState(0);
+  const [sampleWords, setSampleWords] = useState([]);
+  const [sampleFeedback, setSampleFeedback] = useState(null);
+
+  const sampleLetters = "BLOCKCHAIN".split("");
+  const sampleCandidate = sampleIndexes.map((i) => sampleLetters[i]).join("");
+
+  const VALID_SAMPLE_DICTIONARY = new Set([
+    "BLOCK", "CHAIN", "COIN", "LACK", "LOCK", "BACK", "BANK", "LOAN", "CHIN",
+    "BACON", "CLAN", "BLACK", "CABIN", "HALO", "COLON", "ALIBI", "ACOL"
+  ]);
+
+  function handleToggleSampleTile(index) {
+    setSampleIndexes((prev) =>
+      prev.includes(index) ? prev.filter((i) => i !== index) : [...prev, index]
+    );
+    setSampleFeedback(null);
+  }
+
+  function handleTestSampleWord() {
+    if (!sampleCandidate) return;
+    const upper = sampleCandidate.toUpperCase();
+
+    if (sampleWords.some((w) => w.word === upper)) {
+      setSampleFeedback({ text: "Already found!", type: "warn" });
+      return;
+    }
+
+    const len = upper.length;
+    let pts = 0;
+    if (len >= 6) pts = 12;
+    else if (len === 5) pts = 8;
+    else if (len === 4) pts = 5;
+    else if (len === 3) pts = 3;
+
+    if (pts > 0 && (VALID_SAMPLE_DICTIONARY.has(upper) || upper.length >= 3)) {
+      setSampleScore((prev) => prev + pts);
+      setSampleWords((prev) => [{ word: upper, points: pts }, ...prev]);
+      setSampleFeedback({ text: `+${pts} pts!`, type: "success" });
+      setSampleIndexes([]);
+    } else {
+      setSampleFeedback({ text: "Need 3+ letters!", type: "error" });
+    }
+  }
+
+  function handleClearSample() {
+    setSampleIndexes([]);
+    setSampleFeedback(null);
+  }
+
 
   useEffect(() => {
     let mounted = true;
@@ -203,24 +254,92 @@ export function HomeScreen({
           </div>
         </div>
 
-        <div className="hero-card">
+        <div className="hero-card hero-card--interactive">
           <div className="hero-card__top">
-            <p className="hero-card__label">Sample round</p>
+            <div>
+              <p className="hero-card__label">Interactive Sample Round</p>
+              <h2 style={{ fontSize: "1.8rem", margin: 0 }}>BLOCKCHAIN</h2>
+            </div>
+            <div className="hero-card__score-badge">
+              <span>Demo Score</span>
+              <strong>{sampleScore} pts</strong>
+            </div>
           </div>
-          <h2>BLOCKCHAIN</h2>
-          <div className="letter-rack">
-            {"BLOCKCHAIN".split("").map((letter, index) => (
-              <span key={`${letter}-${index}`} className="letter-tile">
-                {letter}
+
+          <div className="sample-rack-wrapper">
+            <p className="field-hint" style={{ fontSize: "0.78rem", marginBottom: "6px" }}>
+              Tap letter tiles below to build words:
+            </p>
+            <div className="letter-rack">
+              {sampleLetters.map((letter, index) => {
+                const isSelected = sampleIndexes.includes(index);
+                return (
+                  <button
+                    key={`${letter}-${index}`}
+                    type="button"
+                    className={`letter-tile letter-tile--interactive ${isSelected ? "letter-tile--selected" : ""}`}
+                    onClick={() => handleToggleSampleTile(index)}
+                  >
+                    {letter}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="sample-builder-box">
+            <div className="sample-builder-box__display">
+              <span className="sample-builder-box__placeholder">
+                {sampleCandidate || "TAP TILES ABOVE"}
               </span>
-            ))}
+            </div>
+            <div className="sample-builder-box__actions">
+              <button
+                type="button"
+                className="button-secondary"
+                style={{ padding: "0.4rem 0.8rem", fontSize: "0.75rem" }}
+                onClick={handleClearSample}
+                disabled={sampleIndexes.length === 0}
+              >
+                Clear
+              </button>
+              <button
+                type="button"
+                style={{ padding: "0.4rem 1rem", fontSize: "0.75rem" }}
+                onClick={handleTestSampleWord}
+                disabled={sampleIndexes.length < 3}
+              >
+                Test Word
+              </button>
+            </div>
           </div>
+
+          {sampleFeedback && (
+            <div className={`sample-feedback sample-feedback--${sampleFeedback.type}`}>
+              {sampleFeedback.text}
+            </div>
+          )}
+
+          {sampleWords.length > 0 && (
+            <div className="sample-words-list">
+              <span className="field-hint" style={{ fontSize: "0.75rem" }}>Found Words:</span>
+              <div style={{ display: "flex", gap: "6px", flexWrap: "wrap", marginTop: "4px" }}>
+                {sampleWords.map((w, idx) => (
+                  <span key={`${w.word}-${idx}`} className="sample-word-tag">
+                    {w.word} <strong>+{w.points}</strong>
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+
           <div className="hero-card__grid">
             <span>Timer: 60s</span>
             <span>Stake: 0.001 CELO</span>
             <span>Players: 2-5</span>
-            <span>Pool: 90% shared by score</span>
+            <span>Pool: 90% shared</span>
           </div>
+
           <div className="hero-card__actions">
             <button type="button" className="button-secondary" onClick={onOpenProfile}>
               View Profile
