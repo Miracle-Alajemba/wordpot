@@ -1,41 +1,16 @@
-# WordPot UI Design System & Styling Tokens
+# WordPot Design System Tokens & Guidelines
 
-WordPot features a vibrant, mobile-first Web3 design system defined in `client/src/styles.css`.
+## Color Palette
+- **Primary Accent**: `#ffad33` / `#ff7a18` (Vibrant Gold / Orange)
+- **Secondary Accent**: `#63f4ca` (Cyber Emerald)
+- **Tertiary Accent**: `#567fff` (Electric Blue)
+- **Background**: `#060811` to `#0a0f1d` (Deep Space Dark)
+- **Glass Card**: `rgba(255, 255, 255, 0.04)` with `blur(16px)`
 
-## Core Palette & CSS Variables
+## Typography
+- **Primary Font**: `Rajdhani`, `Oxanium`, sans-serif
+- **Scale**: `h1` (2.4rem), `h2` (1.8rem), `h3` (1.4rem), `body` (1rem), `small` (0.8rem)
 
-```css
-:root {
-  --bg-dark: #0f172a;
-  --bg-card: rgba(30, 41, 59, 0.7);
-  --primary-accent: #38bdf8;
-  --primary-glow: rgba(56, 189, 248, 0.25);
-  --success-green: #22c55e;
-  --warning-amber: #f59e0b;
-  --danger-red: #ef4444;
-  --text-main: #f8fafc;
-  --text-muted: #94a3b8;
-  --border-glass: rgba(255, 255, 255, 0.1);
-  --radius-sm: 8px;
-  --radius-md: 16px;
-  --radius-lg: 24px;
-}
-```
-
-## Aesthetic Principles
-
-1. **Glassmorphism**: Backdrop blur filter (`backdrop-filter: blur(12px)`) layered over deep slate background gradients (`#0f172a` to `#1e1b4b`).
-2. **Interactive Micro-Animations**:
-   * Letter tile hover/press scaling (`transform: scale(1.05)`).
-   * Shimmer effects on CTA primary action buttons.
-   * Score pop-up animation on valid word submission (`+5` indicator floating up).
-3. **Typography**: Clean sans-serif font family hierarchy optimized for high legibility on mobile screens (Inter / System UI).
-
-## Component Tokens
-
-| Component | Class | Key Style Properties |
-| :--- | :--- | :--- |
-| **Glass Card** | `.glass-card` | `background: var(--bg-card); border: 1px solid var(--border-glass)` |
-| **Primary Button**| `.btn-primary` | `background: linear-gradient(135deg, #38bdf8, #3b82f6)` |
-| **Letter Tile** | `.tile` | `font-weight: 700; width: 44px; height: 44px; display: flex; align-items: center` |
-| **Timer Badge** | `.timer-badge` | `background: rgba(245, 158, 11, 0.15); color: #fbbf24` |
+## Animation Tokens
+- **Duration**: `150ms` (fast), `300ms` (normal), `600ms` (slow)
+- **Easing**: `cubic-bezier(0.4, 0, 0.2, 1)` (smooth)
