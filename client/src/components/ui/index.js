@@ -20,10 +20,21 @@ export { Toast } from "./toast.jsx";
 export { WordChip } from "./word-chip.jsx";
 export { CountdownRing } from "./countdown-ring.jsx";
 export { UsernameModal } from "./username-modal.jsx";
-
-
-
-
+export { PulseDot } from "./pulse-dot.jsx";
+export { ShimmerText } from "./shimmer-text.jsx";
+export { SkeletonLoader } from "./skeleton-loader.jsx";
+export { GlassCard } from "./glass-card.jsx";
+export { AnimatedCounter } from "./animated-counter.jsx";
+export { ProgressBar } from "./progress-bar.jsx";
+export { Tooltip } from "./tooltip.jsx";
+export { AvatarCircle } from "./avatar-circle.jsx";
+export { EmptyState } from "./empty-state.jsx";
+export { Divider } from "./divider.jsx";
+export { ConfettiExplosion } from "./confetti-explosion.jsx";
+export { FadeIn } from "./fade-in.jsx";
+export { Chip } from "./chip.jsx";
+export { ScoreFlash } from "./score-flash.jsx";
+export { TypewriterText } from "./typewriter-text.jsx";
 
 
 
