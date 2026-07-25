@@ -2,7 +2,10 @@ node_modules
 dist
 client/dist
 .env
-.env.local
+.env.*
+*.env
+**/.env
+**/.env.*
 .DS_Store
 coverage
 server/daily-claims.json
