@@ -208,8 +208,9 @@ export default function App() {
   useEffect(() => {
     const socketUrl = API_BASE_URL.replace(/\/api\/?$/, "");
     const socket = io(socketUrl, {
-      transports: ["websocket"],
-      autoConnect: true
+      transports: ["polling", "websocket"],
+      autoConnect: true,
+      upgrade: true,
     });
     socketRef.current = socket;
 
