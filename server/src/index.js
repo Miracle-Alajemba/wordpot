@@ -14,6 +14,7 @@ import { query, initDb } from "./db.js";
 import { redis } from "./redis.js";
 import { buildTelemetryPayload } from "./utils/telemetry.js";
 import { ttlCache } from "./utils/cache.js";
+import { getContractPayoutStats } from "./utils/contract-payout-tracker.js";
 
 dotenv.config();
 
@@ -1179,6 +1180,17 @@ app.get("/api/health", async (_req, res) => {
     redisConnected: Boolean(redis && redis.status === "ready"),
   });
   res.json(payload);
+});
+
+app.get("/api/stats/payouts", async (_req, res) => {
+  const cached = ttlCache.get("stats_payouts");
+  if (cached) {
+    return res.json(cached);
+  }
+
+  const stats = await getContractPayoutStats();
+  ttlCache.set("stats_payouts", stats, 10000);
+  res.json(stats);
 });
 
 app.post("/api/users/profile", async (req, res) => {
