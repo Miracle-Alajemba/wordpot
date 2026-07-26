@@ -46,6 +46,7 @@ export function DailyChallenge({
   getWalletClient,
   getPublicClient,
   ensureCeloMainnet,
+  musicToggle,
 }) {
   const [roundSeed, setRoundSeed] = useState(null);
   const [phase, setPhase] = useState("idle");
@@ -433,6 +434,7 @@ export function DailyChallenge({
               Back
             </button>
             <p className="eyebrow">Daily Challenge</p>
+            {musicToggle}
           </div>
           <div className="results-sheet" style={{ textAlign: "center", padding: "3rem 1.5rem" }}>
             <div style={{ fontSize: "2.5rem", marginBottom: "1rem" }}>🏆</div>
@@ -463,6 +465,7 @@ export function DailyChallenge({
               Back
             </button>
             <p className="eyebrow">Daily Challenge</p>
+            {musicToggle}
           </div>
           <div className="results-sheet" style={{ textAlign: "center", padding: "3rem 1.5rem" }}>
             <div style={{ fontSize: "2.5rem", marginBottom: "1rem" }}>⏳</div>
@@ -513,6 +516,7 @@ export function DailyChallenge({
           <div className="play-header">
             <button type="button" className="ghost-button" onClick={onBack}>Back</button>
             <p className="eyebrow">Daily Challenge</p>
+            {musicToggle}
           </div>
           <div className="dc-claimed-screen">
             <div className="dc-claimed-screen__icon">🏆</div>
@@ -563,6 +567,7 @@ export function DailyChallenge({
             Back
           </button>
           <p className="eyebrow">Daily Challenge</p>
+          {musicToggle}
         </div>
 
         {!loadingRound && phase !== "idle" ? (

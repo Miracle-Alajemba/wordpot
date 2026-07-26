@@ -4360,3 +4360,35 @@ button:active {
     border-radius: 12px !important;
   }
 }
+
+/* ── Music Toggle ── */
+.music-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 50%;
+  color: var(--color-text-muted, #94a3b8);
+  cursor: pointer;
+  padding: 0;
+  transition: background 140ms ease, color 140ms ease, border-color 140ms ease;
+  flex-shrink: 0;
+  margin-left: auto;
+}
+
+.music-toggle:hover {
+  background: rgba(201, 146, 10, 0.12);
+  border-color: rgba(201, 146, 10, 0.3);
+  color: var(--color-accent, #fbbf24);
+  transform: none;
+  box-shadow: none;
+}
+
+.music-toggle svg {
+  display: block;
+  flex-shrink: 0;
+}
+
