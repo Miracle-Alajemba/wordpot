@@ -13,6 +13,7 @@ import { createWordPotContractService } from "./wordpot-contract.js";
 import { query, initDb } from "./db.js";
 import { redis } from "./redis.js";
 import { buildTelemetryPayload } from "./utils/telemetry.js";
+import { ttlCache } from "./utils/cache.js";
 
 dotenv.config();
 
