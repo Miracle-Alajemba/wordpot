@@ -6,3 +6,4 @@ export * from "./address-truncator.js";
 export * from "./word-sanitizer.js";
 export * from "./time-formatter.js";
 export * from "./rank-tier.js";
+export * from "./event-emitter.js";
