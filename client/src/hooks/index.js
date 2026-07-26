@@ -11,3 +11,4 @@ export { useDocumentTitle } from "./use-document-title.js";
 export { useIntervalTimer } from "./use-interval-timer.js";
 export { useKeyboardShortcut } from "./use-keyboard-shortcut.js";
 export { useClickOutside } from "./use-click-outside.js";
+export { useBackgroundMusic } from "./use-background-music.js";

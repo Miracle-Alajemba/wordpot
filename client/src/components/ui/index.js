@@ -88,3 +88,4 @@ export { TimerCountdownCircle } from "./timer-countdown-circle.jsx";
 export { BadgePill } from "./badge-pill.jsx";
 export { StatusDot } from "./status-dot.jsx";
 export { TotalPayoutsBanner } from "./total-payouts-banner.jsx";
+export { MusicToggle } from "./music-toggle.jsx";
