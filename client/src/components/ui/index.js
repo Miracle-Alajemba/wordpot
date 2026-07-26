@@ -85,3 +85,5 @@ export { TooltipBox } from "./tooltip-box.jsx";
 export { AudioVolumeSlider } from "./audio-volume-slider.jsx";
 export { StreakFireBadge } from "./streak-fire-badge.jsx";
 export { TimerCountdownCircle } from "./timer-countdown-circle.jsx";
+export { BadgePill } from "./badge-pill.jsx";
+export { StatusDot } from "./status-dot.jsx";
