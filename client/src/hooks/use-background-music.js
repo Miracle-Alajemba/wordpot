@@ -52,13 +52,13 @@ export function useBackgroundMusic(screen) {
   useEffect(() => {
     try {
       localStorage.setItem("wordpot_music_muted", String(muted));
-    } catch {}
+    } catch { }
 
     if (audioRef.current) {
       audioRef.current.muted = muted;
       if (!muted) {
         // Attempt to play if unmuted
-        audioRef.current.play().catch(() => {});
+        audioRef.current.play().catch(() => { });
       } else {
         audioRef.current.pause();
       }
@@ -69,7 +69,7 @@ export function useBackgroundMusic(screen) {
   useEffect(() => {
     function unlockAudio() {
       if (audioRef.current && !audioRef.current.muted && audioRef.current.paused) {
-        audioRef.current.play().catch(() => {});
+        audioRef.current.play().catch(() => { });
       }
     }
 
@@ -93,7 +93,7 @@ export function useBackgroundMusic(screen) {
     // so the browser recognizes the user interaction
     if (!nextMuted && audioRef.current) {
       audioRef.current.muted = false;
-      audioRef.current.play().catch(() => {});
+      audioRef.current.play().catch(() => { });
     } else if (nextMuted && audioRef.current) {
       audioRef.current.pause();
     }

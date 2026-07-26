@@ -437,7 +437,6 @@ export function DailyChallenge({
               Back
             </button>
             <p className="eyebrow">Daily Challenge</p>
-            {musicToggle}
           </div>
           <div className="results-sheet" style={{ textAlign: "center", padding: "3rem 1.5rem" }}>
             <div style={{ fontSize: "2.5rem", marginBottom: "1rem" }}>🏆</div>
