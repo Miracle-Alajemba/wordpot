@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { API_BASE_URL } from "../../config/app-config.js";
 
 /**
  * Onchain Payout Statistics Banner Component for Landing Page Hero
@@ -16,7 +17,9 @@ export function TotalPayoutsBanner({ className = "" }) {
 
   useEffect(() => {
     let isMounted = true;
-    fetch("/api/stats/payouts")
+    const url = `${API_BASE_URL}/stats/payouts`;
+
+    fetch(url)
       .then((res) => (res.ok ? res.json() : null))
       .then((data) => {
         if (data && isMounted) {
@@ -24,7 +27,7 @@ export function TotalPayoutsBanner({ className = "" }) {
         }
       })
       .catch(() => {
-        // Fallback to static initial state if offline
+        // Safe fallback
       });
 
     return () => {
@@ -34,39 +37,90 @@ export function TotalPayoutsBanner({ className = "" }) {
 
   return (
     <div
-      className={`my-4 p-4 rounded-2xl bg-gradient-to-r from-emerald-950/60 via-slate-900/90 to-cyan-950/60 border border-emerald-500/30 shadow-lg shadow-emerald-950/40 backdrop-blur-md ${className}`}
+      style={{
+        margin: "1rem 0",
+        padding: "1rem 1.25rem",
+        borderRadius: "16px",
+        background: "linear-gradient(135deg, rgba(6, 78, 59, 0.4) 0%, rgba(15, 23, 42, 0.9) 50%, rgba(8, 145, 178, 0.3) 100%)",
+        border: "1px solid rgba(16, 185, 129, 0.4)",
+        boxShadow: "0 10px 25px -5px rgba(16, 185, 129, 0.25)",
+        backdropFilter: "blur(8px)",
+      }}
+      className={className}
     >
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-xl shadow-inner">
+      <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: "12px" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+          <div
+            style={{
+              width: "42px",
+              height: "42px",
+              borderRadius: "12px",
+              background: "rgba(16, 185, 129, 0.2)",
+              border: "1px solid rgba(16, 185, 129, 0.4)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              fontSize: "1.3rem",
+            }}
+          >
             💎
           </div>
           <div>
-            <div className="flex items-center gap-2">
-              <span className="inline-block w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-              <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-400">
+            <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "2px" }}>
+              <span
+                style={{
+                  width: "8px",
+                  height: "8px",
+                  borderRadius: "50%",
+                  backgroundColor: "#34d399",
+                  boxShadow: "0 0 8px #34d399",
+                }}
+              />
+              <span style={{ fontSize: "0.7rem", fontWeight: "800", textTransform: "uppercase", letterSpacing: "0.05em", color: "#34d399" }}>
                 Verified Onchain Payouts
               </span>
             </div>
-            <div className="text-xl sm:text-2xl font-black text-white tracking-tight font-mono">
-              {stats.totalPayoutsCelo} <span className="text-emerald-400">CELO</span>
+            <div style={{ fontSize: "1.35rem", fontWeight: "900", color: "#ffffff", fontFamily: "Space Mono, monospace", letterSpacing: "-0.02em" }}>
+              {stats.totalPayoutsCelo} <span style={{ color: "#34d399" }}>CELO</span>
             </div>
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
-          <div className="px-3 py-1.5 rounded-xl bg-slate-800/80 border border-slate-700/60 text-xs font-semibold text-slate-200">
-            🏆 <strong className="text-amber-400">{stats.totalSettledMatches}</strong> Matches Paid
+        <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "8px" }}>
+          <div
+            style={{
+              padding: "6px 12px",
+              borderRadius: "10px",
+              background: "rgba(30, 41, 59, 0.8)",
+              border: "1px solid rgba(71, 85, 105, 0.5)",
+              fontSize: "0.78rem",
+              fontWeight: "600",
+              color: "#e2e8f0",
+            }}
+          >
+            🏆 <strong style={{ color: "#fbbf24" }}>{stats.totalSettledMatches}</strong> Matches Paid
           </div>
 
           <a
             href={`https://celoscan.io/address/${stats.roomContract}`}
             target="_blank"
             rel="noopener noreferrer"
-            className="px-3 py-1.5 rounded-xl bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/40 text-xs font-medium text-emerald-300 transition-colors inline-flex items-center gap-1"
+            style={{
+              padding: "6px 12px",
+              borderRadius: "10px",
+              background: "rgba(16, 185, 129, 0.15)",
+              border: "1px solid rgba(16, 185, 129, 0.4)",
+              fontSize: "0.78rem",
+              fontWeight: "600",
+              color: "#6ee7b7",
+              textDecoration: "none",
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "4px",
+            }}
           >
             <span>📜 Celoscan Contract</span>
-            <span className="text-[10px]">↗</span>
+            <span style={{ fontSize: "0.65rem" }}>↗</span>
           </a>
         </div>
       </div>
