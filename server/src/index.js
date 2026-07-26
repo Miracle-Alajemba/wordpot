@@ -29,12 +29,20 @@ const io = new Server(httpServer, {
   }
 });
 
-const subRedis = redis.duplicate();
-subRedis.on("error", (err) => {
-  console.error("subRedis connection error:", err.message);
-});
-
-io.adapter(createAdapter(redis, subRedis));
+if (redis && redis.status === "ready") {
+  try {
+    const subRedis = redis.duplicate();
+    subRedis.on("error", (err) => {
+      console.warn("subRedis connection warning:", err.message);
+    });
+    io.adapter(createAdapter(redis, subRedis));
+    console.info("Socket.io Redis adapter attached.");
+  } catch (err) {
+    console.warn("Failed to attach Socket.io Redis adapter, using in-memory adapter:", err.message);
+  }
+} else {
+  console.info("Running Socket.io with default in-memory adapter.");
+}
 
 io.on("connection", (socket) => {
   console.log(`Socket connected: ${socket.id}`);
