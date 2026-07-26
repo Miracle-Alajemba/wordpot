@@ -12,6 +12,7 @@ import { canBuildFromSource, getDynamicRound } from "./rounds.js";
 import { createWordPotContractService } from "./wordpot-contract.js";
 import { query, initDb } from "./db.js";
 import { redis } from "./redis.js";
+import { buildTelemetryPayload } from "./utils/telemetry.js";
 
 dotenv.config();
 
@@ -1169,12 +1170,14 @@ async function processRoomRefund(room, requestedByWalletAddress) {
 
 // ─── Routes ───────────────────────────────────────────────────────────────────
 
-app.get("/api/health", (_req, res) => {
-  res.json({
-    status: "ok",
-    service: "wordpot-server",
-    timestamp: new Date().toISOString(),
+app.get("/api/health", async (_req, res) => {
+  const roomsList = Array.from(rooms.values());
+  const payload = buildTelemetryPayload({
+    rooms: roomsList,
+    dbConnected: false,
+    redisConnected: Boolean(redis && redis.status === "ready"),
   });
+  res.json(payload);
 });
 
 app.post("/api/users/profile", async (req, res) => {
