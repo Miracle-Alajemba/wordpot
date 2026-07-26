@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 
 const TRACKS = {
-  lobby: "/audio/game-music.mp3",
-  game: "/audio/lobby-music.mp3",
+  lobby: "/audio/lobby-music.mp3",
+  game: "/audio/game-music.mp3",
 };
 
 export function useBackgroundMusic(screen) {
