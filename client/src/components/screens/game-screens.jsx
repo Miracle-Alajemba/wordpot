@@ -6,6 +6,7 @@ import {
   SocialShareBar,
   GameSticker,
   GameStickerStrip,
+  TotalPayoutsBanner,
 } from "../ui/index.js";
 import {
   getPlayerAlias,
@@ -151,6 +152,8 @@ export function HomeScreen({
           <p className="lede lede--tagline">
             Build words. Beat the clock. Earn CELO.
           </p>
+
+          <TotalPayoutsBanner />
 
           <div className="hero-actions hero-actions--grid">
             <button type="button" onClick={onQuickMatch}>
