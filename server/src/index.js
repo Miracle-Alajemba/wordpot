@@ -2712,11 +2712,14 @@ app.post("/api/daily/retry-purchase", (req, res) => {
 
 initDb()
   .then(() => {
+    console.info("Database initialized successfully.");
+  })
+  .catch((err) => {
+    console.warn("⚠️  Database initialization failed (server will still start):", err.message);
+    console.warn("⚠️  Features requiring PostgreSQL (daily challenge, rooms, leaderboard) will be unavailable.");
+  })
+  .finally(() => {
     httpServer.listen(port, () => {
       console.log(`WordPot server listening on http://localhost:${port}`);
     });
-  })
-  .catch((err) => {
-    console.error("Database initialization failed. Exiting...", err);
-    process.exit(1);
   });
