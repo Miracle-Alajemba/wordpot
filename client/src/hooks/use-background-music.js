@@ -7,6 +7,7 @@ const TRACKS = {
 
 export function useBackgroundMusic(screen) {
   const audioRef = useRef(null);
+  const userInteractedRef = useRef(false);
   const [muted, setMuted] = useState(() => {
     try {
       return localStorage.getItem("wordpot_music_muted") === "true";
@@ -27,6 +28,29 @@ export function useBackgroundMusic(screen) {
     return TRACKS.lobby;
   }
 
+  // Handle global user interaction unlock for browser Autoplay policies
+  useEffect(() => {
+    function unlockAudio() {
+      userInteractedRef.current = true;
+      if (audioRef.current && !audioRef.current.muted && audioRef.current.paused) {
+        audioRef.current.play().catch(() => {});
+      }
+      window.removeEventListener("pointerdown", unlockAudio);
+      window.removeEventListener("keydown", unlockAudio);
+      window.removeEventListener("touchstart", unlockAudio);
+    }
+
+    window.addEventListener("pointerdown", unlockAudio);
+    window.addEventListener("keydown", unlockAudio);
+    window.addEventListener("touchstart", unlockAudio);
+
+    return () => {
+      window.removeEventListener("pointerdown", unlockAudio);
+      window.removeEventListener("keydown", unlockAudio);
+      window.removeEventListener("touchstart", unlockAudio);
+    };
+  }, []);
+
   useEffect(() => {
     const track = getTrackForScreen(screen);
 
@@ -41,14 +65,16 @@ export function useBackgroundMusic(screen) {
 
     const audio = new Audio(track);
     audio.loop = true;
-    audio.volume = 0.35;
+    audio.volume = 0.45;
     audio.muted = muted;
     audioRef.current = audio;
     setCurrentTrack(track);
 
-    audio.play().catch(() => {
-      // browser blocked autoplay — user will need to click mute button to start
-    });
+    if (!muted) {
+      audio.play().catch(() => {
+        // Browser blocked autoplay until user clicks/taps anywhere on the page
+      });
+    }
 
     return () => {
       audio.pause();
@@ -59,8 +85,10 @@ export function useBackgroundMusic(screen) {
   useEffect(() => {
     if (audioRef.current) {
       audioRef.current.muted = muted;
-      if (!muted && audioRef.current.paused) {
+      if (!muted) {
         audioRef.current.play().catch(() => {});
+      } else {
+        audioRef.current.pause();
       }
     }
     try {
@@ -69,7 +97,14 @@ export function useBackgroundMusic(screen) {
   }, [muted]);
 
   function toggleMute() {
-    setMuted((prev) => !prev);
+    setMuted((prev) => {
+      const nextMuted = !prev;
+      if (!nextMuted && audioRef.current) {
+        audioRef.current.muted = false;
+        audioRef.current.play().catch(() => {});
+      }
+      return nextMuted;
+    });
   }
 
   return { muted, toggleMute };
