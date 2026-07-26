@@ -967,7 +967,6 @@ export default function App() {
       onDisconnectWallet={disconnectWallet}
       walletHint={walletHint}
       roomError={roomError}
-      musicToggle={musicToggleEl}
     />
   );
 
@@ -979,7 +978,6 @@ export default function App() {
           apiBaseUrl={API_BASE_URL}
           walletAddress={walletAddress}
           connectWallet={connectWallet}
-          musicToggle={musicToggleEl}
         />
       </Suspense>
     );
@@ -1009,7 +1007,6 @@ export default function App() {
             getWalletClient={getWalletClient}
             getPublicClient={getPublicClient}
             ensureCeloMainnet={ensureCeloMainnet}
-            musicToggle={musicToggleEl}
           />
         </Suspense>
       </DailyChallengeErrorBoundary>
@@ -1030,7 +1027,6 @@ export default function App() {
         paymentBusy={paymentBusy}
         onBack={backHome}
         paymentProviderLabel={paymentProviderLabel}
-        musicToggle={musicToggleEl}
       />
     );
   } else if (screen === "match-room") {
@@ -1046,7 +1042,6 @@ export default function App() {
         onClaimReward={claimRewardOnchain}
         claimBusy={claimBusy}
         onBackHome={backHome}
-        musicToggle={musicToggleEl}
       />
     );
   } else if (screen === "profile") {
@@ -1098,6 +1093,9 @@ export default function App() {
         settings.highContrast ? "app-high-contrast" : "",
       ].filter(Boolean).join(" ")}
     >
+      <div className="global-music-toggle">
+        {musicToggleEl}
+      </div>
       {content}
       <AppBottomNav
         screen={screen}

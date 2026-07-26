@@ -66,7 +66,6 @@ export function HomeScreen({
   onDisconnectWallet,
   walletHint,
   roomError,
-  musicToggle,
 }) {
   const [sampleIndexes, setSampleIndexes] = useState([]);
   const [sampleScore, setSampleScore] = useState(0);
@@ -134,9 +133,6 @@ export function HomeScreen({
     <main className="page-shell">
       <section className="hero">
         <div className="hero-copy">
-          <div className="hero-copy__top">
-            {musicToggle}
-          </div>
           <div className="hero-logo">
             <img
               src="/logo.png"
@@ -392,7 +388,6 @@ export function LobbyScreen({
   paymentBusy,
   onBack,
   paymentProviderLabel,
-  musicToggle,
 }) {
   const [roomTimeLeft, setRoomTimeLeft] = useState("");
   const myPlayer = room?.players?.find((p) => p.id === playerId);
@@ -701,7 +696,6 @@ export function MatchRoomScreen({
   onClaimReward,
   claimBusy,
   onBackHome,
-  musicToggle,
 }) {
   const syncMeta = getSyncStatusMeta(syncStatus);
   const [draftWord, setDraftWord] = useState("");
@@ -874,7 +868,6 @@ export function MatchRoomScreen({
             Back
           </button>
           <p className="eyebrow">Live Room</p>
-          {musicToggle}
         </div>
 
         <div className="room-topbar">

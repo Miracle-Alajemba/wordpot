@@ -88,7 +88,6 @@ export function PracticeScreen({
   onExit,
   apiBaseUrl,
   roundSeconds = 60,
-  musicToggle,
 }) {
   const [roundSeed, setRoundSeed] = useState(null);
   const difficulty = "medium";
@@ -332,7 +331,6 @@ export function PracticeScreen({
             Back
           </button>
           <p className="eyebrow">Practice Mode</p>
-          {musicToggle}
         </div>
 
         {/* Difficulty level selector removed */}
