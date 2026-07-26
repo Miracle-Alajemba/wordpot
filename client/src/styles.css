@@ -4363,7 +4363,7 @@ button:active {
 
 /* ── Music Toggle ── */
 .global-music-toggle {
-  position: absolute;
+  position: fixed;
   top: 16px;
   right: 16px;
   z-index: 1000;
