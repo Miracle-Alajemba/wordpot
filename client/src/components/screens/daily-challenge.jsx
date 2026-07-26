@@ -167,6 +167,8 @@ export function DailyChallenge({
     } catch (error) {
       setFeedback(error.message || "Unable to load Daily Challenge.");
       setFeedbackTone("error");
+      setPhase("idle");
+      setCurrentPlayStarted(false);
     } finally {
       setLoadingRound(false);
     }
@@ -214,6 +216,8 @@ export function DailyChallenge({
     const allowed = await onRecordPlay();
     if (!allowed) {
       setCurrentPlayStarted(false);
+      setFeedback("You have already played the Daily Challenge today. Check back when your cooldown timer ends.");
+      setFeedbackTone("error");
       return;
     }
 
