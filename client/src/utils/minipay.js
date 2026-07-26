@@ -8,6 +8,15 @@ const CHAIN_LOOKUP = {
 
 export function getInjectedWalletProvider() {
   if (typeof window === "undefined") return null;
+
+  if (window.ethereum?.providers?.length) {
+    const minipay = window.ethereum.providers.find((p) => p.isMiniPay);
+    if (minipay) return minipay;
+    const metamask = window.ethereum.providers.find((p) => p.isMetaMask && !p.isBraveWallet);
+    if (metamask) return metamask;
+    return window.ethereum.providers[0];
+  }
+
   return window.ethereum || window.celo || window.web3?.currentProvider || null;
 }
 
