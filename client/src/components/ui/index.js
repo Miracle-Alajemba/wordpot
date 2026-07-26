@@ -82,3 +82,6 @@ export { LeaderboardAvatar } from "./leaderboard-avatar.jsx";
 export { NotificationBanner } from "./notification-banner.jsx";
 export { PlayerCard } from "./player-card.jsx";
 export { TooltipBox } from "./tooltip-box.jsx";
+export { AudioVolumeSlider } from "./audio-volume-slider.jsx";
+export { StreakFireBadge } from "./streak-fire-badge.jsx";
+export { TimerCountdownCircle } from "./timer-countdown-circle.jsx";
