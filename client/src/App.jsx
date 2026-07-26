@@ -9,6 +9,8 @@ import {
   GAME_RULES,
 } from "./config/index.js";
 import { useWalletSession } from "./hooks/index.js";
+import { useBackgroundMusic } from "./hooks/use-background-music.js";
+import { MusicToggle } from "./components/ui/music-toggle.jsx";
 import {
   clearRoomSession,
   isWalletAddress,
@@ -169,6 +171,8 @@ export default function App() {
     getWalletClient,
     setWalletStatus,
   } = useWalletSession();
+
+  const { muted, toggleMute } = useBackgroundMusic(screen);
 
   const walletHint = useMemo(() => {
     if (!walletAddress.trim()) return "";
@@ -939,6 +943,8 @@ export default function App() {
     return () => window.clearInterval(interval);
   }, [screen, room?.id, playerId, walletAddress]);
 
+  const musicToggleEl = <MusicToggle muted={muted} onToggle={toggleMute} />;
+
   let content = (
     <HomeScreen
       gameRules={GAME_RULES}
@@ -961,6 +967,7 @@ export default function App() {
       onDisconnectWallet={disconnectWallet}
       walletHint={walletHint}
       roomError={roomError}
+      musicToggle={musicToggleEl}
     />
   );
 
@@ -972,6 +979,7 @@ export default function App() {
           apiBaseUrl={API_BASE_URL}
           walletAddress={walletAddress}
           connectWallet={connectWallet}
+          musicToggle={musicToggleEl}
         />
       </Suspense>
     );
@@ -1001,6 +1009,7 @@ export default function App() {
             getWalletClient={getWalletClient}
             getPublicClient={getPublicClient}
             ensureCeloMainnet={ensureCeloMainnet}
+            musicToggle={musicToggleEl}
           />
         </Suspense>
       </DailyChallengeErrorBoundary>
@@ -1021,6 +1030,7 @@ export default function App() {
         paymentBusy={paymentBusy}
         onBack={backHome}
         paymentProviderLabel={paymentProviderLabel}
+        musicToggle={musicToggleEl}
       />
     );
   } else if (screen === "match-room") {
@@ -1036,6 +1046,7 @@ export default function App() {
         onClaimReward={claimRewardOnchain}
         claimBusy={claimBusy}
         onBackHome={backHome}
+        musicToggle={musicToggleEl}
       />
     );
   } else if (screen === "profile") {
