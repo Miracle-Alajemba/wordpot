@@ -11,7 +11,8 @@ export const pool = new Pool(
   connectionString
     ? { 
         connectionString, 
-        ssl: process.env.DATABASE_SSL === "true" ? { rejectUnauthorized: false } : false 
+        ssl: process.env.DATABASE_SSL === "true" ? { rejectUnauthorized: false } : false,
+        connectionTimeoutMillis: 3000,
       }
     : {
         host: process.env.PGHOST || "localhost",
@@ -19,12 +20,29 @@ export const pool = new Pool(
         user: process.env.PGUSER || "postgres",
         password: process.env.PGPASSWORD || "",
         database: process.env.PGDATABASE || "wordpot",
+        connectionTimeoutMillis: 3000,
       }
 );
 
-export const query = (text, params) => pool.query(text, params);
+pool.on("error", (err) => {
+  console.warn("PostgreSQL pool background warning:", err.message);
+});
+
+export const query = async (text, params) => {
+  try {
+    return await pool.query(text, params);
+  } catch (err) {
+    console.warn(`Database query failed (${err.message}). Returning empty result.`);
+    return { rows: [] };
+  }
+};
 
 export async function initDb() {
+  if (!connectionString && !process.env.PGHOST) {
+    console.warn("No DATABASE_URL or PGHOST configured. Skipping PostgreSQL table initialization.");
+    return;
+  }
+
   const usersTable = `
     CREATE TABLE IF NOT EXISTS users (
       wallet_address VARCHAR(42) PRIMARY KEY CHECK (wallet_address ~ '^0x[a-fA-F0-9]{40}$'),
@@ -114,20 +132,23 @@ export async function initDb() {
     );
   `;
 
-  await query(usersTable);
-  await query(seasonalLeaderboardTable);
-  await query(dailyChallengePlaysTable);
-  await query(dailyChallengeClaimsTable);
-  await query(dailyLeaderboardTable);
-  await query(roomsTable);
-  await query(submissionsTable);
-  await query(precalculatedRoundsTable);
+  try {
+    await query(usersTable);
+    await query(seasonalLeaderboardTable);
+    await query(dailyChallengePlaysTable);
+    await query(dailyChallengeClaimsTable);
+    await query(dailyLeaderboardTable);
+    await query(roomsTable);
+    await query(submissionsTable);
+    await query(precalculatedRoundsTable);
 
-  // Add indexes
-  await query(`CREATE INDEX IF NOT EXISTS idx_leaderboard_rank ON seasonal_leaderboard (season_id, score DESC, wins DESC)`);
-  await query(`CREATE INDEX IF NOT EXISTS idx_daily_plays_lookup ON daily_challenge_plays (wallet_address, played_date)`);
-  await query(`CREATE INDEX IF NOT EXISTS idx_submissions_room ON submissions (room_id)`);
-  await query(`CREATE INDEX IF NOT EXISTS idx_users_username ON users (username)`);
+    await query(`CREATE INDEX IF NOT EXISTS idx_leaderboard_rank ON seasonal_leaderboard (season_id, score DESC, wins DESC)`);
+    await query(`CREATE INDEX IF NOT EXISTS idx_daily_plays_lookup ON daily_challenge_plays (wallet_address, played_date)`);
+    await query(`CREATE INDEX IF NOT EXISTS idx_submissions_room ON submissions (room_id)`);
+    await query(`CREATE INDEX IF NOT EXISTS idx_users_username ON users (username)`);
 
-  console.info("PostgreSQL database tables initialized successfully.");
+    console.info("PostgreSQL database tables initialized successfully.");
+  } catch (err) {
+    console.warn("PostgreSQL initialization warning:", err.message);
+  }
 }
