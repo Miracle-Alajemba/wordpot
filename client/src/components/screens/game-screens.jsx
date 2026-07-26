@@ -153,8 +153,6 @@ export function HomeScreen({
             Build words. Beat the clock. Earn CELO.
           </p>
 
-          <TotalPayoutsBanner />
-
           <div className="hero-actions hero-actions--grid">
             <button type="button" onClick={onQuickMatch}>
               {joinLabel}
@@ -211,6 +209,8 @@ export function HomeScreen({
             <div className="feature-pill">Free practice arena</div>
             <div className="feature-pill">Daily challenge mode</div>
           </div>
+
+          <TotalPayoutsBanner />
         </div>
 
         <div className="hero-card hero-card--interactive">

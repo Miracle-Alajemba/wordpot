@@ -2,14 +2,13 @@ import React, { useEffect, useState } from "react";
 import { API_BASE_URL } from "../../config/app-config.js";
 
 /**
- * Premium 10-Year Senior UI/UX Designed Onchain Arena Metrics Card
+ * Premium Senior UI/UX Designed Onchain Arena Metrics Card
  * @param {object} props
  * @param {string} [props.className]
  */
 export function TotalPayoutsBanner({ className = "" }) {
   const [stats, setStats] = useState({
     totalSettledMatches: 310,
-    roomContract: "0x764b3f8761CEB44e6FFA6480484b706C3c3A8284",
     verifiedOnchain: true,
   });
 
@@ -36,32 +35,31 @@ export function TotalPayoutsBanner({ className = "" }) {
   return (
     <div
       style={{
-        margin: "1.25rem 0",
-        padding: "1.25rem 1.5rem",
-        borderRadius: "20px",
-        background: "radial-gradient(135% 135% at 0% 0%, rgba(14, 165, 233, 0.12) 0%, rgba(15, 23, 42, 0.85) 50%, rgba(16, 185, 129, 0.08) 100%)",
+        marginTop: "1.25rem",
+        padding: "1rem 1.25rem",
+        borderRadius: "18px",
+        background: "radial-gradient(135% 135% at 0% 0%, rgba(56, 189, 248, 0.1) 0%, rgba(15, 23, 42, 0.85) 50%, rgba(16, 185, 129, 0.08) 100%)",
         border: "1px solid rgba(56, 189, 248, 0.25)",
-        boxShadow: "0 12px 32px -8px rgba(0, 0, 0, 0.5), inset 0 1px 1px rgba(255, 255, 255, 0.1)",
+        boxShadow: "0 10px 28px -6px rgba(0, 0, 0, 0.4), inset 0 1px 1px rgba(255, 255, 255, 0.08)",
         backdropFilter: "blur(12px)",
         WebkitBackdropFilter: "blur(12px)",
-        transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
       }}
       className={`total-payouts-banner ${className}`}
     >
-      <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: "16px" }}>
-        {/* Left Section: Icon + Main Metric */}
-        <div style={{ display: "flex", alignItems: "center", gap: "14px" }}>
+      <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: "12px" }}>
+        {/* Metric Display */}
+        <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
           <div
             style={{
-              width: "48px",
-              height: "48px",
-              borderRadius: "14px",
+              width: "44px",
+              height: "44px",
+              borderRadius: "12px",
               background: "linear-gradient(135deg, rgba(56, 189, 248, 0.2) 0%, rgba(16, 185, 129, 0.2) 100%)",
               border: "1px solid rgba(56, 189, 248, 0.35)",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              fontSize: "1.4rem",
+              fontSize: "1.3rem",
               boxShadow: "0 4px 12px rgba(56, 189, 248, 0.15)",
             }}
           >
@@ -69,14 +67,14 @@ export function TotalPayoutsBanner({ className = "" }) {
           </div>
 
           <div>
-            <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "3px" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "2px" }}>
               <span
                 style={{
                   width: "8px",
                   height: "8px",
                   borderRadius: "50%",
                   backgroundColor: "#38bdf8",
-                  boxShadow: "0 0 10px #38bdf8, 0 0 4px #38bdf8",
+                  boxShadow: "0 0 8px #38bdf8",
                   animation: "pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite",
                 }}
               />
@@ -88,7 +86,7 @@ export function TotalPayoutsBanner({ className = "" }) {
             <div style={{ display: "flex", alignItems: "baseline", gap: "8px" }}>
               <span
                 style={{
-                  fontSize: "1.75rem",
+                  fontSize: "1.6rem",
                   fontWeight: "900",
                   fontFamily: "Space Mono, monospace",
                   letterSpacing: "-0.03em",
@@ -100,56 +98,30 @@ export function TotalPayoutsBanner({ className = "" }) {
               >
                 {stats.totalSettledMatches}
               </span>
-              <span style={{ fontSize: "1rem", fontWeight: "800", color: "#f8fafc", textTransform: "uppercase", letterSpacing: "0.02em" }}>
+              <span style={{ fontSize: "0.95rem", fontWeight: "800", color: "#f8fafc", textTransform: "uppercase", letterSpacing: "0.02em" }}>
                 Rooms Created
               </span>
             </div>
           </div>
         </div>
 
-        {/* Right Section: Badges & Celoscan Link */}
-        <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "10px" }}>
-          <div
-            style={{
-              padding: "6px 12px",
-              borderRadius: "10px",
-              background: "rgba(30, 41, 59, 0.7)",
-              border: "1px solid rgba(148, 163, 184, 0.2)",
-              fontSize: "0.75rem",
-              fontWeight: "600",
-              color: "#94a3b8",
-              display: "flex",
-              alignItems: "center",
-              gap: "6px",
-            }}
-          >
-            <span style={{ color: "#4ade80" }}>⚡</span>
-            <span>Real-Time Smart Contract</span>
-          </div>
-
-          <a
-            href={`https://celoscan.io/address/${stats.roomContract}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            style={{
-              padding: "7px 14px",
-              borderRadius: "12px",
-              background: "linear-gradient(135deg, rgba(56, 189, 248, 0.15) 0%, rgba(14, 165, 233, 0.25) 100%)",
-              border: "1px solid rgba(56, 189, 248, 0.4)",
-              fontSize: "0.78rem",
-              fontWeight: "700",
-              color: "#38bdf8",
-              textDecoration: "none",
-              display: "inline-flex",
-              alignItems: "center",
-              gap: "5px",
-              boxShadow: "0 2px 8px rgba(56, 189, 248, 0.12)",
-              transition: "all 0.2s ease",
-            }}
-          >
-            <span>📜 Celoscan Contract</span>
-            <span style={{ fontSize: "0.7rem", fontWeight: "900" }}>↗</span>
-          </a>
+        {/* Status Tag */}
+        <div
+          style={{
+            padding: "6px 14px",
+            borderRadius: "10px",
+            background: "rgba(30, 41, 59, 0.75)",
+            border: "1px solid rgba(148, 163, 184, 0.2)",
+            fontSize: "0.75rem",
+            fontWeight: "600",
+            color: "#94a3b8",
+            display: "flex",
+            alignItems: "center",
+            gap: "6px",
+          }}
+        >
+          <span style={{ color: "#4ade80" }}>⚡</span>
+          <span>Real-Time Onchain Smart Contract</span>
         </div>
       </div>
     </div>
