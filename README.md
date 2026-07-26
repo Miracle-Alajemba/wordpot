@@ -87,6 +87,9 @@ The remaining 10% goes to the WordPot treasury.
 - Smart Contract: Solidity on Celo Mainnet
 - Wallet: MiniPay + injected wallets via viem
 - Network: Celo Mainnet
+- Telemetry: Real-Time Operational Health Telemetry (`/api/health`)
+- Caching: In-Memory TTL Cache Engine (`TtlCacheEngine`)
+- Audio: Zero-Dependency Web Audio API Synthesizer (`WebAudioFxSynthesizer`)
 - Room Contract Address: `0x764b3f8761CEB44e6FFA6480484b706C3c3A8284`
 - Daily Challenge Contract Address: `0x4302D510383C6be4a284759BB0616fc6ED57e9A1`
 
