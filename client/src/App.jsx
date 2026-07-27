@@ -1093,15 +1093,13 @@ export default function App() {
         settings.highContrast ? "app-high-contrast" : "",
       ].filter(Boolean).join(" ")}
     >
-      <div className="global-music-toggle">
-        {musicToggleEl}
-      </div>
       {content}
       <AppBottomNav
         screen={screen}
         onNavigate={setScreen}
         walletAddress={walletAddress}
         onWalletAction={walletAddress ? disconnectWallet : connectWallet}
+        musicToggle={musicToggleEl}
       />
     </div>
   );
