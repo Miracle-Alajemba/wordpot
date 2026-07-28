@@ -6,3 +6,7 @@ export function generateRoomCode(length = 6) {
   }
   return code;
 }
+
+export function isValidRoomCode(code = "") {
+  return typeof code === "string" && code.length === 6 && /^[A-Z2-9]+$/.test(code);
+}
