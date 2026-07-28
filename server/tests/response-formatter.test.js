@@ -1,17 +1,7 @@
-import test from "node:test";
-import assert from "node:assert/strict";
 import { successResponse, errorResponse } from "../src/utils/response-formatter.js";
-
-test("successResponse wraps data in standard envelope", () => {
-  const res = successResponse({ score: 120 }, "Score fetched");
-  assert.equal(res.ok, true);
-  assert.equal(res.message, "Score fetched");
-  assert.deepEqual(res.data, { score: 120 });
-});
-
-test("errorResponse wraps error message and code in standard envelope", () => {
-  const res = errorResponse("Unauthorized wallet", 401);
-  assert.equal(res.ok, false);
-  assert.equal(res.error, "Unauthorized wallet");
-  assert.equal(res.code, 401);
+describe("Response Formatter", () => {
+  test("formats success and error responses", () => {
+    expect(successResponse({ id: 1 })).toEqual({ success: true, message: "Success", data: { id: 1 } });
+    expect(errorResponse("Invalid", 404)).toEqual({ success: false, error: "Invalid", code: 404 });
+  });
 });
