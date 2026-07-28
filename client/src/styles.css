@@ -4199,6 +4199,36 @@ button:active {
   animation: slideInUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
+@keyframes trophyFloatGlow {
+  0% {
+    transform: translateY(0) scale(1) rotate(0deg);
+    filter: drop-shadow(0 0 6px rgba(245, 158, 11, 0.4));
+  }
+  25% {
+    transform: translateY(-6px) scale(1.08) rotate(-3deg);
+    filter: drop-shadow(0 0 16px rgba(245, 158, 11, 0.75));
+  }
+  50% {
+    transform: translateY(-10px) scale(1.12) rotate(0deg);
+    filter: drop-shadow(0 0 22px rgba(251, 191, 36, 0.9));
+  }
+  75% {
+    transform: translateY(-4px) scale(1.06) rotate(3deg);
+    filter: drop-shadow(0 0 14px rgba(245, 158, 11, 0.7));
+  }
+  100% {
+    transform: translateY(0) scale(1) rotate(0deg);
+    filter: drop-shadow(0 0 6px rgba(245, 158, 11, 0.4));
+  }
+}
+
+.trophy-cup-animated {
+  display: inline-block;
+  animation: trophyFloatGlow 3s ease-in-out infinite;
+  transform-origin: center bottom;
+  user-select: none;
+}
+
 .dc-claimed-screen__icon {
   font-size: 3.5rem;
   line-height: 1;

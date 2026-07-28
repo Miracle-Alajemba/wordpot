@@ -439,7 +439,7 @@ export function DailyChallenge({
             <p className="eyebrow">Daily Challenge</p>
           </div>
           <div className="results-sheet" style={{ textAlign: "center", padding: "3rem 1.5rem" }}>
-            <div style={{ fontSize: "2.5rem", marginBottom: "1rem" }}>🏆</div>
+            <div className="trophy-cup-animated" style={{ fontSize: "2.5rem", marginBottom: "1rem" }}>🏆</div>
             <h2>Sign In to Play</h2>
             <p style={{ marginBottom: "1.5rem" }}>
               Connect your Celo wallet to play the Daily Challenge and claim your reward (up to 2 CELO) once per day.
@@ -519,7 +519,7 @@ export function DailyChallenge({
             <p className="eyebrow">Daily Challenge</p>
           </div>
           <div className="dc-claimed-screen">
-            <div className="dc-claimed-screen__icon">🏆</div>
+            <div className="dc-claimed-screen__icon trophy-cup-animated">🏆</div>
             <h2 className="dc-claimed-screen__title">Reward Claimed</h2>
             <p className="dc-claimed-screen__sub">You claimed your 0.05 CELO reward today.</p>
             <div className="dc-claimed-screen__amount">0.05 CELO</div>
@@ -672,7 +672,7 @@ export function DailyChallenge({
           </div>
         ) : phase === "idle" ? (
           <div className="results-sheet" style={{ maxWidth: "500px", margin: "0 auto" }}>
-            <div style={{ fontSize: "2rem", marginBottom: "0.5rem", textAlign: "center" }}>🏆</div>
+            <div className="trophy-cup-animated" style={{ fontSize: "2.5rem", marginBottom: "0.5rem", textAlign: "center" }}>🏆</div>
             <p className="eyebrow">Ready</p>
             <h2>Daily Challenge</h2>
             <p style={{ marginBottom: "1rem" }}>
