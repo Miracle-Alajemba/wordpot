@@ -8,5 +8,5 @@ export function generateRoomCode(length = 4) {
 }
 
 export function isValidRoomCode(code = "") {
-  return typeof code === "string" && (code.length === 4 || code.length === 6) && /^[A-Z2-9]+$/i.test(code);
+  return typeof code === "string" && (code.length === 4 || code.length === 6) && /^[A-Z0-9]+$/i.test(code);
 }
