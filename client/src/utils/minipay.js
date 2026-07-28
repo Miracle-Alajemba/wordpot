@@ -17,7 +17,16 @@ export function getInjectedWalletProvider() {
     return window.ethereum.providers[0];
   }
 
+  if (window.ethereum?.isMiniPay) return window.ethereum;
   return window.ethereum || window.celo || window.web3?.currentProvider || null;
+}
+
+export function isMiniPayEnvironment() {
+  if (typeof window === "undefined") return false;
+  const provider = getInjectedWalletProvider();
+  const isMiniPayProvider = Boolean(provider?.isMiniPay || window.ethereum?.isMiniPay);
+  const isMiniPayUserAgent = typeof navigator !== "undefined" && Boolean(navigator.userAgent?.includes("MiniPay"));
+  return isMiniPayProvider || isMiniPayUserAgent;
 }
 
 export function getCeloChain(chainId = 42220) {
