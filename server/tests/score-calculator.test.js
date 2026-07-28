@@ -1,8 +1,9 @@
+import test from "node:test";
+import assert from "node:assert";
 import { calculateWordScore } from "../src/utils/score-calculator.js";
-describe("Score Calculator", () => {
-  test("calculates score based on length", () => {
-    expect(calculateWordScore("cat")).toBe(10);
-    expect(calculateWordScore("apple")).toBe(25);
-    expect(calculateWordScore("potatoes")).toBe(100);
-  });
+
+test("calculates score based on length", () => {
+  assert.strictEqual(calculateWordScore("cat"), 10);
+  assert.strictEqual(calculateWordScore("apple"), 25);
+  assert.strictEqual(calculateWordScore("potatoes"), 100);
 });

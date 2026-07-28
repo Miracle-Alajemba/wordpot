@@ -1,7 +1,8 @@
+import test from "node:test";
+import assert from "node:assert";
 import { formatCountdown } from "../src/utils/time-helpers.js";
-describe("Time Helpers", () => {
-  test("formats seconds into MM:SS string", () => {
-    expect(formatCountdown(65)).toBe("01:05");
-    expect(formatCountdown(0)).toBe("00:00");
-  });
+
+test("formats seconds into MM:SS string", () => {
+  assert.strictEqual(formatCountdown(65), "01:05");
+  assert.strictEqual(formatCountdown(0), "00:00");
 });

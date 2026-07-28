@@ -1,7 +1,8 @@
+import test from "node:test";
+import assert from "node:assert";
 import { getLengthMultiplier } from "../src/utils/score-multiplier.js";
-describe("Score Multiplier", () => {
-  test("returns score multiplier based on length", () => {
-    expect(getLengthMultiplier(8)).toBe(2.5);
-    expect(getLengthMultiplier(3)).toBe(1.0);
-  });
+
+test("returns score multiplier based on length", () => {
+  assert.strictEqual(getLengthMultiplier(8), 2.5);
+  assert.strictEqual(getLengthMultiplier(3), 1.0);
 });

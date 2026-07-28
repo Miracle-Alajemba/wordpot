@@ -1,7 +1,8 @@
+import test from "node:test";
+import assert from "node:assert";
 import { calculatePlayerWinRate } from "../src/utils/player-stats-calculator.js";
-describe("Player Stats Calculator", () => {
-  test("calculates win rate percentage", () => {
-    expect(calculatePlayerWinRate(5, 10)).toBe(50);
-    expect(calculatePlayerWinRate(0, 0)).toBe(0);
-  });
+
+test("calculates win rate percentage", () => {
+  assert.strictEqual(calculatePlayerWinRate(5, 10), 50);
+  assert.strictEqual(calculatePlayerWinRate(0, 0), 0);
 });

@@ -1,7 +1,8 @@
+import test from "node:test";
+import assert from "node:assert";
 import { isRoomJoinable } from "../src/utils/room-state-validator.js";
-describe("Room State Validator", () => {
-  test("validates whether room accepts new players", () => {
-    expect(isRoomJoinable({ settled: false, cancelled: false, playerCount: 1, maxPlayers: 4 })).toBe(true);
-    expect(isRoomJoinable({ settled: true })).toBe(false);
-  });
+
+test("validates whether room accepts new players", () => {
+  assert.strictEqual(isRoomJoinable({ settled: false, cancelled: false, playerCount: 1, maxPlayers: 4 }), true);
+  assert.strictEqual(isRoomJoinable({ settled: true }), false);
 });

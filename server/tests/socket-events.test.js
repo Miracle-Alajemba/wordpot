@@ -1,6 +1,7 @@
+import test from "node:test";
+import assert from "node:assert";
 import { SOCKET_EVENTS } from "../src/constants/socket-events.js";
-describe("Socket Events", () => {
-  test("exports required socket event names", () => {
-    expect(SOCKET_EVENTS.JOIN_ROOM).toBe("room:join");
-  });
+
+test("exports required socket event names", () => {
+  assert.strictEqual(SOCKET_EVENTS.JOIN_ROOM, "room:join");
 });

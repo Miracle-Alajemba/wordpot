@@ -1,7 +1,8 @@
+import test from "node:test";
+import assert from "node:assert";
 import { getRoomCacheKey, getUserCacheKey } from "../src/utils/cache-keys.js";
-describe("Cache Keys Generator", () => {
-  test("formats redis cache key strings", () => {
-    expect(getRoomCacheKey(42)).toBe("wordpot:room:42");
-    expect(getUserCacheKey("0xABC")).toBe("wordpot:user:0xabc");
-  });
+
+test("formats redis cache key strings", () => {
+  assert.strictEqual(getRoomCacheKey(42), "wordpot:room:42");
+  assert.strictEqual(getUserCacheKey("0xABC"), "wordpot:user:0xabc");
 });

@@ -1,7 +1,8 @@
+import test from "node:test";
+import assert from "node:assert";
 import { calculateRemainingSeconds } from "../src/utils/round-timer-calculator.js";
-describe("Round Timer Calculator", () => {
-  test("calculates remaining round seconds", () => {
-    const now = new Date().toISOString();
-    expect(calculateRemainingSeconds(now, 60)).toBe(60);
-  });
+
+test("calculates remaining round seconds", () => {
+  const now = new Date().toISOString();
+  assert.strictEqual(calculateRemainingSeconds(now, 60), 60);
 });
